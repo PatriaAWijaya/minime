@@ -78,3 +78,58 @@
 ### Status saat ini
 - Menunggu review Patria: `AGENTS.md` + `docs/arsitektur.md` (v3).
 - Setelah disetujui → TODO.md + PLAN.md → Fase 1.
+
+## 2026-10-16 — Fase 1 selesai dibangun (menunggu review gate Patria)
+
+### Perintah
+Patria 16 Okt ~19:56 WIB: **"Build arsitektur"** — mulai Fase 1. Scope tambahan: framework agen
+(`agents/<id>/`) + workflow (`pipelines/`) konkret.
+
+### Yang dibangun (subagent, 16 Okt)
+- **Dokumen**: `docs/TODO.md` + `docs/PLAN.md` ditulis dari arsitektur v3 (6 fase).
+- **Daemon Rust** (`daemon/`, crate `minime-daemon`): SQLite WAL 7 tabel + migrasi berversi
+  (`001_init.sql`); crash recovery jujur (running → failed); IPC Unix socket JSON-lines
+  (`daemon.status`, `agents.*`, `tasks.*`, `runs.*`, `approvals.list`, `deliverables.list`,
+  `pipelines.list`, `pipelines.run`, `subscribe` event); FIFO executor per agen (Fase 1: eksekusi
+  dummy simulasi progres ~4 detik); provider trait (interface saja); template plist launchd
+  `com.minime.daemon` (RunAtLoad + KeepAlive).
+- **Framework agen**: `agents/{mimi,riset,strategi-bisnis,creative-director,qc}/` — tiap agen punya
+  `agent.yaml` (model + fallback chain, skills, tools allowlist, effort, budget cap) +
+  `system-prompt.md` (Bahasa Indonesia: peran senior, SOP, quality bar, eskalasi, larangan auto-post).
+  Agent loader membaca folder ini saat start → seed tabel `agents` (tambah agen = tambah folder).
+- **Workflow**: `pipelines/minime-pipeline.yaml` (Mimi → Riset → Strategi Bisnis → Creative Director
+  → QC → Approval → Deliverable) + `smo-subpipeline.yaml` + `codebuilder-subpipeline.yaml`.
+  Pipeline runner: parse & validasi YAML (DAG, agen & skill terdaftar, sub-pipeline asiklik),
+  eksekusi FIFO per stage, handoff via `messages`, fan-out/fan-in, terminal approval → record `approvals`.
+- **Skills**: 18 stub `SKILL.md` → seed tabel `skills` (bukan hardcode).
+- **UI skeleton** (`src/`, Svelte 5 — dikunci): dashboard 6 views (Agen, Antrean, Berjalan,
+  Persetujuan, Deliverable, Pengaturan) Bahasa Indonesia; kartu 5 agen + status
+  (kuning=aktif, hijau=idle, merah=butuh perhatian); menu konteks per-agen
+  (Tasks, + New task, Pengaturan agen, Sembunyikan komputer — stub); UI rules diterapkan;
+  adapter `daemon.ts` (Tauri invoke → fallback mock mode demo).
+- **`src-tauri/`** thin client: proxy IPC Unix socket → Tauri commands (scaffold; full build di macOS).
+- **Git**: repo diinisialisasi di `~/workspace/minime/`; commit `94f0e33` "feat: fase 1 fondasi Minime".
+  Remote privat: TUNGGU konfirmasi Patria (dilarang buat tanpa izin).
+
+### Bukti terverifikasi (Linux, 16 Okt)
+- `cargo build` sukses (hanya warning dead-code wajar).
+- Daemon start: migrasi OK, 5 agen + 18 skills ter-load, 3 pipeline tervalidasi.
+- IPC: `tasks.enqueue` → progres 0→100 → done; `agents.list` benar (avatar, warna, skills).
+- **Pipeline end-to-end**: `pipelines.run minime-pipeline` → 5 stage tereksekusi FIFO →
+  9 handoff messages tercatat → run `waiting-approval` → 1 approval pending di stage qc →
+  53 event realtime diterima subscriber (task-updated, agent-status, run-updated, approval-requested).
+- `vite build` sukses (peringatan Svelte diperbaiki).
+- **Bukti quit ≠ stop**: daemon berjalan sebagai proses OS mandiri (PID independen), tetap responsif
+  setelah semua proses lain selesai (uptime terukur). LaunchAgent macOS: template plist siap;
+  verifikasi di MacBook Patria saat gate.
+
+### Blocker / batasan jujur
+- Full `tauri build` (dmg) dan LaunchAgent **hanya bisa diuji di MacBook Patria** — butuh macOS.
+- Eksekusi task Fase 1 = dummy (tanpa LLM); LLM provider di Fase 2.
+- `approvals.decide`, `secrets.set`, `providers.*`, `usage.summary`, `license.*` belum diimplementasikan (sesuai fase).
+- Branch pipeline (`when`) divalidasi tapi belum dievaluasi kondisinya (Fase 2).
+
+### Untuk review gate Fase 1 (butuh Patria)
+1. Cek dashboard skeleton (mode demo via `vite dev`, atau build Tauri di MacBook).
+2. Vonis: lanjut Fase 2, atau ada revisi.
+3. Konfirmasi: boleh buat remote GitHub privat untuk repo ini?
