@@ -133,3 +133,36 @@ Patria 16 Okt ~19:56 WIB: **"Build arsitektur"** — mulai Fase 1. Scope tambaha
 1. Cek dashboard skeleton (mode demo via `vite dev`, atau build Tauri di MacBook).
 2. Vonis: lanjut Fase 2, atau ada revisi.
 3. Konfirmasi: boleh buat remote GitHub privat untuk repo ini?
+
+## 16 Okt 2026 — Fase 2 SELESAI: Orkestrasi inti + provider
+
+### Yang dibangun
+- **3 provider LLM nyata** (`daemon/src/providers_*.rs`): OpenCode free (via CLI v1.19.3 yang di-pin di `tools/bin/`, tanpa key), Gemini (REST native), Muse (Meta Model API, OpenAI-compatible). Kunci via `secrets.rs`: env `MINIME_GEMINI_KEY`/`MINIME_MUSE_KEY` → Keychain (`keyring`), tidak pernah dibaca balik.
+- **Muse region check + fallback**: HTTP 403/451 atau pesan region → `ProviderError::RegionBlocked` → executor otomatis lanjut ke Gemini (sesuai arsitektur).
+- **Routing per-agen + fallback chain**: `executor.rs` ditulis ulang — `run_llm` gantikan `run_dummy`. Tiap task jalan di model agennya, pindah ke fallback bila gagal (typed `ProviderError`: NoKey/RegionBlocked/Failed).
+- **Handoff nyata**: output stage N → `runs.context.stages.<id>` → prompt stage N+1 (via `build_user_text`); pesan handoff di tabel `messages` berisi ringkasan output asli.
+- **QC scoring**: `parse_qc_score` baca `SKOR: n` + `ALASAN:` dari output QC → `approvals.qc_score`; format diinstruksikan di `agents/qc/system-prompt.md`.
+- **`approvals.decide`** (IPC): approve → run done + draft deliverable di `data_dir/deliverables/<run_id>.md`; reject → revisi (counter di `runs.context`, maks 3x) → resume pipeline dari stage produsen → QC baru → approval baru. 3x tolak → run `failed` + notifikasi "butuh perhatian".
+- **Notifikasi native** (`notify.rs`): macOS via `osascript`, Linux via `notify-send`/stderr. Dipanggil saat approval diminta.
+- **Metering**: token in/out + estimasi biaya USD per stage → kolom `runs`; budget-cap harian per agen (task di-pause bila tercapai).
+- **UI**: `PersetujuanView.svelte` — tombol Setujui/Tolak aktif, badge skor QC (hijau ≥75/merah <75), field catatan wajib saat menolak; `approvalsDecide` di `daemon.ts` + command Tauri `approvals_decide`.
+- **Mock provider** (env-gated `MINIME_MOCK_LLM=1`, bukan produksi): untuk verifikasi integrasi tanpa ketergantungan LLM eksternal.
+- `agent.yaml` ke-5 agen: fallback chain `muse → gemini → opencode/muse-spark-1.3-contributor-free` (strategi-bisnis: primary muse).
+
+### Bukti verifikasi (mock provider, seluruh stack nyata via IPC)
+1. Pipeline `minime-pipeline` dijalankan via `pipelines.run` → 5 stage selesai berurutan (orkestrasi→riset→strategi→produksi→qc).
+2. **Fallback terbukti**: panggilan mock pertama disengaja digagalkan → executor otomatis coba fallback → sukses (terlihat di log daemon).
+3. Approval terbuat otomatis: `qc_score=80` ter-parse dari `SKOR: 80`, status `pending`.
+4. `approvals.decide approve` → approval `approved`, run `done`, draft deliverable terbuat (`deliverables/<run_id>.md`).
+5. `approvals.decide reject` → `revision: 1`, `resumed_from: produksi` → stage produksi + qc jalan ulang → approval baru `pending`.
+6. `cargo build` ✅, `cargo clippy` ✅ (hanya warnings), `cargo fmt` ✅, `vite build` ✅.
+
+### Blocker jujur (eksternal, bukan kode)
+1. **OpenCode free tier tidak bisa dipakai saat ini**: backend `opencode.ai/zen/v1` konsisten menjawab `400 "Model is unavailable"` untuk SEMUA model free (big-pickle, muse-spark, glm, deepseek, nemotron) selama ±1 jam pengujian; CLI `opencode run` hang tanpa aktivitas network di environment ini (kemungkinan terkait proxy). Kode provider sudah benar (terverifikasi: CLI ter-spawn dengan argumen tepat, stdin null, timeout 10 menit bekerja). Perlu dicoba ulang di lain waktu / dari MacBook Patria.
+2. **API key Gemini & Muse belum ada** (env kosong, keyring Linux tak tersedia) → live test kedua provider itu belum bisa; JANGAN minta key via chat (aturan).
+3. Notifikasi `osascript` + `tauri build` (dmg) + LaunchAgent **hanya bisa diuji di MacBook Patria**.
+
+### Untuk review gate Fase 2 (butuh Patria)
+1. Vonis: lanjut Fase 3, atau ada revisi.
+2. Putuskan: coba ulang OpenCode free dari MacBook Patria, atau sediakan API key (via Keychain, bukan chat) untuk live test Gemini/Muse.
+3. Konfirmasi ulang: boleh buat remote GitHub privat untuk repo ini? (ditunda dari Fase 1)

@@ -51,7 +51,7 @@ pub async fn run_pipeline(
     let name2 = name.to_string();
     let run_id2 = run_id.clone();
     tokio::spawn(async move {
-        match execute_pipeline(&db2, &tx2, &repo, &p, &run_id2).await {
+        match execute_pipeline(&db2, &tx2, &repo, &p, &run_id2, None).await {
             Ok(()) => {}
             Err(e) => {
                 eprintln!("[runner] pipeline '{name2}' run {run_id2} failed: {e:#}");
@@ -74,15 +74,108 @@ pub async fn run_pipeline(
     Ok(run_id)
 }
 
+/// Resume a run from a specific stage (used after a rejection → revision).
+/// The producing stage re-runs, then the pipeline continues normally
+/// (including a fresh QC + new approval record).
+pub async fn resume_pipeline(
+    db: Db,
+    tx: broadcast::Sender<Event>,
+    repo: PathBuf,
+    run_id: &str,
+    from_stage: &str,
+    revision_note: &str,
+) -> Result<()> {
+    // Catat revisi di context.
+    {
+        let guard = db.lock().await;
+        let ctx_raw: String = guard
+            .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+                r.get(0)
+            })
+            .unwrap_or_else(|_| "{}".to_string());
+        let mut ctx: serde_json::Value =
+            serde_json::from_str(&ctx_raw).unwrap_or(serde_json::json!({}));
+        let revs = ctx.get("revisions").and_then(|v| v.as_i64()).unwrap_or(0) + 1;
+        ctx["revisions"] = serde_json::json!(revs);
+        ctx["revision_note"] = serde_json::json!(revision_note);
+        guard.execute(
+            "UPDATE runs SET context=?1, status='running', current_stage=?2, updated_at=datetime('now') WHERE id=?3",
+            params![ctx.to_string(), from_stage, run_id],
+        )?;
+    }
+    tx.send(Event::RunUpdated {
+        run_id: run_id.to_string(),
+        status: "running".to_string(),
+        current_stage: from_stage.to_string(),
+    })
+    .ok();
+
+    let agents = crate::agent_loader::agent_ids(&db).await?;
+    let skills = crate::agent_loader::skill_names(&db).await?;
+    // Pipeline name from the run row.
+    let pipeline_name: String = {
+        let guard = db.lock().await;
+        guard.query_row("SELECT pipeline FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })?
+    };
+    let p = pipeline::load_pipeline(&repo, &pipeline_name)?;
+    pipeline::validate_pipeline(&p, &repo, &agents, &skills)?;
+
+    let db2 = db.clone();
+    let tx2 = tx.clone();
+    let repo2 = repo.clone();
+    let run_id2 = run_id.to_string();
+    let from2 = from_stage.to_string();
+    tokio::spawn(async move {
+        if let Err(e) =
+            execute_pipeline(&db2, &tx2, &repo2, &p, &run_id2, Some(from2.as_str())).await
+        {
+            eprintln!("[runner] resume run {run_id2} failed: {e:#}");
+            let guard = db2.lock().await;
+            guard
+                .execute(
+                    "UPDATE runs SET status='failed', updated_at=datetime('now') WHERE id=?1",
+                    [&run_id2],
+                )
+                .ok();
+        }
+    });
+    Ok(())
+}
+
+/// Revision count for a run (from runs.context).
+pub async fn revision_count(db: &Db, run_id: &str) -> i64 {
+    let guard = db.lock().await;
+    let ctx_raw: String = guard
+        .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })
+        .unwrap_or_else(|_| "{}".to_string());
+    serde_json::from_str::<serde_json::Value>(&ctx_raw)
+        .ok()
+        .and_then(|v| v.get("revisions").and_then(|r| r.as_i64()))
+        .unwrap_or(0)
+}
+
 async fn execute_pipeline(
     db: &Db,
     tx: &broadcast::Sender<Event>,
     repo: &Path,
     p: &pipeline::PipelineRaw,
     run_id: &str,
+    start_from: Option<&str>,
 ) -> Result<()> {
     let mut prev_agent = "pipeline".to_string();
+    let mut skipping = start_from.is_some();
     for stage in &p.stages {
+        if skipping {
+            if Some(stage.id.as_str()) == start_from {
+                skipping = false;
+            } else {
+                continue;
+            }
+        }
         set_run_stage(db, tx, run_id, &stage.id).await?;
 
         if !stage.parallel.is_empty() {
@@ -114,7 +207,11 @@ async fn execute_pipeline(
                 &prev_agent,
                 "pipeline",
                 "fanout-join",
-                &format!("stage '{}' selesai ({} cabang paralel)", stage.id, stage.parallel.len()),
+                &format!(
+                    "stage '{}' selesai ({} cabang paralel)",
+                    stage.id,
+                    stage.parallel.len()
+                ),
             )
             .await?;
         } else {
@@ -123,22 +220,32 @@ async fn execute_pipeline(
             } else {
                 stage.title.clone()
             };
-            let task_id = enqueue_task(
-                db,
-                &stage.agent,
-                Some(run_id),
-                &title,
-                &serde_json::json!({"stage": stage.id, "skills": stage.skills, "notes": stage.notes, "pipeline": p.name}),
-            )
-            .await?;
+            let mut task_input = serde_json::json!({"stage": stage.id, "skills": stage.skills, "notes": stage.notes, "pipeline": p.name});
+            // Saat resume setelah revisi: sertakan catatan Patria agar agen memperbaikinya.
+            if start_from.is_some() {
+                if let Some(note) = revision_note_of(db, run_id).await {
+                    task_input["revision_note"] = serde_json::json!(note);
+                    // Hapus agar tidak terbawa ke stage berikutnya.
+                    clear_revision_note(db, run_id).await;
+                }
+            }
+            let task_id = enqueue_task(db, &stage.agent, Some(run_id), &title, &task_input).await?;
             wait_task(db, &task_id).await?;
+            // Handoff NYATA: baca output stage dari runs.context.
+            let stage_output = stage_output(db, run_id, &stage.id).await;
+            let handoff_text = if stage_output.trim().is_empty() {
+                format!("stage '{}' selesai → handoff", stage.id)
+            } else {
+                let clipped: String = stage_output.chars().take(1200).collect();
+                format!("stage '{}' selesai → handoff:\n{clipped}", stage.id)
+            };
             insert_message(
                 db,
                 Some(run_id),
                 &prev_agent,
                 &stage.agent,
                 "handoff",
-                &format!("stage '{}' selesai → handoff", stage.id),
+                &handoff_text,
             )
             .await?;
             prev_agent = stage.agent.clone();
@@ -166,24 +273,33 @@ async fn execute_pipeline(
                 prev_agent = next;
             }
             Transition::Approval => {
+                // Ambil output QC dari context untuk skor + ringkasan nyata.
+                let qc_output = stage_output(db, run_id, &stage.id).await;
+                let (score, reason) = parse_qc_score(&qc_output);
+                let summary = if qc_output.trim().is_empty() {
+                    format!("Pipeline '{}' menunggu persetujuan Patria.", p.name)
+                } else {
+                    let clipped: String = qc_output.chars().take(800).collect();
+                    match score {
+                        Some(s) => format!("Skor QC: {s}/100. {reason}\n\n{clipped}"),
+                        None => clipped,
+                    }
+                };
                 let approval_id = Uuid::new_v4().to_string();
                 {
                     let guard = db.lock().await;
                     guard.execute(
-                        "INSERT INTO approvals (id, run_id, stage, payload_summary, status)
-                         VALUES (?1,?2,?3,?4,'pending')",
-                        params![
-                            approval_id,
-                            run_id,
-                            stage.id,
-                            format!("Pipeline '{}' menunggu persetujuan Patria (Fase 1: dummy).", p.name),
-                        ],
+                        "INSERT INTO approvals (id, run_id, stage, payload_summary, qc_score, status)
+                         VALUES (?1,?2,?3,?4,?5,'pending')",
+                        params![approval_id, run_id, stage.id, summary, score],
                     )?;
                     guard.execute(
                         "UPDATE runs SET status='waiting-approval', updated_at=datetime('now') WHERE id=?1",
                         [run_id],
                     )?;
                 }
+                // Notifikasi native — berfungsi walau UI tertutup (rule: human gate).
+                crate::notify::approval_requested(&stage.id, &summary);
                 tx.send(Event::RunUpdated {
                     run_id: run_id.to_string(),
                     status: "waiting-approval".to_string(),
@@ -259,6 +375,101 @@ async fn set_run_stage(
     })
     .ok();
     Ok(())
+}
+
+/// Baca revision_note dari context (sekali pakai).
+async fn revision_note_of(db: &Db, run_id: &str) -> Option<String> {
+    let guard = db.lock().await;
+    let ctx_raw: String = guard
+        .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })
+        .unwrap_or_else(|_| "{}".to_string());
+    serde_json::from_str::<serde_json::Value>(&ctx_raw)
+        .ok()
+        .and_then(|v| {
+            v.get("revision_note")
+                .and_then(|n| n.as_str())
+                .map(|s| s.to_string())
+        })
+}
+
+async fn clear_revision_note(db: &Db, run_id: &str) {
+    let guard = db.lock().await;
+    let ctx_raw: String = guard
+        .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })
+        .unwrap_or_else(|_| "{}".to_string());
+    let mut ctx: serde_json::Value =
+        serde_json::from_str(&ctx_raw).unwrap_or(serde_json::json!({}));
+    if let Some(obj) = ctx.as_object_mut() {
+        obj.remove("revision_note");
+        guard
+            .execute(
+                "UPDATE runs SET context=?1 WHERE id=?2",
+                params![ctx.to_string(), run_id],
+            )
+            .ok();
+    }
+}
+
+/// Baca output sebuah stage dari runs.context.stages.<stage>.output.
+async fn stage_output(db: &Db, run_id: &str, stage_id: &str) -> String {
+    let guard = db.lock().await;
+    let ctx_raw: String = guard
+        .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })
+        .unwrap_or_else(|_| "{}".to_string());
+    serde_json::from_str::<serde_json::Value>(&ctx_raw)
+        .ok()
+        .and_then(|v| {
+            v.get("stages")?
+                .get(stage_id)?
+                .get("output")?
+                .as_str()
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_default()
+}
+
+/// Parse "SKOR: <0-100>" dari output agen QC → (skor, alasan singkat).
+/// Format ini diinstruksikan di system-prompt agen qc.
+fn parse_qc_score(output: &str) -> (Option<i64>, String) {
+    let mut score: Option<i64> = None;
+    let mut reason = String::new();
+    for line in output.lines() {
+        let t = line.trim();
+        let upper = t.to_uppercase();
+        if upper.starts_with("SKOR") {
+            // Format: "SKOR: 85" atau "SKOR 85/100"
+            let digits: String = t.chars().filter(|c| c.is_ascii_digit()).collect();
+            // Ambil angka pertama yang masuk akal (0-100)
+            let mut num = String::new();
+            for ch in digits.chars() {
+                num.push(ch);
+                if let Ok(n) = num.parse::<i64>() {
+                    if n > 100 {
+                        num.pop();
+                        break;
+                    }
+                }
+            }
+            if let Ok(n) = num.parse::<i64>() {
+                if (0..=100).contains(&n) {
+                    score = Some(n);
+                }
+            }
+        } else if upper.starts_with("ALASAN") {
+            let r = t
+                .trim_start_matches(|c: char| !c.is_alphanumeric())
+                .trim_start_matches("ALASAN")
+                .trim_start_matches(|c: char| c == ':' || c == '-' || c.is_whitespace());
+            reason = r.chars().take(300).collect();
+        }
+    }
+    (score, reason)
 }
 
 async fn insert_message(

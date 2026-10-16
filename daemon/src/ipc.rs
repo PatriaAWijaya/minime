@@ -20,16 +20,17 @@ pub struct App {
     pub db: Db,
     pub tx: broadcast::Sender<Event>,
     pub repo: PathBuf,
+    pub data_dir: PathBuf,
     pub start: std::time::Instant,
     pub version: String,
+    pub providers: crate::executor::Providers,
 }
 
 pub async fn serve(app: App, sock: &Path) -> Result<()> {
     if sock.exists() {
         std::fs::remove_file(sock).ok();
     }
-    let listener = UnixListener::bind(sock)
-        .with_context(|| format!("bind {}", sock.display()))?;
+    let listener = UnixListener::bind(sock).with_context(|| format!("bind {}", sock.display()))?;
     loop {
         let (stream, _) = listener.accept().await?;
         let app = app.clone();
@@ -101,10 +102,7 @@ async fn handle_conn(app: App, stream: UnixStream) -> Result<()> {
     Ok(())
 }
 
-async fn write_msg(
-    wr: &mut tokio::net::unix::OwnedWriteHalf,
-    v: &Value,
-) -> Result<()> {
+async fn write_msg(wr: &mut tokio::net::unix::OwnedWriteHalf, v: &Value) -> Result<()> {
     let mut s = serde_json::to_string(v)?;
     s.push('\n');
     wr.write_all(s.as_bytes()).await?;
@@ -112,7 +110,10 @@ async fn write_msg(
 }
 
 fn p_str(params: &Value, key: &str) -> Option<String> {
-    params.get(key).and_then(|v| v.as_str()).map(|s| s.to_string())
+    params
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
@@ -120,8 +121,7 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
     match method {
         "daemon.status" => {
             let guard = db.lock().await;
-            let agents: i64 =
-                guard.query_row("SELECT COUNT(*) FROM agents", [], |r| r.get(0))?;
+            let agents: i64 = guard.query_row("SELECT COUNT(*) FROM agents", [], |r| r.get(0))?;
             let queued: i64 = guard.query_row(
                 "SELECT COUNT(*) FROM tasks WHERE status = 'queued'",
                 [],
@@ -174,10 +174,7 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
             let guard = db.lock().await;
             let mut sql = String::from("SELECT * FROM tasks WHERE 1=1");
             if let Some(a) = p_str(&params, "agent_id") {
-                sql.push_str(&format!(
-                    " AND agent_id = '{}'",
-                    a.replace('\'', "''")
-                ));
+                sql.push_str(&format!(" AND agent_id = '{}'", a.replace('\'', "''")));
             }
             if let Some(s) = p_str(&params, "status") {
                 sql.push_str(&format!(" AND status = '{}'", s.replace('\'', "''")));
@@ -245,6 +242,29 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(json!(items))
         }
+        "approvals.decide" => {
+            let approval_id =
+                p_str(&params, "approval_id").context("params.approval_id required")?;
+            let decision = p_str(&params, "decision").context("params.decision required")?;
+            let note = p_str(&params, "note").unwrap_or_default();
+            if decision != "approve" && decision != "reject" {
+                anyhow::bail!("decision harus 'approve' atau 'reject'");
+            }
+            decide_approval(app, &approval_id, &decision, &note).await
+        }
+
+        "providers.list" => {
+            // Daftar provider terdaftar + modelnya (tanpa key — tidak pernah dibaca balik).
+            let mut out = Vec::new();
+            for (id, p) in app.providers.iter() {
+                out.push(json!({
+                    "id": id,
+                    "kind": format!("{:?}", p.kind()),
+                    "models": p.list_models(),
+                }));
+            }
+            Ok(json!(out))
+        }
 
         "deliverables.list" => {
             let guard = db.lock().await;
@@ -276,17 +296,173 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
         "pipelines.run" => {
             let name = p_str(&params, "pipeline").context("params.pipeline required")?;
             let input = params.get("input").cloned().unwrap_or(json!({}));
-            let run_id = runner::run_pipeline(
-                db.clone(),
-                app.tx.clone(),
-                app.repo.clone(),
-                &name,
-                input,
-            )
-            .await?;
+            let run_id =
+                runner::run_pipeline(db.clone(), app.tx.clone(), app.repo.clone(), &name, input)
+                    .await?;
             Ok(json!({"run_id": run_id}))
         }
 
         _ => anyhow::bail!("unknown method '{method}'"),
     }
+}
+
+/// approvals.decide — human gate Patria.
+/// approve → run selesai + draft deliverable dibuat.
+/// reject → revisi (maks 3x, counter di runs.context); jika sudah 3x → run butuh perhatian.
+async fn decide_approval(
+    app: &App,
+    approval_id: &str,
+    decision: &str,
+    note: &str,
+) -> Result<Value> {
+    let db = &app.db;
+    let (run_id, _stage, status): (Option<String>, String, String) = {
+        let guard = db.lock().await;
+        guard
+            .query_row(
+                "SELECT run_id, stage, status FROM approvals WHERE id = ?1",
+                [approval_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .with_context(|| format!("approval '{approval_id}' tidak ditemukan"))?
+    };
+    if status != "pending" {
+        anyhow::bail!("approval sudah diputuskan ({status})");
+    }
+    let run_id = run_id.context("approval tidak terikat ke run")?;
+
+    if decision == "approve" {
+        approve_run(app, approval_id, &run_id, note).await?;
+        return Ok(json!({"approval_id": approval_id, "decision": "approve"}));
+    }
+
+    // reject → hitung revisi
+    let revs = runner::revision_count(db, &run_id).await;
+    if revs >= 3 {
+        // Maks 3 revisi tercapai → butuh perhatian Patria, run ditandai gagal.
+        {
+            let guard = db.lock().await;
+            guard.execute(
+                "UPDATE approvals SET status='rejected', decided_at=datetime('now'), note=?1 WHERE id=?2",
+                params![note, approval_id],
+            )?;
+            guard.execute(
+                "UPDATE runs SET status='failed', updated_at=datetime('now') WHERE id=?1",
+                [&run_id],
+            )?;
+        }
+        app.tx
+            .send(Event::RunUpdated {
+                run_id: run_id.clone(),
+                status: "failed".to_string(),
+                current_stage: String::new(),
+            })
+            .ok();
+        crate::notify::notify(
+            "Minime — Butuh perhatian",
+            &format!("3x revisi ditolak untuk run {run_id}. Keputusan diserahkan ke Patria."),
+        );
+        return Ok(json!({"approval_id": approval_id, "decision": "reject", "final": true}));
+    }
+
+    // Cari stage produsen: stage sebelum approval di pipeline.
+    let pipeline_name: String = {
+        let guard = db.lock().await;
+        guard.query_row("SELECT pipeline FROM runs WHERE id = ?1", [&run_id], |r| {
+            r.get(0)
+        })?
+    };
+    let p = pipeline::load_pipeline(&app.repo, &pipeline_name)?;
+    let idx = p
+        .stages
+        .iter()
+        .position(|s| {
+            crate::pipeline::Transition::parse(&s.on_done)
+                .map(|t| matches!(t, crate::pipeline::Transition::Approval))
+                .unwrap_or(false)
+        })
+        .context("pipeline tidak punya stage approval")?;
+    if idx == 0 {
+        anyhow::bail!("tidak ada stage produsen sebelum approval");
+    }
+    let producer_stage = &p.stages[idx - 1];
+
+    {
+        let guard = db.lock().await;
+        guard.execute(
+            "UPDATE approvals SET status='rejected', decided_at=datetime('now'), note=?1 WHERE id=?2",
+            params![note, approval_id],
+        )?;
+    }
+    runner::resume_pipeline(
+        db.clone(),
+        app.tx.clone(),
+        app.repo.clone(),
+        &run_id,
+        &producer_stage.id,
+        note,
+    )
+    .await?;
+    Ok(json!({
+        "approval_id": approval_id,
+        "decision": "reject",
+        "revision": revs + 1,
+        "resumed_from": producer_stage.id,
+    }))
+}
+
+/// approve: tandai approval + run selesai, tulis draft deliverable.
+async fn approve_run(app: &App, approval_id: &str, run_id: &str, note: &str) -> Result<()> {
+    let db = &app.db;
+    let (payload_summary, qc_score): (String, Option<i64>) = {
+        let guard = db.lock().await;
+        guard.query_row(
+            "SELECT payload_summary, qc_score FROM approvals WHERE id = ?1",
+            [approval_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?
+    };
+
+    // Tulis draft deliverable ke data_dir/deliverables/<run_id>.md
+    let dir = app.data_dir.join("deliverables");
+    std::fs::create_dir_all(&dir)?;
+    let file_path = dir.join(format!("{run_id}.md"));
+    let draft = format!(
+        "# Draft Deliverable — run {run_id}\n\nDisetujui Patria pada {now}.\n\nSkor QC: {score}\n\nCatatan: {note}\n\n---\n\n{payload}\n",
+        run_id = run_id,
+        now = chrono::Local::now().format("%Y-%m-%d %H:%M"),
+        score = qc_score.map(|s| s.to_string()).unwrap_or_else(|| "-".to_string()),
+        note = if note.is_empty() { "-" } else { note },
+        payload = payload_summary,
+    );
+    std::fs::write(&file_path, draft)?;
+
+    let deliverable_id = uuid::Uuid::new_v4().to_string();
+    {
+        let guard = db.lock().await;
+        guard.execute(
+            "UPDATE approvals SET status='approved', decided_at=datetime('now'), note=?1 WHERE id=?2",
+            params![note, approval_id],
+        )?;
+        guard.execute(
+            "INSERT INTO deliverables (id, run_id, kind, file_path) VALUES (?1,?2,'draft',?3)",
+            params![
+                deliverable_id,
+                run_id,
+                file_path.to_string_lossy().to_string()
+            ],
+        )?;
+        guard.execute(
+            "UPDATE runs SET status='done', updated_at=datetime('now') WHERE id=?1",
+            [run_id],
+        )?;
+    }
+    app.tx
+        .send(Event::RunUpdated {
+            run_id: run_id.to_string(),
+            status: "done".to_string(),
+            current_stage: String::new(),
+        })
+        .ok();
+    Ok(())
 }

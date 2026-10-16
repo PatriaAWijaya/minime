@@ -94,6 +94,23 @@ async fn approvals_list(status: Option<String>) -> Result<serde_json::Value, Str
     call_daemon("approvals.list", p).await
 }
 
+#[tauri::command]
+async fn approvals_decide(
+    approval_id: String,
+    decision: String,
+    note: Option<String>,
+) -> Result<serde_json::Value, String> {
+    call_daemon(
+        "approvals.decide",
+        serde_json::json!({
+            "approval_id": approval_id,
+            "decision": decision,
+            "note": note.unwrap_or_default(),
+        }),
+    )
+    .await
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -101,7 +118,8 @@ fn main() {
             agents_list,
             tasks_list,
             tasks_enqueue,
-            approvals_list
+            approvals_list,
+            approvals_decide
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,12 +7,52 @@ mod events;
 mod executor;
 mod ipc;
 mod models;
+mod notify;
 mod pipeline;
 mod provider;
+mod providers_gemini;
+mod providers_mock;
+mod providers_muse;
+mod providers_opencode;
 mod runner;
+mod secrets;
 
 use anyhow::{Context, Result};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::broadcast;
+
+use executor::Providers;
+use provider::ModelProvider;
+
+/// Build the provider registry: OpenCode free (no key) + Gemini + Muse.
+/// Providers without keys register anyway and fail fast with NoKey at call
+/// time, so the fallback chain can skip them transparently.
+fn build_providers(repo_dir: &std::path::Path) -> Providers {
+    let mut map: HashMap<String, Arc<dyn ModelProvider>> = HashMap::new();
+    let oc: Arc<dyn ModelProvider> = Arc::new(providers_opencode::OpenCodeProvider::new(
+        repo_dir.to_path_buf(),
+    ));
+    map.insert(oc.id().to_string(), oc);
+    let gm: Arc<dyn ModelProvider> = Arc::new(providers_gemini::GeminiProvider::new());
+    map.insert(gm.id().to_string(), gm);
+    let ms: Arc<dyn ModelProvider> = Arc::new(providers_muse::MuseProvider::new());
+    map.insert(ms.id().to_string(), ms);
+    // Mock provider — hanya bila MINIME_MOCK_LLM=1 (integration test, bukan produksi).
+    if std::env::var("MINIME_MOCK_LLM").is_ok() {
+        let mk: Arc<dyn ModelProvider> = Arc::new(providers_mock::MockProvider::new());
+        map.insert(mk.id().to_string(), mk);
+        eprintln!("[minime-daemon] mock provider AKTIF (MINIME_MOCK_LLM=1)");
+    }
+    eprintln!(
+        "[minime-daemon] providers: {}",
+        map.keys()
+            .map(|k| k.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    Arc::new(map)
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -55,15 +95,18 @@ async fn main() -> Result<()> {
 
     // 5. Executor + IPC.
     let (tx, _rx) = broadcast::channel::<events::Event>(128);
-    let _exec_handle = executor::Executor::new(db.clone(), tx.clone()).start();
+    let providers = build_providers(&repo_dir);
+    let _exec_handle = executor::Executor::new(db.clone(), tx.clone(), providers.clone()).start();
 
     let sock = data_dir.join("minime.sock");
     let app = ipc::App {
         db,
         tx,
         repo: repo_dir,
+        data_dir: data_dir.clone(),
         start: std::time::Instant::now(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        providers,
     };
     eprintln!("[minime-daemon] listening on {}", sock.display());
 

@@ -90,8 +90,8 @@ pub async fn run_migrations(db: &Db, repo: &Path) -> Result<Vec<i64>> {
         if applied.contains(&version) {
             continue;
         }
-        let sql = std::fs::read_to_string(&path)
-            .with_context(|| format!("read {}", path.display()))?;
+        let sql =
+            std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
         guard.execute_batch(&sql)?;
         guard.execute(
             "INSERT INTO schema_migrations (version) VALUES (?1)",

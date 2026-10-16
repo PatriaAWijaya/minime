@@ -19,3 +19,6 @@ Thumbs.db
 *.db-wal
 *.db-shm
 *.sock
+
+# OpenCode CLI (diunduh otomatis oleh daemon saat pertama dipakai; 178MB)
+tools/bin/

@@ -27,6 +27,9 @@ pub struct ChatRequest {
     pub messages: serde_json::Value,
     pub effort: String,
     pub max_tokens: Option<u64>,
+    /// Working directory for providers that spawn local CLIs (e.g. opencode).
+    #[serde(default)]
+    pub workdir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +39,31 @@ pub struct ChatChunk {
     pub output_tokens: u64,
     pub done: bool,
 }
+
+/// Typed provider errors so the executor can route intelligently:
+/// - `NoKey`: provider butuh API key yang belum ada → lewati ke fallback.
+/// - `RegionBlocked`: region diblokir (Meta Model API) → lewati ke fallback.
+/// - `Failed`: error lain (timeout, HTTP, CLI) → boleh coba fallback.
+#[derive(Debug, Clone)]
+pub enum ProviderError {
+    NoKey(String),
+    RegionBlocked(String),
+    Failed(String),
+}
+
+impl std::fmt::Display for ProviderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProviderError::NoKey(p) => write!(f, "provider '{p}' tidak punya API key"),
+            ProviderError::RegionBlocked(p) => {
+                write!(f, "provider '{p}' diblokir untuk region ini")
+            }
+            ProviderError::Failed(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
+impl std::error::Error for ProviderError {}
 
 /// Every model provider (free or paid) implements this trait.
 /// Adding a provider = implementing this trait; no executor refactor needed.
@@ -50,9 +78,10 @@ pub trait ModelProvider: Send + Sync {
         text.len().div_ceil(4)
     }
     /// Start a streaming completion. Chunks arrive on the returned receiver;
-    /// a final chunk has `done == true`. Fase 1 has no implementations.
+    /// a final chunk has `done == true`. Errors are typed so the executor
+    /// can decide whether to try the next provider in the fallback chain.
     fn complete_stream(
         &self,
         req: ChatRequest,
-    ) -> tokio::sync::mpsc::Receiver<Result<ChatChunk, String>>;
+    ) -> tokio::sync::mpsc::Receiver<Result<ChatChunk, ProviderError>>;
 }

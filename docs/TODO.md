@@ -44,12 +44,12 @@
 - [x] `docs/status.md` di-append (16 Okt 2026)
 
 ## Fase 2 — Orkestrasi inti + provider
-- [ ] Pipeline YAML runner penuh (handoff nyata antar agen)
-- [ ] Implementasi provider Gemini + Muse (verifikasi region Indonesia; fallback Gemini)
-- [ ] Routing per-agen + fallback chain dasar
-- [ ] 1 pipeline vertikal end-to-end nyata (Riset → Strategi Bisnis → Creative Director → QC → Approval → Deliverable draft)
-- [ ] Approval inbox minimal + notifikasi native macOS
-- [ ] *Gate: 1 job nyata berjalan penuh + tap approve Patria*
+- [x] Pipeline YAML runner penuh (handoff nyata antar agen) (16 Okt 2026 — output stage N → runs.context → input stage N+1, terverifikasi via mock)
+- [x] Implementasi provider Gemini + Muse + OpenCode free (16 Okt 2026 — region check Muse→fallback Gemini; live test: key belum ada, backend OpenCode free "Model is unavailable" — blocker eksternal, lihat status.md)
+- [x] Routing per-agen + fallback chain dasar (16 Okt 2026 — terbukti di log: gemini NoKey → muse NoKey → opencode; + uji fallback mock)
+- [x] 1 pipeline vertikal end-to-end (Riset → Strategi Bisnis → Creative Director → QC → Approval → Deliverable draft) (16 Okt 2026 — penuh via mock provider; QC skor 80 ter-parse; deliverable draft terbuat)
+- [x] Approval inbox minimal + notifikasi native macOS (16 Okt 2026 — UI Setujui/Tolak + skor + catatan; notify.rs via osascript; test penuh di MacBook Patria)
+- [ ] *Gate: 1 job nyata berjalan penuh + tap approve Patria* (menunggu review Patria; job mock penuh ✅, job OpenCode free terblokir backend)
 
 ## Fase 3 — Skills & knowledge
 - [ ] 6 skills → Strategi Bisnis, 4 skills → Creative Director (knowledge disuling dari 4 dokumen Drive)

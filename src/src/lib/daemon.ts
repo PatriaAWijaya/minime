@@ -71,6 +71,8 @@ async function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Prom
       return [] as unknown as T;
     case "approvals_list":
       return [] as unknown as T;
+    case "approvals_decide":
+      return { ok: true } as unknown as T;
     default:
       throw new Error(`Perintah ${cmd} belum tersedia di mode demo (Fase 1)`);
   }
@@ -87,4 +89,10 @@ export const api = {
     invoke<{ task_id: string }>("tasks_enqueue", { agent_id, title }),
   approvalsList: (status?: string) =>
     invoke<Approval[]>("approvals_list", { status }),
+  approvalsDecide: (approval_id: string, decision: "approve" | "reject", note?: string) =>
+    invoke<{ approval_id: string; decision: string }>("approvals_decide", {
+      approval_id,
+      decision,
+      note: note ?? "",
+    }),
 };

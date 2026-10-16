@@ -71,10 +71,7 @@ impl Transition {
         if t.eq_ignore_ascii_case("end") {
             return Ok(Transition::End);
         }
-        if let Some(inner) = t
-            .strip_prefix("handoff(")
-            .and_then(|x| x.strip_suffix(")"))
-        {
+        if let Some(inner) = t.strip_prefix("handoff(").and_then(|x| x.strip_suffix(")")) {
             let agent = inner.trim();
             if agent.is_empty() {
                 anyhow::bail!("empty handoff target");
@@ -137,7 +134,11 @@ fn validate_pipeline_inner(
     stack: &mut Vec<String>,
 ) -> Result<()> {
     if stack.contains(&p.name) {
-        anyhow::bail!("pipeline cycle detected: {} -> {}", stack.join(" -> "), p.name);
+        anyhow::bail!(
+            "pipeline cycle detected: {} -> {}",
+            stack.join(" -> "),
+            p.name
+        );
     }
     stack.push(p.name.clone());
     let mut ids = HashSet::new();
@@ -164,13 +165,20 @@ fn validate_stage(
     match (has_agent, has_parallel) {
         (true, false) => {
             if !agents.contains(&s.agent) {
-                anyhow::bail!("pipeline '{pipeline}': stage '{}' uses unknown agent '{}'", s.id, s.agent);
+                anyhow::bail!(
+                    "pipeline '{pipeline}': stage '{}' uses unknown agent '{}'",
+                    s.id,
+                    s.agent
+                );
             }
         }
         (false, true) => {
             for b in &s.parallel {
                 if !agents.contains(&b.agent) {
-                    anyhow::bail!("pipeline '{pipeline}': parallel branch uses unknown agent '{}'", b.agent);
+                    anyhow::bail!(
+                        "pipeline '{pipeline}': parallel branch uses unknown agent '{}'",
+                        b.agent
+                    );
                 }
                 for sk in &b.skills {
                     if !skills.contains(sk) {
@@ -179,7 +187,10 @@ fn validate_stage(
                 }
             }
             if !s.join.is_empty() && s.join != "all" {
-                anyhow::bail!("pipeline '{pipeline}': stage '{}': only join: all is supported in Fase 1", s.id);
+                anyhow::bail!(
+                    "pipeline '{pipeline}': stage '{}': only join: all is supported in Fase 1",
+                    s.id
+                );
             }
         }
         _ => anyhow::bail!(
@@ -189,14 +200,20 @@ fn validate_stage(
     }
     for sk in &s.skills {
         if !skills.contains(sk) {
-            anyhow::bail!("pipeline '{pipeline}': stage '{}' uses unknown skill '{sk}'", s.id);
+            anyhow::bail!(
+                "pipeline '{pipeline}': stage '{}' uses unknown skill '{sk}'",
+                s.id
+            );
         }
     }
     let t = Transition::parse(&s.on_done)
         .with_context(|| format!("pipeline '{pipeline}': stage '{}'", s.id))?;
     if let Transition::Handoff(target) = &t {
         if !agents.contains(target) {
-            anyhow::bail!("pipeline '{pipeline}': stage '{}' hands off to unknown agent '{target}'", s.id);
+            anyhow::bail!(
+                "pipeline '{pipeline}': stage '{}' hands off to unknown agent '{target}'",
+                s.id
+            );
         }
     }
     for b in &s.branches {
