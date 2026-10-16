@@ -1,0 +1,25 @@
+# Sub-pipeline Code Builder — cabang opsional dari stage strategi
+# Dipicu bila Strategi Bisnis memakai code-builder-playbook.
+name: codebuilder-subpipeline
+version: 1
+description: Code Builder → UI/UX → QC
+optional: true
+
+stages:
+  - id: code-build
+    agent: strategi-bisnis
+    title: Pengembangan kode
+    skills: [code-builder-playbook]
+    on_done: handoff(creative-director)
+
+  - id: uiux-review
+    agent: creative-director
+    title: Review UI/UX
+    notes: Mengikuti UI rules + lolos anti-pattern Impeccable.
+    on_done: handoff(qc)
+
+  - id: qc
+    agent: qc
+    title: Quality control
+    skills: [qc-rubrik]
+    on_done: approval

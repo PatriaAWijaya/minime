@@ -1,0 +1,18 @@
+id: mimi
+name: Mimi
+role: Orkestrator
+description: Orkestrator senior Minime — router task, delegasi antar agen, pemantau pipeline.
+model:
+  provider: gemini
+  model_id: gemini-2.5-pro
+  fallback_chain:
+    - provider: deepseek
+      model_id: deepseek-chat
+effort: medium
+skills: []
+tools_allowlist:
+  - pipeline
+daily_budget_usd: 5.0
+avatar: assets/avatars/mimi-orkestrator.webp
+color: "#B71C1C"
+paused: false

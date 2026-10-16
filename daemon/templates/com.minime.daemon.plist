@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  minime-daemon LaunchAgent — dipasang oleh installer / first-run UI ke:
+    ~/Library/LaunchAgents/com.minime.daemon.plist
+  lalu dimuat dengan: launchctl load ~/Library/LaunchAgents/com.minime.daemon.plist
+
+  RunAtLoad + KeepAlive = daemon start saat login dan hidup terus walau UI di-quit.
+  Mematikan agen HANYA lewat perintah eksplisit (UI: Pengaturan → "Hentikan daemon"
+  atau: launchctl unload ~/Library/LaunchAgents/com.minime.daemon.plist).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.minime.daemon</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Minime.app/Contents/MacOS/minime-daemon</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/REPLACE_USER/Library/Logs/com.minime.daemon/stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/REPLACE_USER/Library/Logs/com.minime.daemon/stderr.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>MINIME_REPO_DIR</key>
+        <string>/Applications/Minime.app/Contents/Resources</string>
+    </dict>
+</dict>
+</plist>

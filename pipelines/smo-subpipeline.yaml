@@ -1,0 +1,38 @@
+# Sub-pipeline SMO — cabang opsional dari stage produksi
+# Dipicu bila stage produksi memakai smo-playbook dalam mode penuh.
+name: smo-subpipeline
+version: 1
+description: SMO — Page Optimization → Content Pilar → Planning → Distribution → Engagement
+optional: true
+
+stages:
+  - id: page-optimization
+    agent: creative-director
+    title: Page Optimization
+    skills: [smo-playbook]
+    on_done: handoff(creative-director)
+
+  - id: content-pilar
+    agent: creative-director
+    title: Content Pilar
+    skills: [smo-playbook, content]
+    on_done: handoff(creative-director)
+
+  - id: content-planning
+    agent: creative-director
+    title: Content Planning
+    skills: [smo-playbook, content]
+    on_done: handoff(creative-director)
+
+  - id: content-distribution
+    agent: creative-director
+    title: Content Distribution (DRAFT ONLY)
+    skills: [smo-playbook, instagram-cli]
+    notes: ATURAN KERAS — distribusi hanya berupa draft. Dilarang auto-posting.
+    on_done: handoff(creative-director)
+
+  - id: engagement
+    agent: creative-director
+    title: Engagement
+    skills: [smo-playbook]
+    on_done: end

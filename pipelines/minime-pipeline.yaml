@@ -1,0 +1,52 @@
+# Pipeline utama Minime — implementasi diagram alur Patria
+# Dieksekusi oleh minime-daemon (pipeline runner). Bahasa Indonesia.
+name: minime-pipeline
+version: 1
+description: Alur utama — Mimi → Riset → Strategi Bisnis → Creative Director → QC → Approval → Deliverable
+
+stages:
+  - id: orkestrasi
+    agent: mimi
+    title: Orkestrasi & pemecahan tugas
+    on_done: handoff(riset)
+
+  - id: riset
+    agent: riset
+    title: Riset ber-sumber
+    skills: [riset-web]
+    on_done: handoff(strategi-bisnis)
+
+  - id: strategi
+    agent: strategi-bisnis
+    title: Strategi bisnis
+    skills:
+      - branding-playbook
+      - marketing-playbook
+      - selling-playbook
+      - operational-playbook
+      - finance-playbook
+    on_done: handoff(creative-director)
+    branches:
+      - when: butuh-pengembangan-kode
+        sub_pipeline: pipelines/codebuilder-subpipeline.yaml
+        then: handoff(qc)
+
+  - id: produksi
+    agent: creative-director
+    title: Produksi konten
+    skills:
+      - storytelling
+      - copywriting
+      - content
+      - smo-playbook
+    on_done: handoff(qc)
+    branches:
+      - when: mode-smo-penuh
+        sub_pipeline: pipelines/smo-subpipeline.yaml
+        then: handoff(qc)
+
+  - id: qc
+    agent: qc
+    title: Quality control
+    skills: [qc-rubrik]
+    on_done: approval

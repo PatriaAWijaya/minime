@@ -1,0 +1,18 @@
+id: qc
+name: QC
+role: Senior Judge
+description: Juri senior — skor kualitas 0-100 + alasan, wewenang menolak output.
+model:
+  provider: gemini
+  model_id: gemini-2.5-flash
+  fallback_chain:
+    - provider: deepseek
+      model_id: deepseek-chat
+effort: low
+skills:
+  - qc-rubrik
+tools_allowlist: []
+daily_budget_usd: 2.0
+avatar: assets/avatars/qc.webp
+color: "#F9A825"
+paused: false

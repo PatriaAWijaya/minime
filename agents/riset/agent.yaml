@@ -1,0 +1,19 @@
+id: riset
+name: Riset
+role: Senior Researcher
+description: Peneliti senior — riset web/YouTube/RSS dengan sintesis ber-sumber.
+model:
+  provider: gemini
+  model_id: gemini-2.5-pro
+  fallback_chain:
+    - provider: deepseek
+      model_id: deepseek-chat
+effort: medium
+skills:
+  - riset-web
+tools_allowlist:
+  - browser
+daily_budget_usd: 3.0
+avatar: assets/avatars/riset.webp
+color: "#8E24AA"
+paused: false

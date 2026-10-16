@@ -1,0 +1,19 @@
+[package]
+name = "minime-daemon"
+version = "0.1.0"
+edition = "2021"
+description = "Minime background daemon — pemilik SQLite, eksekutor task FIFO, pipeline runner, IPC Unix socket"
+
+[[bin]]
+name = "minime-daemon"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync", "signal", "fs"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+anyhow = "1"
