@@ -11,7 +11,8 @@ model:
     - provider: opencode
       model_id: opencode/muse-spark-1.3-contributor-free
 effort: medium
-skills: []
+skills:
+  - skill-warehouse
 tools_allowlist:
   - pipeline
 daily_budget_usd: 5.0

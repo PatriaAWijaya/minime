@@ -335,3 +335,23 @@ MacBook), `docs/open-creator.md` (kontrak sidecar), `docs/browser.md` (operasi &
 - Skill `skills/valyu-finance/SKILL.md` milik **strategi-bisnis** (pasangan `finance-playbook`): SOP query presisi → sintesis bersumber → QC → deliverable; quality bar + trigger eskalasi; **aturan keras: riset/analisis saja, DILARANG order trading live otomatis**.
 - Status jujur: readiness `not_configured` — **menunggu VALYU_API_KEY dari Patria** (gratis $10 di platform.valyu.ai, via Keychain aturan #2/#19). Uji live menyusul setelah key tersedia.
 - Wiring mock TERBUKTI: `PLAYBOOK AKTIF: valyu-finance`; sampel `docs/fase4-samples/valyu-finance.md`.
+
+## 17 Okt 2026 — Gudang skill `skill-warehouse` (agency-agents, on-demand) ✅
+
+- Perintah Patria: repo `msitarzewski/agency-agents` (MIT, 160k★) diintegrasikan sebagai **gudang skill** — "dipakai hanya jika dibutuhkan".
+- Prinsip dijaga (rule #16): gudang BUKAN agen baru — roster tetap 5 agen + Approval. Menambah kemampuan = menambah modul, bukan agen.
+- `skills-warehouse/INDEX.md`: katalog 267 spesialis dalam 18 kategori (dari frontmatter repo asal); referensi mentah di `~/workspace/referensi/agency-agents/` (di luar repo minime).
+- 8 modul teradaptasi ke format Minime (Bahasa Indonesia + atribusi MIT + batasan Minime):
+  `ui-designer`, `ux-researcher`, `frontend-developer`, `code-reviewer`,
+  `reality-checker`, `research-synthesist`, `carousel-growth-engine` (dipaksa draft-only —
+  perilaku auto-publish aslinya DINONAKTIFKAN per rule #3), `short-video-editing-coach`.
+  Cara tambah modul: `skills-warehouse/CONTRIBUTING.md` (tandai ✅ di INDEX).
+- Skill `skills/skill-warehouse/SKILL.md` milik **mimi** (skill pertama milik orkestrator):
+  protokol on-demand — trigger (tugas butuh keahlian di luar skill inti), cara memuat
+  (inject SOP+quality bar ke konteks task, mode berakhir saat task selesai),
+  LARANGAN auto-load/preemptive, kewajiban atribusi MIT.
+- `agents/mimi/agent.yaml`: `skills: [skill-warehouse]` (perubahan `provider: mock` saat uji sudah di-revert).
+- Wiring mock TERBUKTI: `PLAYBOOK AKTIF: skill-warehouse` (task mimi via `MINIME_MOCK_LLM=1`);
+  sampel `docs/fase4-samples/skill-warehouse.md` (jujur: bukti wiring mock).
+- Pelajaran uji: playbook full-body hanya ter-inject bila task input memuat `"skills": [...]`
+  (stage-level); daftar skill agen hanya jadi ringkasan.
