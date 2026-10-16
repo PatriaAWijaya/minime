@@ -16,6 +16,7 @@ skills:
   - copywriting
   - content
   - smo-playbook
+  - html-anime
 tools_allowlist:
   - canva
   - affinity
@@ -23,6 +24,7 @@ tools_allowlist:
   - voice-studio
   - hyperframes
   - instagram-cli
+  - manimgx
 daily_budget_usd: 8.0
 avatar: assets/avatars/creative.webp
 color: "#1B5E20"

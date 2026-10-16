@@ -65,7 +65,10 @@
 - [x] Content Production (Image/Carousel/Reels); SMO draft-only (2026-10-16)
 - [x] Built-in browser (Chromium headless via Playwright) untuk agen (2026-10-16)
 - [x] *Gate: 1 reels/carousel jadi dari pipeline* (2026-10-16 — `docs/bukti-fase4/reels-minime.mp4`, 1080x1920 6 detik)
-- [x] Skill `oil-ui` (17 Okt 2026 — skill UI untuk code builder, milik strategi-bisnis; diadaptasi dari `oil-oil/oil-ui` MIT; wiring mock TERBUKTI `PLAYBOOK AKTIF: oil-ui`, sampel di `docs/fase4-samples/oil-ui.md`)
+- [x] Skill `oil-ui` (17 Okt 2026 — skill UI untuk code builder, milik strategi-bisnis; diadaptasi dari `oil-oil/oil-ui` MIT; wiring mock TERBUKTI `PLAYBOOK AKTIF: oil-ui`, sampel di `docs/fase4-samples/oil-ui.md`; referensi asli di-vendor di `skills/oil-ui/referensi-asli/`, update-check dinonaktifkan)
+- [x] Skill produksi `html-anime` (17 Okt 2026 — milik creative-director; mengorkestrasi 5 sub-skill asli `blixvip/html-anime` MIT; `harness/compile.js` di-vendor ke `tools/html-anime/`; wiring mock TERBUKTI `PLAYBOOK AKTIF: html-anime`; **bumper opening Minime NYATA**: `docs/bukti-fase4/bumper-minime.mp4` 1920x1080 8 detik — catatan: Patria minta ±4 detik, tapi `compileBrief` hanya mendukung 8/12/20 detik → dipakai 8 detik (minimum); GSAP di-vendor lokal karena CDN diblokir proxy VM)
+- [x] Tool + skill `manimgx` (17 Okt 2026 — engine animasi Manim CE untuk video pembelajaran, milik creative-director; `daemon/src/tools/manimgx.rs` readiness ✅; **render NYATA**: `docs/bukti-fase4/manimgx-sample.mp4` 17.9 detik 1280x720@30fps via software (tanpa GPU di VM); wiring mock TERBUKTI)
+- [x] Tool + skill `valyu-finance` (17 Okt 2026 — riset finansial via Valyu Search API, milik strategi-bisnis, diadaptasi dari `yorkeccak/finance` MIT; readiness `not_configured` — menunggu VALYU_API_KEY dari Patria via Keychain; wiring mock TERBUKTI; aturan keras: riset/analisis saja, DILARANG order live)
 
 ## Fase 5 — Hardening & rilis v1 pribadi
 - [ ] QC judge penuh (rubrik skor 0–100)

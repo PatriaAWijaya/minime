@@ -20,7 +20,10 @@ skills:
   - operational-playbook
   - finance-playbook
   - code-builder-playbook
-tools_allowlist: []
+  - oil-ui
+  - valyu-finance
+tools_allowlist:
+  - valyu
 daily_budget_usd: 5.0
 avatar: assets/avatars/strategi-bisnis.webp
 color: "#1A237E"

@@ -309,3 +309,29 @@ MacBook), `docs/open-creator.md` (kontrak sidecar), `docs/browser.md` (operasi &
 - Wiring mock TERBUKTI: `PLAYBOOK AKTIF: oil-ui` (task strategi-bisnis via `MINIME_MOCK_LLM=1`).
 - Bug ditemukan & diperbaiki saat uji: frontmatter awal tidak valid (deskripsi tak dikutip mengandung `: `) → loader melewatkan skill; setelah dikutip, terdaftar sebagai skill ke-20 dan ter-inject benar.
 - Sampel: `docs/fase4-samples/oil-ui.md` (jujur: bukti wiring mock, bukan output beneran).
+- Tindak lanjut: referensi asli oil-ui di-vendor ke `skills/oil-ui/referensi-asli/` (+ `ATRIBUSI.md`); update-check bawaan dinonaktifkan (aturan #12).
+
+## 17 Okt 2026 — Skill produksi `html-anime` + bumper opening Minime NYATA ✅
+
+- Perintah Patria: repo `blixvip/html-anime` (MIT) dijadikan skill produksi Minime.
+- Skill `skills/html-anime/SKILL.md` milik **creative-director**: mengorkestrasi 5 sub-skill asli (di-vendor utuh di `skills/html-anime/sub-skills/`); SOP 6 langkah: (1) brief scene, (2) `compileBrief` → shot sheet, (3) agen menggambar frame HTML mengikuti 5 sub-skill, (4) `hyperframes lint` + `validate`, (5) render via tool HyperFrames, (6) QC → MP4. `harness/compile.js` di-vendor ke `tools/html-anime/` (+ `ATRIBUSI.md`, atribusi MIT).
+- Wiring mock TERBUKTI: `PLAYBOOK AKTIF: html-anime` (21 skills ter-load di daemon).
+- **Acceptance test Patria — UJI NYATA end-to-end, LULUS**: bumper opening Minime (`minimalist-blue-robot-awakens`) — brief → compileBrief → shot sheet → film HTML (robot biru minimalis, 3 shot: establish/sakuga/button, color-dip cuts, tagline Indonesia) → `hyperframes lint` 0 error → `validate` lolos → **render MP4 nyata** `docs/bukti-fase4/bumper-minime.mp4` (h264, 1920×1080, 8.0 detik) + 3 frame PNG.
+- Deviasi jujur: (a) Patria minta ±4 detik, tapi `compileBrief` hanya mendukung 8/12/20 detik → dipakai 8 detik (minimum workflow); (b) GSAP di-vendor lokal (`gsap.min.js`) karena CDN jsdelivr diblokir proxy VM; (c) TMPDIR render diarahkan ke disk utama karena /tmp hanya 512M (tmpfs).
+- Sampel wiring: `docs/fase4-samples/html-anime.md` (jujur: bukti wiring mock).
+
+## 17 Okt 2026 — Tool + skill `manimgx` (video pembelajaran) ✅
+
+- Perintah Patria: repo `academa-labs/manimgx` (MIT) sebagai alternatif produksi video pembelajaran.
+- Tool `manimgx` di-wire di daemon (`daemon/src/tools/manimgx.rs`, op `render`/`inspect`): readiness eksplisit — cek binary (`uv tool install --python 3.13 manimgx`), versi, ffmpeg, GPU (/dev/dri); kredensial tidak diperlukan. `tools.status` → `ready=true` (manimgx 0.1.1).
+- Skill `skills/manimgx/SKILL.md` milik **creative-director**: SOP tulis scene Python (API Manim CE, gaya 3Blue1Brown) → `inspect` storyboard → render draft → final → QC → deliverable.
+- **Uji NYATA, LULUS**: `examples/circle_area.py` → `docs/bukti-fase4/manimgx-sample.mp4` (h264, 1280×720@30fps, 17.9 detik, render 68 detik) + frame PNG. Catatan: VM tanpa GPU → software render (lavapipe); verifikasi penuh GPU di MacBook Patria.
+- Wiring mock TERBUKTI: `PLAYBOOK AKTIF: manimgx`; sampel `docs/fase4-samples/manimgx.md`.
+
+## 17 Okt 2026 — Tool + skill `valyu-finance` (riset finansial) ✅ wiring / ⏳ menunggu API key
+
+- Perintah Patria: repo `yorkeccak/finance` (MIT) sebagai finance skill — data institutional-grade via Valyu Search API.
+- Tool `valyu` di-wire di daemon (`daemon/src/tools/valyu.rs`, op `search` → `POST https://api.valyu.ai/v1/search` header `x-api-key`); readiness eksplisit.
+- Skill `skills/valyu-finance/SKILL.md` milik **strategi-bisnis** (pasangan `finance-playbook`): SOP query presisi → sintesis bersumber → QC → deliverable; quality bar + trigger eskalasi; **aturan keras: riset/analisis saja, DILARANG order trading live otomatis**.
+- Status jujur: readiness `not_configured` — **menunggu VALYU_API_KEY dari Patria** (gratis $10 di platform.valyu.ai, via Keychain aturan #2/#19). Uji live menyusul setelah key tersedia.
+- Wiring mock TERBUKTI: `PLAYBOOK AKTIF: valyu-finance`; sampel `docs/fase4-samples/valyu-finance.md`.

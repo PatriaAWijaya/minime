@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Minime — bumper opening</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #101628;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #101628;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .world {
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 50% 60%;
+      }
+      #dip1,
+      #dip2 {
+        background: #101628;
+        opacity: 0;
+      }
+      .draw {
+        opacity: 0;
+      }
+      .tag {
+        font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+        font-size: 54px;
+        letter-spacing: 8px;
+        fill: #e7eefc;
+      }
+      .word {
+        font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+        font-size: 44px;
+        font-weight: 700;
+        letter-spacing: 22px;
+        fill: #d5e2ff;
+      }
+    </style>
+    <script src="gsap.min.js"></script>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="minimalist-blue-robot-awakens"
+      data-start="0"
+      data-duration="8"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- SHOT 1 · Establish · 0.00–2.40 -->
+      <div id="s1" class="clip" data-start="0" data-duration="2.65" data-track-index="1">
+        <svg class="world" id="world1" viewBox="0 0 1920 1080">
+          <defs>
+            <linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#101628" />
+              <stop offset="0.5" stop-color="#1b2d6b" />
+              <stop offset="1" stop-color="#101628" />
+            </linearGradient>
+          </defs>
+          <rect width="1920" height="1080" fill="url(#sky1)" />
+          <g fill="#e7eefc" opacity="0.5">
+            <circle cx="180" cy="140" r="3" />
+            <circle cx="420" cy="320" r="2.4" />
+            <circle cx="700" cy="120" r="3" />
+            <circle cx="980" cy="240" r="2.2" />
+            <circle cx="1240" cy="100" r="3" />
+            <circle cx="1620" cy="420" r="2.4" />
+            <circle cx="1780" cy="180" r="3" />
+            <circle cx="240" cy="620" r="2.4" />
+            <circle cx="560" cy="760" r="3" />
+            <circle cx="1180" cy="700" r="2.2" />
+            <circle cx="1480" cy="820" r="3" />
+            <circle cx="1720" cy="640" r="2.4" />
+            <circle cx="860" cy="880" r="2.4" />
+            <circle cx="340" cy="900" r="3" />
+          </g>
+          <circle cx="1560" cy="215" r="88" fill="#d5e2ff" opacity="0.85" />
+          <!-- drawing 1: void only (empty group, robot not in it yet) -->
+          <g id="est-1" class="draw"></g>
+          <!-- drawing 2: faint silhouette -->
+          <g id="est-2" class="draw" transform="translate(960 810) scale(0.32)" fill="#101628">
+            <rect x="-115" y="-270" width="230" height="200" rx="55" />
+            <rect x="-95" y="-40" width="190" height="220" rx="45" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" />
+          </g>
+          <!-- drawing 3: silhouette clearer, antenna tip lights -->
+          <g id="est-3" class="draw" transform="translate(960 810) scale(0.32)">
+            <g fill="#101628">
+              <rect x="-115" y="-270" width="230" height="200" rx="55" />
+              <rect x="-95" y="-40" width="190" height="220" rx="45" />
+              <rect x="-145" y="-200" width="30" height="70" rx="15" />
+              <rect x="115" y="-200" width="30" height="70" rx="15" />
+            </g>
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#101628" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="13" fill="#f0c36a" />
+          </g>
+        </svg>
+      </div>
+
+      <div id="dip1" class="clip" data-start="2.15" data-duration="0.65" data-track-index="4"></div>
+
+      <!-- SHOT 2 · Sakuga · 2.40–6.00 -->
+      <div id="s2" class="clip" data-start="2.15" data-duration="4.1" data-track-index="2">
+        <svg class="world" viewBox="0 0 1920 1080">
+          <defs>
+            <linearGradient id="sky2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#101628" />
+              <stop offset="0.5" stop-color="#1b2d6b" />
+              <stop offset="1" stop-color="#101628" />
+            </linearGradient>
+          </defs>
+          <rect width="1920" height="1080" fill="url(#sky2)" />
+          <circle cx="1560" cy="215" r="88" fill="#d5e2ff" opacity="0.85" />
+          <!-- anticipation: crouched, dim, eyes dark -->
+          <g id="sk-anticip" class="draw" transform="translate(960 668) scale(1 0.94)" opacity="0.85">
+            <ellipse cx="0" cy="196" rx="150" ry="22" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <g transform="translate(115 20) rotate(-8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" opacity="0.3" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#16141c" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#16141c" />
+            <path d="M-22,-92 Q0,-84 22,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- rise 1: head lifts, eyes still dark -->
+          <g id="sk-rise1" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <g transform="translate(115 20) rotate(-8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <path d="M40,-40 h55 a45,45 0 0 1 0,220 h-55 Z" fill="#101628" opacity="0.2" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" opacity="0.35" />
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" opacity="0.6" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#16141c" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#16141c" />
+            <path d="M-22,-92 Q0,-80 22,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- rise 2: arm mid-raise, eyes light up -->
+          <g id="sk-rise2" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <path d="M40,-40 h55 a45,45 0 0 1 0,220 h-55 Z" fill="#101628" opacity="0.2" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" />
+            <circle cx="0" cy="60" r="32" fill="none" stroke="#e7eefc" stroke-width="4" opacity="0.6" />
+            <g transform="translate(115 0) rotate(-55)">
+              <rect x="-22" y="-150" width="44" height="150" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="-150" r="26" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <circle cx="-48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="-48" cy="-168" r="7" fill="#16141c" />
+            <circle cx="48" cy="-168" r="7" fill="#16141c" />
+            <rect x="-58" y="-184" width="11" height="9" fill="#e7eefc" />
+            <rect x="38" y="-184" width="11" height="9" fill="#e7eefc" />
+            <path d="M-22,-92 Q0,-80 22,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- smear: arm stretched along travel, speed lines -->
+          <g id="sk-smear" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" />
+            <path d="M115,-10 L200,-190 L238,-172 L150,10 Z" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <g stroke="#f0c36a" stroke-width="7" stroke-linecap="round" opacity="0.8">
+              <line x1="240" y1="-40" x2="300" y2="-180" />
+              <line x1="280" y1="10" x2="340" y2="-130" />
+              <line x1="200" y1="30" x2="250" y2="-100" />
+            </g>
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <circle cx="-48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="-48" cy="-168" r="7" fill="#16141c" />
+            <circle cx="48" cy="-168" r="7" fill="#16141c" />
+          </g>
+          <!-- arm up, small bloom -->
+          <g id="sk-armup" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <path d="M40,-40 h55 a45,45 0 0 1 0,220 h-55 Z" fill="#101628" opacity="0.2" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" />
+            <circle cx="0" cy="60" r="32" fill="none" stroke="#e7eefc" stroke-width="4" opacity="0.6" />
+            <g>
+              <rect x="93" y="-190" width="44" height="190" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="26" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="22" fill="#f0c36a" opacity="0.9" />
+            </g>
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <circle cx="-48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="-48" cy="-168" r="7" fill="#16141c" />
+            <circle cx="48" cy="-168" r="7" fill="#16141c" />
+            <rect x="-58" y="-184" width="11" height="9" fill="#e7eefc" />
+            <rect x="38" y="-184" width="11" height="9" fill="#e7eefc" />
+            <path d="M-24,-92 Q0,-78 24,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- settle: arm up, big bloom -->
+          <g id="sk-settle" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <path d="M40,-40 h55 a45,45 0 0 1 0,220 h-55 Z" fill="#101628" opacity="0.2" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" />
+            <circle cx="0" cy="60" r="32" fill="none" stroke="#e7eefc" stroke-width="4" opacity="0.6" />
+            <g>
+              <rect x="93" y="-190" width="44" height="190" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="26" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="48" fill="#f0c36a" opacity="0.9" />
+              <circle cx="115" cy="-190" r="72" fill="none" stroke="#f0c36a" stroke-width="5" opacity="0.5" />
+            </g>
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <circle cx="-48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="-48" cy="-168" r="7" fill="#16141c" />
+            <circle cx="48" cy="-168" r="7" fill="#16141c" />
+            <rect x="-58" y="-184" width="11" height="9" fill="#e7eefc" />
+            <rect x="38" y="-184" width="11" height="9" fill="#e7eefc" />
+            <path d="M-24,-92 Q0,-78 24,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <!-- blink variant (2 frames inside the hold) -->
+          <g id="sk-blink" class="draw" transform="translate(960 660)">
+            <ellipse cx="0" cy="200" rx="150" ry="24" fill="#101628" opacity="0.35" />
+            <g transform="translate(-115 20) rotate(8)">
+              <rect x="-22" y="0" width="44" height="130" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="0" cy="130" r="24" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            </g>
+            <rect x="-95" y="-40" width="190" height="220" rx="45" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <path d="M40,-40 h55 a45,45 0 0 1 0,220 h-55 Z" fill="#101628" opacity="0.2" />
+            <circle cx="0" cy="60" r="24" fill="#f0c36a" />
+            <circle cx="0" cy="60" r="32" fill="none" stroke="#e7eefc" stroke-width="4" opacity="0.6" />
+            <g>
+              <rect x="93" y="-190" width="44" height="190" rx="22" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="26" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+              <circle cx="115" cy="-190" r="48" fill="#f0c36a" opacity="0.9" />
+              <circle cx="115" cy="-190" r="72" fill="none" stroke="#f0c36a" stroke-width="5" opacity="0.5" />
+            </g>
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <rect x="-78" y="-178" width="60" height="14" rx="7" fill="#16141c" />
+            <rect x="18" y="-178" width="60" height="14" rx="7" fill="#16141c" />
+            <path d="M-24,-92 Q0,-78 24,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+        </svg>
+      </div>
+
+      <div id="dip2" class="clip" data-start="5.75" data-duration="0.65" data-track-index="4"></div>
+
+      <!-- SHOT 3 · Button · 6.00–8.00 -->
+      <div id="s3" class="clip" data-start="5.75" data-duration="2.25" data-track-index="3">
+        <svg viewBox="0 0 1920 1080" style="width: 1920px; height: 1080px;">
+          <defs>
+            <linearGradient id="sky3" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#101628" />
+              <stop offset="0.5" stop-color="#1b2d6b" />
+              <stop offset="1" stop-color="#101628" />
+            </linearGradient>
+          </defs>
+          <rect width="1920" height="1080" fill="url(#sky3)" />
+          <circle cx="1560" cy="215" r="88" fill="#d5e2ff" opacity="0.85" />
+          <g id="btn-a" class="draw" transform="translate(960 690) scale(1.9)">
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="30" ry="38" fill="#f6f3ee" />
+            <circle cx="-48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="48" cy="-168" r="15" fill="#e7a04a" />
+            <circle cx="-48" cy="-168" r="7" fill="#16141c" />
+            <circle cx="48" cy="-168" r="7" fill="#16141c" />
+            <rect x="-58" y="-184" width="11" height="9" fill="#e7eefc" />
+            <rect x="38" y="-184" width="11" height="9" fill="#e7eefc" />
+            <path d="M-24,-92 Q0,-78 24,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <g id="btn-b" class="draw" transform="translate(960 690) scale(1.9)">
+            <rect x="-115" y="-270" width="230" height="200" rx="55" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="-145" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <rect x="115" y="-200" width="30" height="70" rx="15" fill="#d5e2ff" stroke="#e7eefc" stroke-width="6" />
+            <line x1="0" y1="-270" x2="0" y2="-330" stroke="#e7eefc" stroke-width="8" stroke-linecap="round" />
+            <circle cx="0" cy="-342" r="14" fill="#f0c36a" />
+            <ellipse cx="-48" cy="-170" rx="32" ry="40" fill="#f6f3ee" />
+            <ellipse cx="48" cy="-170" rx="32" ry="40" fill="#f6f3ee" />
+            <circle cx="-44" cy="-166" r="15" fill="#e7a04a" />
+            <circle cx="52" cy="-166" r="15" fill="#e7a04a" />
+            <circle cx="-44" cy="-166" r="7" fill="#16141c" />
+            <circle cx="52" cy="-166" r="7" fill="#16141c" />
+            <rect x="-54" y="-182" width="11" height="9" fill="#e7eefc" />
+            <rect x="42" y="-182" width="11" height="9" fill="#e7eefc" />
+            <path d="M-30,-92 Q0,-72 30,-92" fill="none" stroke="#16141c" stroke-width="6" stroke-linecap="round" />
+          </g>
+          <text id="wordmark" class="word" x="960" y="830" text-anchor="middle">MINIME</text>
+          <text id="tagline" class="tag" x="960" y="910" text-anchor="middle">Minime — teman AI yang selalu bekerja.</text>
+        </svg>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // SHOT 1 · establish: void → silhouette → lit silhouette; camera 100%→106%
+      tl.fromTo("#world1", { scale: 1 }, { scale: 1.06, duration: 2.4, ease: "power1.inOut" }, 0);
+      tl.set("#est-1", { opacity: 1 }, 0);
+      tl.set("#est-1", { opacity: 0 }, 0.8);
+      tl.set("#est-2", { opacity: 1 }, 0.8);
+      tl.set("#est-2", { opacity: 0 }, 1.6);
+      tl.set("#est-3", { opacity: 1 }, 1.6);
+      tl.set("#est-3", { opacity: 0 }, 2.4);
+      // color-dip cut 1 (ink)
+      tl.to("#dip1", { opacity: 1, duration: 0.25, ease: "power2.in" }, 2.15);
+      tl.to("#dip1", { opacity: 0, duration: 0.35, ease: "power2.out" }, 2.45);
+      // SHOT 2 · sakuga: anticipation → rise → smear → arm up → settle → blink
+      tl.set("#sk-anticip", { opacity: 1 }, 2.4);
+      tl.set("#sk-anticip", { opacity: 0 }, 2.57);
+      tl.set("#sk-rise1", { opacity: 1 }, 2.57);
+      tl.set("#sk-rise1", { opacity: 0 }, 3.4);
+      tl.set("#sk-rise2", { opacity: 1 }, 3.4);
+      tl.set("#sk-rise2", { opacity: 0 }, 4.0);
+      tl.set("#sk-smear", { opacity: 1 }, 4.0);
+      tl.set("#sk-smear", { opacity: 0 }, 4.17);
+      tl.set("#sk-armup", { opacity: 1 }, 4.17);
+      tl.set("#sk-armup", { opacity: 0 }, 5.0);
+      tl.set("#sk-settle", { opacity: 1 }, 5.0);
+      tl.set("#sk-settle", { opacity: 0 }, 5.5);
+      tl.set("#sk-blink", { opacity: 1 }, 5.5);
+      tl.set("#sk-blink", { opacity: 0 }, 5.58);
+      tl.set("#sk-settle", { opacity: 1 }, 5.58);
+      tl.set("#sk-settle", { opacity: 0 }, 6.0);
+      // color-dip cut 2 (ink)
+      tl.to("#dip2", { opacity: 1, duration: 0.25, ease: "power2.in" }, 5.75);
+      tl.to("#dip2", { opacity: 0, duration: 0.35, ease: "power2.out" }, 6.05);
+      // SHOT 3 · button: close-up + tagline, last 8 frames to ink
+      tl.set("#btn-a", { opacity: 1 }, 6.0);
+      tl.set("#btn-a", { opacity: 0 }, 6.9);
+      tl.set("#btn-b", { opacity: 1 }, 6.9);
+      tl.from("#wordmark", { y: 24, opacity: 0, duration: 0.4, ease: "power3.out" }, 6.2);
+      tl.from("#tagline", { y: 24, opacity: 0, duration: 0.4, ease: "power3.out" }, 6.35);
+      tl.to("#s3", { opacity: 0, duration: 0.33, ease: "power1.in" }, 7.67);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["minimalist-blue-robot-awakens"] = tl;
+    </script>
+  </body>
+</html>

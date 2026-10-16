@@ -23,7 +23,10 @@ pub mod browser;
 pub mod canva;
 pub mod hyperframes;
 pub mod instagram;
+pub mod manimgx;
 pub mod opencreator;
+pub mod quant;
+pub mod valyu;
 pub mod voicestudio;
 
 /// Tool ids (must match agents' `tools_allowlist` + skills/<name>/).
@@ -34,6 +37,9 @@ pub const TOOL_VOICE_STUDIO: &str = "voice-studio";
 pub const TOOL_HYPERFRAMES: &str = "hyperframes";
 pub const TOOL_INSTAGRAM: &str = "instagram-cli";
 pub const TOOL_BROWSER: &str = "browser";
+pub const TOOL_MANIMGX: &str = "manimgx";
+pub const TOOL_QUANT: &str = "quant";
+pub const TOOL_VALYU: &str = "valyu";
 
 pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_CANVA,
@@ -43,6 +49,9 @@ pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_HYPERFRAMES,
     TOOL_INSTAGRAM,
     TOOL_BROWSER,
+    TOOL_MANIMGX,
+    TOOL_QUANT,
+    TOOL_VALYU,
 ];
 
 /// Readiness states (machine-readable).
@@ -122,6 +131,9 @@ pub async fn readiness(data_dir: &Path, repo_dir: &Path) -> Vec<ToolStatus> {
     out.push(hyperframes::readiness().await);
     out.push(instagram::readiness().await);
     out.push(browser::readiness(data_dir, repo_dir).await);
+    out.push(manimgx::readiness().await);
+    out.push(quant::readiness().await);
+    out.push(valyu::readiness().await);
     out
 }
 
@@ -187,6 +199,9 @@ async fn dispatch(
         TOOL_HYPERFRAMES => hyperframes::run(op, params, ctx).await,
         TOOL_INSTAGRAM => instagram::run(op, params, ctx).await,
         TOOL_BROWSER => browser::run(db, browser_store, op, params, ctx).await,
+        TOOL_MANIMGX => manimgx::run(op, params, ctx).await,
+        TOOL_QUANT => quant::run(op, params, ctx).await,
+        TOOL_VALYU => valyu::run(op, params, ctx).await,
         _ => anyhow::bail!("tool tidak dikenal: '{tool}'"),
     }
 }

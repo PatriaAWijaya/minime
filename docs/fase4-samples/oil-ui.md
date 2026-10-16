@@ -26,4 +26,10 @@ PLAYBOOK AKTIF: oil-ui
 
 - Saat uji ditemukan dan diperbaiki: frontmatter `SKILL.md` awal tidak valid
   (deskripsi tak dikutip mengandung `: `) sehingga loader melewatkan skill ini.
-  Setelah dikutip, skill terdaftar (20 skills) dan ter-inject dengan benar.
+  Setelah dikutip, skill terdaftar (21 skills) dan ter-inject dengan benar.
+- Update-check bawaan (`scripts/check_update.sh`) DINONAKTIFKAN di salinan
+  Minime (aturan #12: aksi eksternal baru wajib konfirmasi Patria);
+  prompt upsell oil-ui-pro dihapus dari alur.
+- Dipakai berpasangan dengan `code-builder-playbook` untuk aplikasi web-based:
+  eksplorasi 2–3 arah desain → bandingkan side-by-side → refine terhadap
+  screenshot nyata dari built-in browser Minime.
