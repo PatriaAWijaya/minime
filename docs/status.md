@@ -232,3 +232,14 @@ Patria 16 Okt ~19:56 WIB: **"Build arsitektur"** — mulai Fase 1. Scope tambaha
 2. Kirim dokumen final knowledge Finance & Code Builder (bila sudah ada).
 3. Putuskan: sediakan API key (Gemini/Muse/DeepSeek) via Keychain untuk live test, atau lanjut dengan mock.
 4. Konfirmasi ulang: boleh buat remote GitHub privat untuk repo ini? (ditunda dari Fase 1–2)
+
+## 16 Okt 2026 ~22:47 WIB — RESOLUSI blocker OpenCode free tier ✅
+
+Patria membuktikan langsung dari MacBook-nya:
+`opencode run "Jawab singkat: apa ibu kota Indonesia?" --model opencode/muse-spark-1.3-contributor-free`
+→ menjawab **"Nusantara."**
+
+Kesimpulan: error `400 "Model is unavailable"` + hang yang dialami di VM ini (Fase 2 & retry Fase 3)
+**murni masalah network/proxy di VM build, bukan backend OpenCode**. Provider gratis Minime
+(OpenCode free, default Muse Spark 1.3 Free, tanpa API key) **aman di mesin target (MacBook Patria)**.
+Tidak perlu retry panjang dari VM lagi; live test end-to-end via OpenCode free dijadwalkan di MacBook.
