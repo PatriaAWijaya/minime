@@ -243,3 +243,11 @@ Kesimpulan: error `400 "Model is unavailable"` + hang yang dialami di VM ini (Fa
 **murni masalah network/proxy di VM build, bukan backend OpenCode**. Provider gratis Minime
 (OpenCode free, default Muse Spark 1.3 Free, tanpa API key) **aman di mesin target (MacBook Patria)**.
 Tidak perlu retry panjang dari VM lagi; live test end-to-end via OpenCode free dijadwalkan di MacBook.
+
+## 16 Okt 2026 ~23:00 WIB — Remote GitHub privat dibuat ✅
+
+- Patria menyetujui: repo privat **`PatriaAWijaya/minime`** dibuat via API (`https://github.com/PatriaAWijaya/minime`).
+- 5 commit ter-push via Git Data API (pola bootstrap: 1 commit `chore: bootstrap repo` via Contents API karena API menolak tulis di repo kosong → 5 commit lokal di atasnya, README bootstrap ditimpa commit #1).
+- Tree remote IDENTIK dengan tree lokal ✅. Pasangan SHA lokal → remote: `94f0e33→ac4a0ab`, `d97aa0f→8fec735`, `838090c→62a9db1`, `5d17900→857376b`, `0b08853→6928922`.
+- `git remote add origin` sudah dipasang lokal. Push berikutnya via skrip API (`push_rebased.py`), bukan `git push` HTTPS.
+- Perbaikan kecil: path `dynamic_credentials.py` di `git_push.py`/`push_rebased.py` diperbaiki (lokasi skill template pindah).
