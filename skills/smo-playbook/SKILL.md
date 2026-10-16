@@ -78,6 +78,25 @@ Setiap rencana distribusi menghasilkan: jadwal draft (tanggal, channel, format, 
 bukan penjadwalan otomatis. Status tiap item: `draft` → menunggu approval Patria →
 `approved` (diterbitkan manual oleh manusia).
 
+### E. Distribusi video AI via Blotato (pipeline konten-video-otomatis)
+- **9 platform** (sesuai diagram Patria): Instagram, YouTube, TikTok, Facebook,
+  Threads, Twitter/X, LinkedIn, Bluesky, Pinterest.
+- **Alur:** tool `blotato` op `draft` — upload video ke Blotato (bila API key ada)
+  + simpan bundle draft lokal per platform (`drafts/blotato-draft-<platform>-<ts>.json`).
+  Op ini TIDAK PERNAH memanggil publish.
+- **IG/FB/Threads = manual Patria.** Fungsi publish untuk ketiga platform ini
+  DITOLAK di kode tool (rule #3) — draft diserahkan, Patria yang menekan tombol
+  di aplikasi masing-masing/Blotato dashboard.
+- **6 platform non-Meta:** publish HANYA via op `blotato.publish` dengan
+  `approval_id` yang merujuk approval berstatus `approved` di inbox. Tanpa itu
+  → ditolak. Tidak ada publish otomatis dari pipeline.
+- **API key Blotato:** Keychain akun `blotato` / env `MINIME_BLOTATO_KEY`
+  (minta ke Patria; tidak pernah di-commit/diminta via chat).
+- **Konvensi caption:** stage skrip pipeline menulis baris `CAPTION: ...`;
+  stage distribusi mengambilnya otomatis bila params caption kosong.
+- **Tanpa key:** draft lokal tetap dibuat (video_path + caption + hashtag) —
+  distribusi tidak gagal diam-diam, hanya menunggu key untuk upload.
+
 ## Toolbox
 
 - Checklist optimasi profil per channel (di atas)
@@ -86,6 +105,8 @@ bukan penjadwalan otomatis. Status tiap item: `draft` → menunggu approval Patr
   Stories (replies + link clicks), YouTube (CTR + retention), LinkedIn (profile views + inbound),
   TikTok (watch time + follows/video), WA (read rate + reply rate + opt-out rate)
 - Aturan ukur: follows/inbound/klik > likes/views
+- Bundle draft Blotato per platform: `video_path` valid + `caption` + `hashtags`
+  + `status: draft` + catatan publish yang benar (Meta = manual Patria)
 
 ## Quality bar
 

@@ -1,0 +1,93 @@
+# Pipeline konten video otomatis — adaptasi diagram n8n 3-step Patria (17 Okt 2026).
+#
+# STEP 1 (diagram): trigger harian → AI Agent generate konsep → simpan ke Sheets
+#   → AI Agent format prompt Veo3. Di Minime: stage `skrip` (LLM via routing
+#   provider Minime: Muse/Gemini/DeepSeek/OpenCode-free — BUKAN GPT-4.1).
+# STEP 2 (diagram): call Veo3 API (fal.ai queue) → tunggu ±5 mnt → ambil URL
+#   → log. Di Minime: stage `render` (tool veo3; fallback HyperFrames lokal
+#   bila key fal.ai belum diset — dicatat jujur).
+# STEP 3 (diagram): ambil video → upload Blotato → assign IDs → publish 9
+#   platform → log Sheets. Di Minime: stage `distribusi` (tool blotato, op
+#   DRAFT — tidak pernah publish otomatis).
+#
+# ATURAN KERAS (rule #3): TIDAK ADA auto-posting. Seluruh 9 platform hanya
+# berupa DRAFT; publish IG/FB/Threads DITOLAK di kode (manual oleh Patria);
+# 6 platform lain hanya via op blotato.publish dengan approval_id yang sudah
+# di-approve. Gate approval Patria (stage distribusi → approval) menghentikan
+# run; logging utama di SQLite Minime (Sheets opsional).
+#
+# Konvensi antar-stage (karena tool stage tidak bisa baca output LLM langsung):
+#   - stage skrip WAJIB menulis baris "PROMPT_VEO3: <prompt detail>" dan
+#     "CAPTION: <caption + hashtag>" di outputnya.
+#   - stage render/distribusi memakai params eksplisit bila diisi, else baca
+#     output stage skrip / artefak MP4 stage render dari runs.context.
+name: konten-video-otomatis
+version: 1
+description: Video AI harian — skrip → render Veo3 → QC → draft distribusi 9 platform → approval Patria (DRAFT-ONLY)
+
+stages:
+  - id: skrip
+    agent: creative-director
+    title: Konsep video + prompt Veo3
+    skills: [storytelling, copywriting, content]
+    notes: >-
+      Buat 1 konsep video harian (±8 detik, 16:9): hook 0–3 detik, deskripsi
+      visual detail per detik, gaya visual, teks on-screen bila perlu.
+      Tulis di output: baris "PROMPT_VEO3: <prompt Inggris detail, gaya, rasio
+      16:9, durasi 8 detik>" dan baris "CAPTION: <caption Indonesia + hashtag
+      untuk 9 platform>". Caption ringkas, sesuai quality bar storytelling.
+    on_done: handoff(creative-director)
+
+  - id: render
+    agent: creative-director
+    title: Render video (Veo3 / fallback lokal)
+    skills: [content]
+    tool:
+      id: veo3
+      op: render
+      params:
+        prompt: ""
+        duration_s: 8
+        aspect_ratio: "16:9"
+        output: "video-harian.mp4"
+    notes: >-
+      params.prompt kosong = ambil dari baris PROMPT_VEO3: stage skrip.
+      Tanpa API key fal.ai → fallback HyperFrames lokal (dicatat jujur).
+    on_done: handoff(qc)
+
+  - id: qc
+    agent: qc
+    title: Quality control
+    skills: [qc-rubrik]
+    notes: >-
+      Nilai konsep + prompt + video (bila artefak MP4 ada di
+      runs.context.stages.render.artifacts): relevansi pesan, kejelasan visual,
+      kepatuhan brand & rule #3. Format: "SKOR: <0-100>" + alasan.
+    on_done: handoff(creative-director)
+
+  - id: distribusi
+    agent: creative-director
+    title: Draft distribusi 9 platform (DRAFT-ONLY)
+    skills: [smo-playbook]
+    tool:
+      id: blotato
+      op: draft
+      params:
+        video_path: ""
+        caption: ""
+        hashtags: []
+        platforms:
+          - instagram
+          - youtube
+          - tiktok
+          - facebook
+          - threads
+          - twitter
+          - linkedin
+          - bluesky
+          - pinterest
+    notes: >-
+      ATURAN KERAS — HANYA DRAFT. video_path/caption kosong = ambil artefak MP4
+      stage render + baris CAPTION: stage skrip. Dilarang mempublish dari stage
+      ini; IG/FB/Threads selalu manual oleh Patria.
+    on_done: approval

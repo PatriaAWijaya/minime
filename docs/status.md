@@ -397,3 +397,23 @@ Order live HANYA dengan approval eksplisit Patria PER AKSI.
 - Live test butuh: API key Valyu (Keychain), LLM provider untuk TradingAgents,
   dataset qlib (official disabled — pakai sumber komunitas).
 - Verifikasi penuh GPU/venue live (tidak akan di-wire) di MacBook Patria.
+
+---
+
+## 17 Okt 2026 — Pipeline konten video otomatis (adaptasi diagram n8n Patria, DRAFT-ONLY)
+
+Perintah Patria: integrasikan pipeline otomasi video AI (diagram n8n 3-step) ke alur kerja tim konten Minime.
+
+**Yang dibangun:**
+- `pipelines/konten-video-otomatis.yaml` — 4 stage: `skrip` (creative-director: konsep + prompt Veo3 + caption) → `render` (tool `veo3`) → `qc` (skor 0–100) → `distribusi` (tool `blotato` op `draft`) → **approval Patria** (run berhenti di `waiting-approval`; tidak ada stage setelah approval karena `approve_run` mengakhiri run).
+- Tool `veo3` (`daemon/src/tools/veo3.rs`): fal.ai queue API (submit → poll ±10 mnt → unduh MP4 ke artifact dir). Key via Keychain akun `fal` / `MINIME_FAL_KEY`. Tanpa key → **fallback jujur** HyperFrames lokal (dicatat di log). Mock mode → hasil mock eksplisit.
+- Tool `blotato` (`daemon/src/tools/blotato.rs`): op `draft` (upload media bila key ada + bundle draft lokal per platform, TIDAK PERNAH publish), op `publish` (Meta: DITOLAK di kode — rule #3; 6 platform lain: wajib `approval_id` berstatus `approved`), op `accounts` (read-only). Key via Keychain akun `blotato` / `MINIME_BLOTATO_KEY`.
+- Konvensi antar-stage: `PROMPT_VEO3:` / `CAPTION:` di output stage skrip (tool stage tidak bisa baca output LLM langsung).
+- `smo-playbook` ditambah SOP §E (distribusi video via Blotato, 9 platform, draft-only).
+- Perbaikan kecil `runner.rs`: `qc_score_from_any_stage` — approval yang stage-nya bukan QC tetap mencatat skor QC dari stage sebelumnya.
+
+**Penyesuaian wajib dari diagram asli:** diagram mempublish otomatis ke 9 platform — di Minime SEMUA platform default draft + approval gate; IG/FB/Threads tidak bisa dipublish dari kode dalam kondisi apa pun (konsisten dengan `instagram-cli` Fase 4).
+
+**Uji wiring mock** (`MINIME_MOCK_LLM=1`, daemon terisolasi): 4 stage → `waiting-approval`, approval `pending` dengan `qc_score=80`, 9 bundle draft lokal terbuat. Guard terverifikasi: publish IG ditolak; publish YT tanpa approval ditolak; `tools.status` jujur `not_configured` untuk kedua tool. Sampel: `docs/fase4-samples/konten-video-otomatis.md`.
+
+**Belum teruji (butuh Patria):** render Veo3 asli (key fal.ai), upload/publish Blotato (key Blotato), fallback HyperFrames render nyata.

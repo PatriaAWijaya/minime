@@ -19,6 +19,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub mod affinity;
+pub mod blotato;
 pub mod browser;
 pub mod canva;
 pub mod hyperframes;
@@ -27,6 +28,7 @@ pub mod manimgx;
 pub mod opencreator;
 pub mod quant;
 pub mod valyu;
+pub mod veo3;
 pub mod voicestudio;
 
 /// Tool ids (must match agents' `tools_allowlist` + skills/<name>/).
@@ -40,6 +42,8 @@ pub const TOOL_BROWSER: &str = "browser";
 pub const TOOL_MANIMGX: &str = "manimgx";
 pub const TOOL_QUANT: &str = "quant";
 pub const TOOL_VALYU: &str = "valyu";
+pub const TOOL_VEO3: &str = "veo3";
+pub const TOOL_BLOTATO: &str = "blotato";
 
 pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_CANVA,
@@ -52,6 +56,8 @@ pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_MANIMGX,
     TOOL_QUANT,
     TOOL_VALYU,
+    TOOL_VEO3,
+    TOOL_BLOTATO,
 ];
 
 /// Readiness states (machine-readable).
@@ -134,6 +140,8 @@ pub async fn readiness(data_dir: &Path, repo_dir: &Path) -> Vec<ToolStatus> {
     out.push(manimgx::readiness().await);
     out.push(quant::readiness().await);
     out.push(valyu::readiness().await);
+    out.push(veo3::readiness().await);
+    out.push(blotato::readiness().await);
     out
 }
 
@@ -202,6 +210,8 @@ async fn dispatch(
         TOOL_MANIMGX => manimgx::run(op, params, ctx).await,
         TOOL_QUANT => quant::run(op, params, ctx).await,
         TOOL_VALYU => valyu::run(op, params, ctx).await,
+        TOOL_VEO3 => veo3::run(db, op, params, ctx).await,
+        TOOL_BLOTATO => blotato::run(db, op, params, ctx).await,
         _ => anyhow::bail!("tool tidak dikenal: '{tool}'"),
     }
 }

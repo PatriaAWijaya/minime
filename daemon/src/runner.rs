@@ -279,7 +279,15 @@ async fn execute_pipeline(
             Transition::Approval => {
                 // Ambil output QC dari context untuk skor + ringkasan nyata.
                 let qc_output = stage_output(db, run_id, &stage.id).await;
-                let (score, reason) = parse_qc_score(&qc_output);
+                let (mut score, mut reason) = parse_qc_score(&qc_output);
+                // Bila stage approval bukan stage QC (mis. distribusi setelah QC),
+                // cari skor di output stage-stage sebelumnya.
+                if score.is_none() {
+                    if let Some((s, r)) = qc_score_from_any_stage(db, run_id).await {
+                        score = Some(s);
+                        reason = r;
+                    }
+                }
                 let summary = if qc_output.trim().is_empty() {
                     format!("Pipeline '{}' menunggu persetujuan Patria.", p.name)
                 } else {
@@ -468,6 +476,32 @@ async fn stage_output(db: &Db, run_id: &str, stage_id: &str) -> String {
                 .map(|s| s.to_string())
         })
         .unwrap_or_default()
+}
+
+/// Cari "SKOR: <0-100>" di output SEMUA stage (untuk approval yang stage-nya
+/// bukan stage QC, mis. distribusi setelah QC di pipeline konten-video-otomatis).
+async fn qc_score_from_any_stage(db: &Db, run_id: &str) -> Option<(i64, String)> {
+    let guard = db.lock().await;
+    let ctx_raw: String = guard
+        .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+            r.get(0)
+        })
+        .unwrap_or_else(|_| "{}".to_string());
+    drop(guard);
+    let stages = serde_json::from_str::<serde_json::Value>(&ctx_raw)
+        .ok()?
+        .get("stages")?
+        .as_object()?
+        .clone();
+    for (_id, sv) in &stages {
+        if let Some(out) = sv.get("output").and_then(|o| o.as_str()) {
+            let (score, reason) = parse_qc_score(out);
+            if let Some(s) = score {
+                return Some((s, reason));
+            }
+        }
+    }
+    None
 }
 
 /// Parse "SKOR: <0-100>" dari output agen QC → (skor, alasan singkat).
