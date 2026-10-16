@@ -1,0 +1,57 @@
+# Pipeline produksi reels — bukti gate Fase 4.
+# Alur vertikal penuh: Riset → Strategi Bisnis → Creative Director (+tool HyperFrames)
+# → QC → Approval → Deliverable.
+# Stage `produksi` adalah tool-driven stage (Fase 4): task menjalankan tool
+# hyperframes.render-reels, bukan LLM call. Artefak MP4 nyata tercatat di
+# runs.context.stages.produksi.artifacts dan dirujuk approval.
+name: reels-pipeline
+version: 1
+description: Produksi 1 reels 9:16 end-to-end (Riset → Strategi → Creative+tool → QC → Approval)
+
+stages:
+  - id: riset
+    agent: riset
+    title: Riset topik reels
+    skills: [riset-web]
+    notes: "Topik: perkenalkan Minime — asisten AI desktop local-first yang tetap bekerja walau aplikasi ditutup. Kumpulkan 3 poin pesan utama."
+    on_done: handoff(strategi-bisnis)
+
+  - id: strategi
+    agent: strategi-bisnis
+    title: Angle & pesan utama
+    skills: [content]
+    notes: "Ubah hasil riset menjadi angle konten 3 slide untuk reels 9:16."
+    on_done: handoff(creative-director)
+
+  - id: produksi
+    agent: creative-director
+    title: Render reels 9:16
+    skills: [storytelling, copywriting]
+    tool:
+      id: hyperframes
+      op: render-reels
+      params:
+        title: "Minime"
+        output: "reels-minime.mp4"
+        quality: draft
+        slides:
+          - kicker: "Minime"
+            heading: "Asisten AI yang Tetap Bekerja"
+            body: "Walau aplikasinya ditutup, agenmu terus jalan."
+            duration_s: 2
+          - kicker: "5 Agen Senior"
+            heading: "Riset, Strategi, Kreasi, QC"
+            body: "Setiap langkah butuh persetujuanmu."
+            duration_s: 2
+          - kicker: "Minime"
+            heading: "Teman AI Persistenmu"
+            body: "Local-first. Datamu tetap di mesinmu."
+            duration_s: 2
+    on_done: handoff(qc)
+
+  - id: qc
+    agent: qc
+    title: Quality control
+    skills: [qc-rubrik]
+    notes: "Nilai artefak reels (MP4 di runs.context.stages.produksi.artifacts): relevansi pesan, keterbacaan teks, durasi."
+    on_done: approval

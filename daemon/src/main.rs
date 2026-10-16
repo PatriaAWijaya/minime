@@ -18,6 +18,7 @@ mod providers_muse;
 mod providers_opencode;
 mod runner;
 mod secrets;
+mod tools;
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -100,7 +101,23 @@ async fn main() -> Result<()> {
     // 5. Executor + IPC.
     let (tx, _rx) = broadcast::channel::<events::Event>(128);
     let providers = build_providers(&repo_dir);
-    let _exec_handle = executor::Executor::new(db.clone(), tx.clone(), providers.clone()).start();
+    let browser_store = tools::new_browser_store();
+    let exec_handle_providers = providers.clone();
+    let _exec_handle = executor::Executor::new(
+        db.clone(),
+        tx.clone(),
+        exec_handle_providers,
+        browser_store.clone(),
+    )
+    .start();
+
+    // 5b. Tool readiness check (Fase 4) — eksplisit, tidak ada yang gagal diam-diam.
+    for t in tools::readiness(&data_dir, &repo_dir).await {
+        eprintln!(
+            "[minime-daemon] tool {:<14} ready={:<5} state={:<15} :: {}",
+            t.id, t.ready, t.state, t.detail
+        );
+    }
 
     let sock = data_dir.join("minime.sock");
     let app = ipc::App {
@@ -111,6 +128,7 @@ async fn main() -> Result<()> {
         start: std::time::Instant::now(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         providers,
+        browser_store,
     };
     eprintln!("[minime-daemon] listening on {}", sock.display());
 

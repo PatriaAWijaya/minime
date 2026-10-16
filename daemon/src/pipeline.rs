@@ -41,6 +41,10 @@ pub struct StageRaw {
     pub parallel: Vec<ParallelBranch>,
     #[serde(default)]
     pub join: String,
+    /// Fase 4: tool-driven stage — task menjalankan tool, bukan LLM call.
+    /// Contoh: `tool: {id: hyperframes, op: render-reels, params: {...}}`
+    #[serde(default)]
+    pub tool: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -202,6 +206,26 @@ fn validate_stage(
         if !skills.contains(sk) {
             anyhow::bail!(
                 "pipeline '{pipeline}': stage '{}' uses unknown skill '{sk}'",
+                s.id
+            );
+        }
+    }
+    // Fase 4: validate tool-driven stages (id must be a known tool).
+    if let Some(t) = &s.tool {
+        let tid = t.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if !crate::tools::KNOWN_TOOLS.contains(&tid) {
+            anyhow::bail!(
+                "pipeline '{pipeline}': stage '{}' uses unknown tool '{tid}'",
+                s.id
+            );
+        }
+        if t.get("op")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .is_empty()
+        {
+            anyhow::bail!(
+                "pipeline '{pipeline}': stage '{}': tool.op wajib diisi",
                 s.id
             );
         }

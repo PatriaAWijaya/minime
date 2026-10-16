@@ -1,7 +1,7 @@
 // Adapter daemon: pakai Tauri invoke bila tersedia, fallback ke mock (mode demo).
 // Di aplikasi Tauri, src-tauri mem-proxy perintah ini ke daemon via Unix socket.
 
-import type { Agent, Approval, DaemonStatus, Task } from "./types";
+import type { Agent, Approval, BrowserSession, DaemonStatus, Task, ToolStatus } from "./types";
 
 declare global {
   interface Window {
@@ -73,12 +73,26 @@ async function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Prom
       return [] as unknown as T;
     case "approvals_decide":
       return { ok: true } as unknown as T;
+    case "tools_status":
+      return MOCK_TOOLS as unknown as T;
+    case "browser_list":
+      return { sessions: [] } as unknown as T;
     default:
       throw new Error(`Perintah ${cmd} belum tersedia di mode demo (Fase 1)`);
   }
 }
 
 // ---------- API publik ----------
+
+const MOCK_TOOLS: ToolStatus[] = [
+  { id: "canva", label: "Canva", kind: "cli", ready: true, state: "ready", detail: "Terhubung (mode demo).", fallback: "Render lokal via HyperFrames." },
+  { id: "affinity", label: "Affinity", kind: "mcp-http", ready: false, state: "unreachable", detail: "Bridge di MacBook (mode demo).", fallback: "Olah desain via Canva / HyperFrames." },
+  { id: "open-creator", label: "OpenCreator", kind: "sidecar", ready: false, state: "not_installed", detail: "Sidecar belum dipasang (mode demo).", fallback: "Render video via HyperFrames." },
+  { id: "voice-studio", label: "VoiceStudio", kind: "rest", ready: false, state: "unreachable", detail: "Instalasi MacBook pending (mode demo).", fallback: "Fallback: edge-tts." },
+  { id: "hyperframes", label: "HyperFrames", kind: "cli", ready: true, state: "ready", detail: "Siap render MP4 lokal (mode demo).", fallback: "Render visual via Canva." },
+  { id: "instagram-cli", label: "Instagram CLI", kind: "cli", ready: true, state: "ready", detail: "Mode DRAFT-ONLY (mode demo).", fallback: "Draft diserahkan ke Patria." },
+  { id: "browser", label: "Browser bawaan", kind: "browser", ready: true, state: "ready", detail: "Chromium headless (mode demo).", fallback: "Riset via Gemini." },
+];
 
 export const api = {
   daemonStatus: () => invoke<DaemonStatus>("daemon_status"),
@@ -95,4 +109,6 @@ export const api = {
       decision,
       note: note ?? "",
     }),
+  toolsStatus: () => invoke<ToolStatus[]>("tools_status"),
+  browserList: () => invoke<{ sessions: BrowserSession[] }>("browser_list"),
 };

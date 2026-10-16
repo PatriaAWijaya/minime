@@ -251,3 +251,53 @@ Tidak perlu retry panjang dari VM lagi; live test end-to-end via OpenCode free d
 - Tree remote IDENTIK dengan tree lokal ✅. Pasangan SHA lokal → remote: `94f0e33→ac4a0ab`, `d97aa0f→8fec735`, `838090c→62a9db1`, `5d17900→857376b`, `0b08853→6928922`.
 - `git remote add origin` sudah dipasang lokal. Push berikutnya via skrip API (`push_rebased.py`), bukan `git push` HTTPS.
 - Perbaikan kecil: path `dynamic_credentials.py` di `git_push.py`/`push_rebased.py` diperbaiki (lokasi skill template pindah).
+
+## 16 Okt 2026 ~23:35 WIB — FASE 4 SELESAI ✅ (menunggu review gate Patria)
+
+**A. Readiness check eksplisit tiap tool + fallback.** `daemon/src/tools.rs` — registry 7 tool,
+`tools.status` (IPC) melaporkan `ready/state/detail/fallback` tiap tool; readiness di-log saat
+startup daemon. Hasil di VM: canva ✅ ready (39 tools MCP), hyperframes ✅ ready,
+instagram-cli ✅ ready (DRAFT-ONLY), browser ✅ ready; affinity ❌ `unreachable` (bridge di MacBook),
+open-creator ❌ `not_installed` (sidecar belum ada), voice-studio ❌ `unreachable` (instalasi pending).
+Setiap tool punya fallback terdokumentasi di SKILL.md-nya; tidak ada yang gagal diam-diam.
+
+**B. Wiring tools ke daemon.** Modul baru `daemon/src/tools/`: `canva.rs` (CLI: status, design.create
+async-poll, image.generate, design.export; read-only terverifikasi), `affinity.rs` (MCP bridge
+127.0.0.1:6767 JSON-RPC passthrough), `opencreator.rs` (sidecar contract `--op --params-json`;
+slot `secrets.set`), `voicestudio.rs` (REST + fallback otomatis `edge-tts`), `hyperframes.rs`
+(render + render-reels + verifikasi ffprobe; TMPDIR diarahkan ke data_dir karena /tmp VM kecil —
+pola dari skill local_hyperframes), `instagram.rs` (draft + account read-only; op publikasi
+DITOLAK di kode via BLOCKED_OPS — rule #3 ditegakkan di level kode, bukan sekadar tidak diimplementasikan),
+`browser.rs` (Chromium headless via CLI flags, profil terisolasi per sesi, semua aksi → `messages`
+kind=`browser-action`). Task pipeline mendukung `tool:` (stage tool-driven, allowlist diperiksa);
+`pipelines/runner.rs` validasi tool id terhadap KNOWN_TOOLS.
+
+**C. Content Production.** `pipelines/reels-pipeline.yaml`: riset → strategi-bisnis → produksi
+(creative-director + `tool: hyperframes/render-reels`) → qc → approval.
+
+**D. Built-in browser.** IPC `browser.open/navigate/screenshot/dom/list/close`; terverifikasi:
+screenshot + ekstraksi DOM + proof-of-work tercatat di DB. Muat halaman eksternal live TERBATAS di VM
+(proxy — sama seperti kasus OpenCode; verifikasi penuh di MacBook). Sesi in-memory (jujur, tidak
+pura-pura persisten); tidak ada auto-login (aturan).
+
+**E. Bukti gate — 1 reels JADI end-to-end** ✅ (run `69930306`, MINIME_MOCK_LLM=1 + render nyata):
+riset → strategi → **render MP4 nyata** (HyperFrames, 1080x1920, 6.0 detik, 3 slide) → QC skor 80 →
+approval (approve via IPC = verifikasi teknis; vonis akhir di gate Patria) → done.
+Artefak: `docs/bukti-fase4/reels-minime.mp4` (+ 2 frame PNG). Perbaikan selama verifikasi:
+(1) `runner.rs`: approval kini mengisi `artifact_refs` dari artefak stage;
+(2) `executor.rs`: `finish_task_done` merge (bukan timpa) objek stage — sebelumnya artefak hilang tertimpa output;
+(3) temp render dibersihkan dari direktori artefak.
+
+**UI Fase 4:** command Tauri `tools_status` + `browser_list`, `daemon.ts` (+mock), view baru
+**Peralatan** (kartu readiness 7 tool + sesi browser), entri nav; `vite build` ✅.
+
+**Dokumen:** 6 SKILL.md tool di-update stub→wired; baru: `docs/voice-studio.md` (langkah instalasi
+MacBook), `docs/open-creator.md` (kontrak sidecar), `docs/browser.md` (operasi & batasan).
+
+**Catatan jujur / menunggu MacBook & Patria:**
+- Canva `design.create`/`export` terkode tapi belum live-test (menyentuh akun Canva Patria).
+- Affinity bridge, VoiceStudio, OpenCreator: butuh MacBook Patria (+ kunci API untuk 2 terakhir).
+- Browser live page-load: verifikasi penuh di MacBook (limitasi proxy VM).
+- Verifikasi pipeline memakai mock LLM (sementara `provider: mock` di agent.yaml saat uji,
+  sudah di-revert via `git checkout -- agents/`); stage tool (render) 100% nyata.
+- `cargo build` ✅, `cargo fmt` ✅, clippy: hanya warning kosmetik pre-existing.

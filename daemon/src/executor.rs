@@ -20,11 +20,22 @@ pub struct Executor {
     db: Db,
     tx: broadcast::Sender<Event>,
     providers: Providers,
+    browser_store: crate::tools::BrowserStore,
 }
 
 impl Executor {
-    pub fn new(db: Db, tx: broadcast::Sender<Event>, providers: Providers) -> Self {
-        Self { db, tx, providers }
+    pub fn new(
+        db: Db,
+        tx: broadcast::Sender<Event>,
+        providers: Providers,
+        browser_store: crate::tools::BrowserStore,
+    ) -> Self {
+        Self {
+            db,
+            tx,
+            providers,
+            browser_store,
+        }
     }
 
     /// Spawn the background scheduling loop.
@@ -112,11 +123,21 @@ impl Executor {
         let db = self.db.clone();
         let tx = self.tx.clone();
         let providers = self.providers.clone();
+        let browser_store = self.browser_store.clone();
         let task_id = task_id.to_string();
         let agent_id = agent_id.to_string();
         let title = title.to_string();
         tokio::spawn(async move {
-            run_llm(&db, &tx, &providers, &task_id, &agent_id, &title).await;
+            run_llm(
+                &db,
+                &tx,
+                &providers,
+                &browser_store,
+                &task_id,
+                &agent_id,
+                &title,
+            )
+            .await;
         });
         Ok(())
     }
@@ -124,10 +145,13 @@ impl Executor {
 
 /// Real LLM execution for one task:
 /// budget guard → build prompt → walk provider chain → metering → done/failed.
+/// If the task input carries `tool: {id, op, params}`, the tool runs instead
+/// of an LLM call (Fase 4: tool-driven stages).
 async fn run_llm(
     db: &Db,
     tx: &broadcast::Sender<Event>,
     providers: &Providers,
+    browser_store: &crate::tools::BrowserStore,
     task_id: &str,
     agent_id: &str,
     title: &str,
@@ -154,6 +178,31 @@ async fn run_llm(
             }
         }
     };
+
+    // 1b. Tool-driven task? (Fase 4) — honour the agent's tools_allowlist.
+    let task_input: serde_json::Value = {
+        let guard = db.lock().await;
+        let raw: String = guard
+            .query_row("SELECT input FROM tasks WHERE id = ?1", [task_id], |r| {
+                r.get(0)
+            })
+            .unwrap_or_else(|_| "{}".to_string());
+        serde_json::from_str(&raw).unwrap_or(serde_json::Value::Null)
+    };
+    if let Some(tool_spec) = task_input.get("tool") {
+        run_tool_task(
+            db,
+            tx,
+            browser_store,
+            task_id,
+            agent_id,
+            title,
+            &agent,
+            tool_spec,
+        )
+        .await;
+        return;
+    }
 
     // 2. Budget-cap guard (rule: cap tercapai → pause + butuh persetujuan Patria).
     if agent.daily_budget_usd > 0.0 {
@@ -184,15 +233,7 @@ async fn run_llm(
     }
 
     // 3. Assemble prompt: system prompt + skill summaries + task input + run context.
-    let task_input: serde_json::Value = {
-        let guard = db.lock().await;
-        let raw: String = guard
-            .query_row("SELECT input FROM tasks WHERE id = ?1", [task_id], |r| {
-                r.get(0)
-            })
-            .unwrap_or_else(|_| "{}".to_string());
-        serde_json::from_str(&raw).unwrap_or(serde_json::Value::Null)
-    };
+    // (task_input already loaded in step 1b.)
     let run_id: Option<String> = {
         let guard = db.lock().await;
         guard
@@ -271,6 +312,153 @@ async fn run_llm(
     .await;
 }
 
+/// Fase 4: execute a production tool instead of an LLM call.
+/// The agent's `tools_allowlist` is honoured; results (incl. artifact paths)
+/// are stored like normal task output so handoff/QC/approval keep working.
+async fn run_tool_task(
+    db: &Db,
+    tx: &broadcast::Sender<Event>,
+    browser_store: &crate::tools::BrowserStore,
+    task_id: &str,
+    agent_id: &str,
+    title: &str,
+    agent: &Agent,
+    tool_spec: &serde_json::Value,
+) {
+    let tool_id = tool_spec
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let op = tool_spec
+        .get("op")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let params = tool_spec
+        .get("params")
+        .cloned()
+        .unwrap_or(serde_json::json!({}));
+
+    // Allowlist guard (rule #12: only approved tools).
+    let allowed: Vec<String> = serde_json::from_str(&agent.tools_allowlist).unwrap_or_default();
+    if !allowed.iter().any(|t| t == &tool_id) {
+        fail_task(
+            db,
+            tx,
+            task_id,
+            agent_id,
+            &format!("tool '{tool_id}' tidak ada di allowlist agen '{agent_id}'"),
+        )
+        .await;
+        return;
+    }
+
+    let run_id: Option<String> = {
+        let guard = db.lock().await;
+        guard
+            .query_row("SELECT run_id FROM tasks WHERE id = ?1", [task_id], |r| {
+                r.get::<_, Option<String>>(0)
+            })
+            .unwrap_or(None)
+    };
+    // Data dir for artifacts: same resolution as daemon startup.
+    let data_dir = crate::db::data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let repo_dir = crate::db::repo_dir();
+    let ctx = crate::tools::ToolCtx {
+        data_dir,
+        repo_dir,
+        run_id: run_id.clone(),
+        agent_id: agent_id.to_string(),
+    };
+    eprintln!("[executor] task {task_id}: tool {tool_id}.{op} (agen {agent_id})");
+    match crate::tools::run_tool(db, browser_store, &tool_id, &op, &params, &ctx).await {
+        Ok(value) => {
+            // Artifact registration (proof of work → deliverable draft later).
+            let mut artifacts: Vec<String> = Vec::new();
+            if let Some(p) = value.get("artifact_path").and_then(|v| v.as_str()) {
+                artifacts.push(p.to_string());
+            }
+            let summary = format!(
+                "TOOL {tool_id}.{op} selesai.\nRingkasan: {}\n{}",
+                summarize_tool_value(&value),
+                if artifacts.is_empty() {
+                    String::new()
+                } else {
+                    format!("Artefak: {}", artifacts.join(", "))
+                }
+            );
+            if let Some(rid) = run_id.as_deref() {
+                record_stage_artifacts(db, rid, task_id, &artifacts).await;
+            }
+            // provider/model recorded as the tool for metering transparency.
+            finish_task_done(db, tx, task_id, agent_id, &summary, &tool_id, &op).await;
+            let _ = title;
+        }
+        Err(e) => {
+            fail_task(
+                db,
+                tx,
+                task_id,
+                agent_id,
+                &format!("tool {tool_id}.{op} gagal: {e:#}"),
+            )
+            .await;
+        }
+    }
+}
+
+fn summarize_tool_value(v: &serde_json::Value) -> String {
+    // Prefer explicit summary fields; else truncated JSON.
+    for key in ["summary", "note", "output"] {
+        if let Some(s) = v.get(key).and_then(|x| x.as_str()) {
+            if !s.trim().is_empty() {
+                let c: String = s.chars().take(600).collect();
+                return c;
+            }
+        }
+    }
+    let s = v.to_string();
+    if s.len() <= 600 {
+        s
+    } else {
+        format!("{}…", &s[..600])
+    }
+}
+
+/// Store artifact paths into runs.context.stages.<stage>.artifacts.
+async fn record_stage_artifacts(db: &Db, run_id: &str, task_id: &str, artifacts: &[String]) {
+    if artifacts.is_empty() {
+        return;
+    }
+    let guard = db.lock().await;
+    let (input_raw, ctx_raw): (String, String) = guard
+        .query_row(
+            "SELECT t.input, r.context FROM tasks t JOIN runs r ON r.id = t.run_id WHERE t.id = ?1",
+            [task_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap_or(("{}".to_string(), "{}".to_string()));
+    let stage_id = serde_json::from_str::<serde_json::Value>(&input_raw)
+        .ok()
+        .and_then(|v| {
+            v.get("stage")
+                .and_then(|s| s.as_str())
+                .map(|s| s.to_string())
+        });
+    let mut ctx: serde_json::Value =
+        serde_json::from_str(&ctx_raw).unwrap_or(serde_json::json!({}));
+    if let Some(sid) = stage_id {
+        let arr: Vec<serde_json::Value> = artifacts.iter().map(|a| serde_json::json!(a)).collect();
+        ctx["stages"][&sid]["artifacts"] = serde_json::json!(arr);
+        guard
+            .execute(
+                "UPDATE runs SET context=?1, updated_at=datetime('now') WHERE id=?2",
+                rusqlite::params![ctx.to_string(), run_id],
+            )
+            .ok();
+    }
+}
 /// Drain a provider's stream into full text + token counts.
 /// Emits progress events as chunks arrive; checks cancellation between chunks.
 async fn complete_blocking(
@@ -559,12 +747,15 @@ async fn finish_task_done(
         let mut ctx: serde_json::Value =
             serde_json::from_str(&ctx_raw).unwrap_or(serde_json::json!({}));
         let clipped: String = text.chars().take(6000).collect();
-        ctx["stages"][&sid] = serde_json::json!({
-            "agent": agent_id,
-            "provider": provider_id,
-            "model": model_id,
-            "output": clipped,
-        });
+        // Merge ke objek stage yang ada (jangan timpa: artefak dari
+        // record_stage_artifacts harus bertahan).
+        let stage_obj = ctx["stages"][&sid].as_object().cloned().unwrap_or_default();
+        let mut merged = stage_obj;
+        merged.insert("agent".to_string(), serde_json::json!(agent_id));
+        merged.insert("provider".to_string(), serde_json::json!(provider_id));
+        merged.insert("model".to_string(), serde_json::json!(model_id));
+        merged.insert("output".to_string(), serde_json::json!(clipped));
+        ctx["stages"][&sid] = serde_json::Value::Object(merged);
         guard
             .execute(
                 "UPDATE runs SET context=?1, updated_at=datetime('now') WHERE id=?2",

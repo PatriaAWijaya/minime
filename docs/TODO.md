@@ -60,11 +60,11 @@
 - [ ] *Gate: output tiap skill di-review Patria* (10 SKILL.md + 10 sampel + 4 knowledge siap di-review)
 
 ## Fase 4 — Tools produksi
-- [ ] Readiness check eksplisit tiap tool + fallback
-- [ ] Wiring Canva / Affinity / OpenCreator / VoiceStudio / HyperFrames
-- [ ] Content Production (Image/Carousel/Reels); SMO draft-only
-- [ ] Built-in browser (Chromium headless via Playwright) untuk agen
-- [ ] *Gate: 1 reels/carousel jadi dari pipeline*
+- [x] Readiness check eksplisit tiap tool + fallback (2026-10-16)
+- [x] Wiring Canva / Affinity / OpenCreator / VoiceStudio / HyperFrames (2026-10-16)
+- [x] Content Production (Image/Carousel/Reels); SMO draft-only (2026-10-16)
+- [x] Built-in browser (Chromium headless via Playwright) untuk agen (2026-10-16)
+- [x] *Gate: 1 reels/carousel jadi dari pipeline* (2026-10-16 — `docs/bukti-fase4/reels-minime.mp4`, 1080x1920 6 detik)
 
 ## Fase 5 — Hardening & rilis v1 pribadi
 - [ ] QC judge penuh (rubrik skor 0–100)
@@ -78,6 +78,7 @@
 - [ ] Account API (repo Workers + D1 + deploy)
 - [ ] OTP email + SMTP; session token
 - [ ] Stripe (products, Customer Portal, webhooks); license enforcement + offline grace 30 hari
+- [ ] Sistem kupon Patria: generate kode (admin-only), 1 kupon = maks 5 user, redeem = akses Pro 1 tahun; kode disimpan hash-only di D1 + rate limit redeem; lisensi `coupon` (+1 tahun dari redeem)
 - [ ] Signing publik (Apple notarization, sertifikat Windows); release pipeline GitHub Actions; auto-updater
 - [ ] Installer Windows (.exe via Tauri NSIS/WiX, runner Windows di GitHub Actions) — dibangun setelah codebase rapi & konsisten; butuh sertifikat code signing Windows
 - [ ] *Gate: instalasi dari dmg ter-sign + login OTP + lisensi trial/berbayar berfungsi*

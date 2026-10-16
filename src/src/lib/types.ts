@@ -63,3 +63,38 @@ export function avatarUrl(avatarPath: string): string {
   const base = avatarPath.split("/").pop() ?? "mimi-orkestrator.webp";
   return `/avatars/${base}`;
 }
+
+export interface ToolStatus {
+  id: string;
+  label: string;
+  kind: string;
+  ready: boolean;
+  state: string;
+  detail: string;
+  fallback: string;
+}
+
+export interface BrowserSession {
+  id: string;
+  agent_id: string;
+  created_at: string;
+  last_url: string;
+  shots: number;
+}
+
+export function toolStateLabel(state: string): string {
+  switch (state) {
+    case "ready":
+      return "Siap";
+    case "not_installed":
+      return "Belum terinstal";
+    case "not_configured":
+      return "Belum dikonfigurasi";
+    case "no_key":
+      return "Butuh kunci API";
+    case "unreachable":
+      return "Tidak terjangkau";
+    default:
+      return state;
+  }
+}

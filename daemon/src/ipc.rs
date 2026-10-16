@@ -26,6 +26,7 @@ pub struct App {
     pub start: std::time::Instant,
     pub version: String,
     pub providers: crate::executor::Providers,
+    pub browser_store: crate::tools::BrowserStore,
 }
 
 pub async fn serve(app: App, sock: &Path) -> Result<()> {
@@ -328,7 +329,111 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
             Ok(json!({"disconnected": true}))
         }
 
+        // ---- Fase 4: tools ----
+        "tools.status" => {
+            let list = crate::tools::readiness(&app.data_dir, &app.repo).await;
+            Ok(json!(list))
+        }
+        "tools.run" => {
+            // Ad-hoc tool run (sinkron, timeout internal per tool).
+            // Untuk pekerjaan berat (render video), pakai task pipeline sebagai gantinya.
+            let tool = p_str(&params, "tool").context("params.tool required")?;
+            let op = p_str(&params, "op").context("params.op required")?;
+            let tool_params = params.get("params").cloned().unwrap_or(json!({}));
+            let ctx = crate::tools::ToolCtx {
+                data_dir: app.data_dir.clone(),
+                repo_dir: app.repo.clone(),
+                run_id: None,
+                agent_id: p_str(&params, "agent_id").unwrap_or_else(|| "mimi".to_string()),
+            };
+            crate::tools::run_tool(db, &app.browser_store, &tool, &op, &tool_params, &ctx).await
+        }
+
+        // ---- Fase 4: built-in browser (dikontrol daemon) ----
+        "browser.open" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "open",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+        "browser.navigate" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "navigate",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+        "browser.screenshot" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "screenshot",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+        "browser.dom" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "dom",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+        "browser.list" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "list",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+        "browser.close" => {
+            let ctx = browser_ctx(app, &params);
+            crate::tools::run_tool(
+                db,
+                &app.browser_store,
+                crate::tools::TOOL_BROWSER,
+                "close",
+                &params,
+                &ctx,
+            )
+            .await
+        }
+
         _ => anyhow::bail!("unknown method '{method}'"),
+    }
+}
+
+/// Build a ToolCtx for browser IPC calls (agent_id opsional, default mimi).
+fn browser_ctx(app: &App, params: &Value) -> crate::tools::ToolCtx {
+    crate::tools::ToolCtx {
+        data_dir: app.data_dir.clone(),
+        repo_dir: app.repo.clone(),
+        run_id: p_str(params, "run_id"),
+        agent_id: p_str(params, "agent_id").unwrap_or_else(|| "mimi".to_string()),
     }
 }
 

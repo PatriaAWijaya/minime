@@ -221,6 +221,10 @@ async fn execute_pipeline(
                 stage.title.clone()
             };
             let mut task_input = serde_json::json!({"stage": stage.id, "skills": stage.skills, "notes": stage.notes, "pipeline": p.name});
+            // Fase 4: tool-driven stage — teruskan spesifikasi tool ke task.
+            if let Some(tool) = &stage.tool {
+                task_input["tool"] = tool.clone();
+            }
             // Saat resume setelah revisi: sertakan catatan Patria agar agen memperbaikinya.
             if start_from.is_some() {
                 if let Some(note) = revision_note_of(db, run_id).await {
@@ -286,12 +290,44 @@ async fn execute_pipeline(
                     }
                 };
                 let approval_id = Uuid::new_v4().to_string();
+                // Kumpulkan artefak semua stage (mis. MP4 dari stage tool-driven)
+                // → artifact_refs, supaya approval & deliverable merujuk file nyata.
+                let artifact_refs: Vec<String> = {
+                    let ctx_raw: String = {
+                        let guard = db.lock().await;
+                        guard
+                            .query_row("SELECT context FROM runs WHERE id = ?1", [run_id], |r| {
+                                r.get(0)
+                            })
+                            .unwrap_or_else(|_| "{}".to_string())
+                    };
+                    serde_json::from_str::<serde_json::Value>(&ctx_raw)
+                        .ok()
+                        .and_then(|v| v.get("stages").cloned())
+                        .and_then(|s| s.as_object().cloned())
+                        .map(|stages| {
+                            let mut out = Vec::new();
+                            for (_id, sv) in stages {
+                                if let Some(arr) = sv.get("artifacts").and_then(|a| a.as_array()) {
+                                    for a in arr {
+                                        if let Some(p) = a.as_str() {
+                                            out.push(p.to_string());
+                                        }
+                                    }
+                                }
+                            }
+                            out
+                        })
+                        .unwrap_or_default()
+                };
+                let artifact_refs_json =
+                    serde_json::to_string(&artifact_refs).unwrap_or_else(|_| "[]".to_string());
                 {
                     let guard = db.lock().await;
                     guard.execute(
-                        "INSERT INTO approvals (id, run_id, stage, payload_summary, qc_score, status)
-                         VALUES (?1,?2,?3,?4,?5,'pending')",
-                        params![approval_id, run_id, stage.id, summary, score],
+                        "INSERT INTO approvals (id, run_id, stage, payload_summary, qc_score, artifact_refs, status)
+                         VALUES (?1,?2,?3,?4,?5,?6,'pending')",
+                        params![approval_id, run_id, stage.id, summary, score, artifact_refs_json],
                     )?;
                     guard.execute(
                         "UPDATE runs SET status='waiting-approval', updated_at=datetime('now') WHERE id=?1",
