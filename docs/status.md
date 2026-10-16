@@ -355,3 +355,45 @@ MacBook), `docs/open-creator.md` (kontrak sidecar), `docs/browser.md` (operasi &
   sampel `docs/fase4-samples/skill-warehouse.md` (jujur: bukti wiring mock).
 - Pelajaran uji: playbook full-body hanya ter-inject bila task input memuat `"skills": [...]`
   (stage-level); daftar skill agen hanya jadi ringkasan.
+
+## 17 Okt 2026 ~06:00 WIB — Finance skills quant/trading ✅
+
+Perintah Patria: 4 sumber quant/trading dijadikan finance skills bila bisa dikoneksikan
+(+ `yorkeccak/finance` sebagai skill `valyu-finance` — dikerjakan agen paralel, commit `b57f73a`).
+
+### Tabel lisensi & status koneksi
+
+| Sumber | Lisensi | Koneksi | Status uji |
+|---|---|---|---|
+| TauricResearch/TradingAgents (111k★) | Apache-2.0 ✅ | pip/CLI, env `TRADINGAGENTS_*`, LLM lokal via Ollama/OpenAI-compatible | Import + CLI TERBUKTI di VM |
+| microsoft/qlib (49k★) | MIT ✅ | `pip install pyqlib`, `qrun`/Python API | Import + workflow TERBUKTI (v0.9.7) di VM |
+| nautechsystems/nautilus_trader (30k★) | LGPL-3.0 ⚠️ | **Proses eksternal saja** (subprocess), bukan link | `BacktestEngine` TERBUKTI di VM (v1.231.0) |
+| OpenBB (SDK PyPI) | MIT ✅ | `pip install openbb`, `obb.equity.*` | Install dalam proses; pola SDK terdokumentasi |
+| yorkeccak/finance → Valyu API | MIT (pola) ✅ | HTTP `api.valyu.ai`, key via Keychain | Tool ter-wire; live test menunggu key Patria |
+
+Detail lisensi: `docs/lisensi-pihak-ketiga.md`.
+
+### Yang dibangun
+- `skills/finance-playbook/SKILL.md` — diisi penuh (sebelumnya placeholder):
+  sisi A keuangan bisnis (P&L, unit economics, cash flow, 3 skenario) +
+  sisi B toolbox quant (tabel routing 4 framework + Valyu).
+  [KNOWLEDGE PATRIA] tetap placeholder — menunggu dokumen final, tanpa karangan.
+- 4 skill baru (owner: strategi-bisnis): `trading-agents`, `qlib`, `nautilus`, `openbb`
+  — format SKILL.md Minime + larangan keras di setiap file.
+- Tool daemon `quant` (`daemon/src/tools/quant.rs`): ops `ta_analyze`,
+  `qlib_backtest`, `nautilus_backtest`, `openbb_data` + readiness check per paket.
+- **Penolakan live-trading di kode**: `is_live_op()` menolak op bernama
+  live/order/execute/trade/buy/sell; skrip Python di-scan untuk pola
+  `place_order`/`submit_order`/adapter live (`binance`, `ibapi`, dll).
+
+### Aturan keras (di setiap SKILL.md + tool)
+Riset, analisis, backtest, paper-trading (venue SIM) SAJA.
+**DILARANG order trading live otomatis dalam bentuk apa pun.**
+Order live HANYA dengan approval eksplisit Patria PER AKSI.
+
+### Catatan jujur
+- Commit `b57f73a` (agen paralel) sempat broken (tools.rs mereferensikan `mod quant`
+  sebelum `quant.rs` ada) — diperbaiki oleh commit ini.
+- Live test butuh: API key Valyu (Keychain), LLM provider untuk TradingAgents,
+  dataset qlib (official disabled — pakai sumber komunitas).
+- Verifikasi penuh GPU/venue live (tidak akan di-wire) di MacBook Patria.

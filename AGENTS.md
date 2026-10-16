@@ -86,6 +86,13 @@ Skills = folder `skills/<nama>/SKILL.md` (+ skrip/referensi/aset opsional), **di
 - `selling-playbook` ← Drive `1hMOVWhdKQGFHlIw2BSJXEQR0Q4R3CFF6C1zTQD8mGrA`
 - `operational-playbook` ← Drive `1exok4QG8YHfOyxrN3JIj3fzzLgCD6IrzHpwhMcR9vCM`
 - `finance-playbook`, `code-builder-playbook` ← dokumen menyusul
+- `oil-ui` ← skill UI untuk code builder (diadaptasi dari `oil-oil/oil-ui` MIT)
+- `valyu-finance` ← riset finansial via Valyu Search API (pola `yorkeccak/finance` MIT)
+- `trading-agents` ← analisis multi-agen LLM (`TauricResearch/TradingAgents` Apache-2.0)
+- `qlib` ← platform quant AI (`microsoft/qlib` MIT)
+- `nautilus` ← backtest engine (`nautechsystems/nautilus_trader` LGPL-3.0 — proses eksternal saja)
+- `openbb` ← data pasar (`openbb` SDK MIT)
+- **Aturan keras finance:** riset/analisis/backtest/paper-trading SAJA; DILARANG order trading live otomatis (di setiap SKILL.md + ditolak di kode `daemon/src/tools/quant.rs`)
 
 **Dimiliki Creative Director:**
 - `storytelling` / `copywriting` / `content` / `smo-playbook` ← quality bar: Golden Circle + 13-item quality bar (referensi @thechrisdo, @marketingharry)

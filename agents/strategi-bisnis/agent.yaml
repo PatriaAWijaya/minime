@@ -22,8 +22,13 @@ skills:
   - code-builder-playbook
   - oil-ui
   - valyu-finance
+  - trading-agents
+  - qlib
+  - nautilus
+  - openbb
 tools_allowlist:
   - valyu
+  - quant
 daily_budget_usd: 5.0
 avatar: assets/avatars/strategi-bisnis.webp
 color: "#1A237E"

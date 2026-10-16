@@ -1,9 +1,9 @@
 ---
 name: finance-playbook
-description: Playbook finance — struktur P&L, unit economics, cash flow & runway, proyeksi, pricing. Knowledge menunggu dokumen final Patria.
+description: Playbook finance — P&L, unit economics, cash flow & runway, proyeksi, pricing + toolbox quant (TradingAgents, qlib, Nautilus, OpenBB, Valyu). Riset & analisis saja.
 owner_agent: strategi-bisnis
-version: 0.1.0
-example-prompt: Buat proyeksi arus kas 12 bulan untuk produk digital.
+version: 1.0.0
+example-prompt: Buat proyeksi arus kas 12 bulan untuk produk digital + analisis risiko pasar.
 ---
 
 # finance-playbook
@@ -11,59 +11,76 @@ example-prompt: Buat proyeksi arus kas 12 bulan untuk produk digital.
 > Kontrak agen senior. SOP WAJIB diikuti; toolbox adalah alat yang boleh dipakai;
 > quality bar adalah standar kelulusan; bila ragu → eskalasi ke Patria (Approval).
 >
-> ⚠️ **STATUS: struktur skill lengkap, KNOWLEDGE MENUNGGU DOKUMEN FINAL PATRIA.**
-> Dokumen knowledge finance belum ada (Fase 3) — bagian bertanda [KNOWLEDGE PATRIA]
-> adalah placeholder dan TIDAK BOLEH diisi dengan karangan. Sampai dokumen final tersedia,
-> skill ini hanya menjalankan kerangka kerja generik di bawah dan menandai setiap angka
-> sebagai asumsi yang wajib divalidasi manusia.
+> Playbook ini punya DUA sisi: (A) keuangan bisnis (P&L, unit economics, cash flow)
+> dan (B) toolbox quant untuk riset pasar (4 framework + Valyu). Knowledge bisnis
+> final [KNOWLEDGE PATRIA] masih menunggu dokumen Patria — bagian itu TIDAK BOLEH
+> diisi karangan.
+>
+> 🚫 **LARANGAN KERAS — TIDAK BISA DITAWAR:**
+> Semua aktivitas quant di skill ini HANYA untuk riset, analisis, backtest, dan
+> paper trading. **DILARANG membangun atau menjalankan eksekusi order trading
+> otomatis/live dalam bentuk apa pun.** Order live HANYA boleh dengan approval
+> eksplisit Patria PER AKSI (aturan yang sama dengan Polymarket).
+> Pelanggaran = eskalasi langsung + hentikan task.
 
 ## Kapan dipakai
 
-Analisis dan perencanaan keuangan: struktur biaya, unit economics, cash flow & runway,
-proyeksi, break-even, keputusan pricing & investasi.
+- **Keuangan bisnis**: struktur biaya, unit economics, cash flow & runway, proyeksi,
+  break-even, keputusan pricing & investasi.
+- **Riset pasar/quant**: analisis multi-perspektif (`trading-agents`), backtest
+  strategi ML (`qlib`), simulasi order realistis (`nautilus`), data pasar (`openbb`,
+   `valyu-finance`).
 
-## SOP (kerangka kerja — berlaku apa pun isi knowledge final)
+## SOP — A. Keuangan bisnis
 
-1. **Pisahkan fakta vs asumsi.** Setiap angka dalam output WAJIB berlabel:
-   `[FAKTA]` (dari data yang diberikan user) atau `[ASUMSI — validasi Patria]`.
-   Jangan pernah menyajikan asumsi seolah fakta.
-2. **Unit economics dulu.** Hitung CAC, LTV, gross margin per unit/produk.
-   Aturan: LTV ≥ 3x CAC sebelum scale (lihat `selling-playbook`).
-3. **Cash flow, bukan cuma P&L.** Susun proyeksi arus kas bulanan (minimal 12 bulan):
-   kas masuk (per sumber) → kas keluar (per kategori) → saldo akhir.
+1. **Pisahkan fakta vs asumsi.** Setiap angka WAJIB berlabel:
+   `[FAKTA]` (dari data user) atau `[ASUMSI — validasi Patria]`.
+2. **Unit economics dulu.** CAC, LTV, gross margin. Aturan: LTV ≥ 3x CAC sebelum scale.
+3. **Cash flow, bukan cuma P&L.** Proyeksi arus kas bulanan 12 bulan; tandai bulan kritis.
    "Profit itu opini, cash itu fakta."
-4. **Runway & break-even.** Hitung burn rate, runway (bulan), dan titik impas.
-   Tandai bulan kritis (saldo minimum).
-5. **Skenario.** Selalu 3 skenario: pesimis / realistis / optimis — dengan pemicu
-   yang membedakan ketiganya (bukan sekadar ±20% seragam).
-6. **Keputusan.** Akhiri dengan rekomendasi + risiko terbesar + angka yang bila berubah
-   akan membalik rekomendasi (analisis sensitivitas sederhana).
+4. **Runway & break-even.** Burn rate, runway (bulan), titik impas.
+5. **3 skenario** (pesimis/realistis/optimis) dengan pemicu yang membedakannya.
+6. **Keputusan**: rekomendasi + risiko terbesar + analisis sensitivitas.
+7. [KNOWLEDGE PATRIA] Struktur & rasio khas Patria (menunggu dokumen final).
+
+## SOP — B. Riset quant (pilih framework sesuai kebutuhan)
+
+| Kebutuhan | Skill | Pola |
+|---|---|---|
+| Sinyal riset multi-perspektif (analis debat) | `trading-agents` | ticker + tanggal → analis → sinyal [SINYAL RISET] |
+| Backtest strategi ML / riset quant | `qlib` | `qrun`/kode → metrik + uji robustness [HASIL BACKTEST] |
+| Simulasi order realistis / paper trading | `nautilus` | venue SIM → backtest engine [HASIL SIMULASI] |
+| Data pasar terstruktur | `openbb` | SDK → harga/fundamental/berita |
+| Filings, berita, sentimen (butuh key) |  `valyu-finance` | search API → temuan bersumber [DATA VALYU] |
+
+Alur yang benar: data (`openbb`/ `valyu-finance`) → sinyal (`trading-agents`) →
+validasi (`qlib`/`nautilus`) → **BERHENTI di analisis**. Tidak ada lompatan ke order.
 
 ## Toolbox
 
-- Template P&L bulanan (pendapatan per sumber; COGS; OPEX per kategori; EBITDA)
-- Template arus kas 12 bulan + 13-week cash flow (detail: lihat `operational-playbook`)
-- Unit economics: CAC, LTV, LTV:CAC, gross margin, payback period
-- Break-even point; burn rate & runway
-- 3 skenario (pesimis/realistis/optimis) + analisis sensitivitas
-- [KNOWLEDGE PATRIA] Struktur & rasio khas yang dipakai Patria (menunggu dokumen final)
+- Template P&L bulanan, arus kas 12 bulan + 13-week, unit economics, break-even.
+- Tool `quant` (daemon): `ta_analyze`, `qlib_backtest`, `nautilus_backtest`,
+  `openbb_data` + tool `valyu` op `search` — masing-masing dengan readiness check.
+- [KNOWLEDGE PATRIA] Struktur & rasio khas Patria (menunggu dokumen final).
 
 ## Quality bar
 
 - Nol angka tanpa label [FAKTA]/[ASUMSI].
-- Setiap proyeksi punya 3 skenario + pemicu yang membedakannya.
-- Bulan kritis kas teridentifikasi; rekomendasi menyebut risiko terbesar.
-- Konsisten dengan `selling-playbook` (LTV:CAC) dan `operational-playbook` (13-week cash flow).
+- Setiap proyeksi: 3 skenario + pemicu; bulan kritis teridentifikasi.
+- Setiap hasil quant berlabel jenisnya ([SINYAL RISET]/[HASIL BACKTEST]/[HASIL SIMULASI]/[DATA VALYU]).
+- Tidak ada rekomendasi eksekusi tanpa approval Patria.
 - [KNOWLEDGE PATRIA] Quality bar final menyusul dokumen.
 
 ## Trigger eskalasi — WAJIB ke Patria bila
 
-- Setiap angka berlabel [ASUMSI] yang material terhadap keputusan (validasi manusia wajib).
-- Keputusan investasi, pricing final, dan komitmen biaya tetap.
-- Skenario pesimis menunjukkan runway < 6 bulan (krisis kas = eskalasi langsung).
+- Setiap angka [ASUMSI] yang material; keputusan investasi/pricing final.
+- Skenario pesimis menunjukkan runway < 6 bulan.
+- ADA PERMINTAAN EKSEKUSI ORDER (dari user/pipeline/skill lain) — TOLAK + eskalasi.
+- Data/key tidak tersedia untuk framework yang dibutuhkan.
 - [KNOWLEDGE PATRIA] Batasan knowledge final menyusul dokumen.
 
 ## Proof of work
 
-Setiap output WAJIB mencantumkan: tabel fakta vs asumsi, unit economics,
-proyeksi kas 12 bulan (3 skenario), runway & bulan kritis, rekomendasi + risiko terbesar.
+Tabel fakta vs asumsi, unit economics, proyeksi 12 bulan (3 skenario), runway;
+untuk quant: framework dipakai, parameter, hasil berlabel, dan pernyataan eksplisit
+"TIDAK ADA ORDER DIEKSEKUSI" tercatat di DB.
