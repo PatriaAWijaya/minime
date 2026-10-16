@@ -301,3 +301,11 @@ MacBook), `docs/open-creator.md` (kontrak sidecar), `docs/browser.md` (operasi &
 - Verifikasi pipeline memakai mock LLM (sementara `provider: mock` di agent.yaml saat uji,
   sudah di-revert via `git checkout -- agents/`); stage tool (render) 100% nyata.
 - `cargo build` ✅, `cargo fmt` ✅, clippy: hanya warning kosmetik pre-existing.
+
+## 17 Okt 2026 — Skill `oil-ui` untuk code builder ✅
+
+- Perintah Patria: repo `oil-oil/oil-ui` (MIT) dijadikan skill UI untuk code builder (saat butuh bikin aplikasi web-based).
+- Skill `skills/oil-ui/SKILL.md` milik **strategi-bisnis** (pasangan `code-builder-playbook`): adaptasi workflow oil-ui ke Bahasa Indonesia — (0) pahami produk (kategori, intent layar utama, 2-3 benchmark), (1) tone → keputusan visual konkret (typeface, whitespace, warna hex, selaras `docs/rule.md` #6), (2) eksplorasi 2-3 arah berbeda → side-by-side → Patria memilih, (3) bangun + refine terhadap screenshot nyata via **built-in browser Minime**, (4) review independen bila ada, (5) subtractive pass → serah terima. Atribusi MIT + link repo asal dicantumkan.
+- Wiring mock TERBUKTI: `PLAYBOOK AKTIF: oil-ui` (task strategi-bisnis via `MINIME_MOCK_LLM=1`).
+- Bug ditemukan & diperbaiki saat uji: frontmatter awal tidak valid (deskripsi tak dikutip mengandung `: `) → loader melewatkan skill; setelah dikutip, terdaftar sebagai skill ke-20 dan ter-inject benar.
+- Sampel: `docs/fase4-samples/oil-ui.md` (jujur: bukti wiring mock, bukan output beneran).

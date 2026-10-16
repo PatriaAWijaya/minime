@@ -65,6 +65,7 @@
 - [x] Content Production (Image/Carousel/Reels); SMO draft-only (2026-10-16)
 - [x] Built-in browser (Chromium headless via Playwright) untuk agen (2026-10-16)
 - [x] *Gate: 1 reels/carousel jadi dari pipeline* (2026-10-16 — `docs/bukti-fase4/reels-minime.mp4`, 1080x1920 6 detik)
+- [x] Skill `oil-ui` (17 Okt 2026 — skill UI untuk code builder, milik strategi-bisnis; diadaptasi dari `oil-oil/oil-ui` MIT; wiring mock TERBUKTI `PLAYBOOK AKTIF: oil-ui`, sampel di `docs/fase4-samples/oil-ui.md`)
 
 ## Fase 5 — Hardening & rilis v1 pribadi
 - [ ] QC judge penuh (rubrik skor 0–100)
