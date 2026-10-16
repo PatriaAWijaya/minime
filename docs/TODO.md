@@ -52,10 +52,12 @@
 - [ ] *Gate: 1 job nyata berjalan penuh + tap approve Patria* (menunggu review Patria; job mock penuh ✅, job OpenCode free terblokir backend)
 
 ## Fase 3 — Skills & knowledge
-- [ ] 6 skills → Strategi Bisnis, 4 skills → Creative Director (knowledge disuling dari 4 dokumen Drive)
-- [ ] Provider DeepSeek
-- [ ] OAuth Google Drive sekali (baca)
-- [ ] *Gate: output tiap skill di-review Patria*
+- [x] 6 skills → Strategi Bisnis, 4 skills → Creative Director (16 Okt 2026 — SKILL.md penuh: SOP, toolbox, quality bar, trigger eskalasi, proof of work; knowledge disuling dari 4 dokumen Drive → `docs/fase3-knowledge/`; finance & code-builder: struktur lengkap + placeholder [KNOWLEDGE PATRIA], tanpa karangan)
+- [x] Provider DeepSeek (16 Okt 2026 — `providers_deepseek.rs`, OpenAI-compatible `api.deepseek.com/v1`; key via Keychain/env `MINIME_DEEPSEEK_KEY`; tanpa key → NoKey → fallback; masuk fallback chain strategi-bisnis; live test menunggu key)
+- [x] OAuth Google Drive sekali, read-only (16 Okt 2026 — `drive_oauth.rs`: auth code flow + loopback listener + state anti-CSRF, scope `drive.readonly`, token di Keychain write-only; IPC `drive.auth_url`/`drive.status`/`drive.disconnect` + `secrets.set`/`secrets.has`; URL terverifikasi via IPC; flow browser penuh hanya di MacBook Patria — lihat `docs/drive-oauth.md`)
+- [x] Uji tiap skill: 1 tugas nyata per skill via mock (16 Okt 2026 — 10/10 wiring TERBUKTI: playbook stage-level di-inject ke prompt; sampel di `docs/fase3-samples/`)
+- [x] Coba ulang OpenCode free 1x (16 Okt 2026 — masih hang/timeout 5 menit, stdout kosong; backend free tier belum pulih di environment ini; JANGAN bakar waktu lagi — coba dari MacBook Patria)
+- [ ] *Gate: output tiap skill di-review Patria* (10 SKILL.md + 10 sampel + 4 knowledge siap di-review)
 
 ## Fase 4 — Tools produksi
 - [ ] Readiness check eksplisit tiap tool + fallback
@@ -77,4 +79,5 @@
 - [ ] OTP email + SMTP; session token
 - [ ] Stripe (products, Customer Portal, webhooks); license enforcement + offline grace 30 hari
 - [ ] Signing publik (Apple notarization, sertifikat Windows); release pipeline GitHub Actions; auto-updater
+- [ ] Installer Windows (.exe via Tauri NSIS/WiX, runner Windows di GitHub Actions) — dibangun setelah codebase rapi & konsisten; butuh sertifikat code signing Windows
 - [ ] *Gate: instalasi dari dmg ter-sign + login OTP + lisensi trial/berbayar berfungsi*

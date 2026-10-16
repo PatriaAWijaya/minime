@@ -22,4 +22,6 @@ pub enum Event {
     },
     #[serde(rename = "minime://approval-requested")]
     ApprovalRequested { approval_id: String, run_id: String },
+    #[serde(rename = "minime://drive-auth")]
+    DriveAuth { status: String },
 }

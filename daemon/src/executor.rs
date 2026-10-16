@@ -201,7 +201,7 @@ async fn run_llm(
             })
             .unwrap_or(None)
     };
-    let system_prompt = build_system_prompt(db, &agent).await;
+    let system_prompt = build_system_prompt(db, &agent, &task_input).await;
     let user_text = build_user_text(db, run_id.as_deref(), &task_input, title).await;
 
     let req = ChatRequest {
@@ -318,7 +318,7 @@ async fn complete_blocking(
     Ok((text, in_tok, out_tok))
 }
 
-async fn build_system_prompt(db: &Db, agent: &Agent) -> String {
+async fn build_system_prompt(db: &Db, agent: &Agent, task_input: &serde_json::Value) -> String {
     let mut sp = agent.system_prompt.clone();
     // Append skill summaries (cached descriptions from the skills table).
     if let Ok(names) = serde_json::from_str::<Vec<String>>(&agent.skills) {
@@ -342,7 +342,60 @@ async fn build_system_prompt(db: &Db, agent: &Agent) -> String {
             }
         }
     }
+    // Fase 3: inject full playbook bodies for stage-level skills (task input
+    // "skills": [...]). These are the SOPs the agent MUST follow for this task.
+    if let Some(arr) = task_input.get("skills").and_then(|v| v.as_array()) {
+        let guard = db.lock().await;
+        let mut bodies = Vec::new();
+        for s in arr {
+            let Some(name) = s.as_str() else { continue };
+            let path: String = guard
+                .query_row("SELECT path FROM skills WHERE name = ?1", [name], |r| {
+                    r.get(0)
+                })
+                .unwrap_or_default();
+            if path.is_empty() {
+                continue;
+            }
+            let full = std::fs::read_to_string(std::path::Path::new(&path).join("SKILL.md"))
+                .unwrap_or_default();
+            let body = strip_frontmatter(&full);
+            let body = body.trim();
+            if body.is_empty() {
+                continue;
+            }
+            // Cap per skill agar konteks prompt tidak meledak.
+            let capped: String = body.chars().take(6000).collect();
+            bodies.push(format!("=== PLAYBOOK: {name} ===\n{capped}"));
+        }
+        drop(guard);
+        if !bodies.is_empty() {
+            sp.push_str(
+                "\n\nPLAYBOOK AKTIF UNTUK TUGAS INI (ikuti SOP-nya; quality bar = standar lulus; \
+                 bila ragu, nyatakan eskalasi di output):\n",
+            );
+            sp.push_str(&bodies.join("\n\n"));
+        }
+    }
     sp
+}
+
+/// Strip YAML frontmatter (--- ... ---) from a SKILL.md file.
+fn strip_frontmatter(text: &str) -> &str {
+    let mut lines = text.lines();
+    if lines.next().map(|l| l.trim()) != Some("---") {
+        return text;
+    }
+    let mut offset = 0usize;
+    for line in lines {
+        offset += line.len() + 1; // +1 for '\n'
+        if line.trim() == "---" {
+            break;
+        }
+    }
+    // offset relatif terhadap sisa setelah baris pertama
+    let first_len = text.lines().next().map(|l| l.len() + 1).unwrap_or(0);
+    &text[first_len + offset..]
 }
 
 async fn build_user_text(

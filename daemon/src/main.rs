@@ -3,6 +3,7 @@
 
 mod agent_loader;
 mod db;
+mod drive_oauth;
 mod events;
 mod executor;
 mod ipc;
@@ -10,6 +11,7 @@ mod models;
 mod notify;
 mod pipeline;
 mod provider;
+mod providers_deepseek;
 mod providers_gemini;
 mod providers_mock;
 mod providers_muse;
@@ -25,7 +27,7 @@ use tokio::sync::broadcast;
 use executor::Providers;
 use provider::ModelProvider;
 
-/// Build the provider registry: OpenCode free (no key) + Gemini + Muse.
+/// Build the provider registry: OpenCode free (no key) + Gemini + Muse + DeepSeek.
 /// Providers without keys register anyway and fail fast with NoKey at call
 /// time, so the fallback chain can skip them transparently.
 fn build_providers(repo_dir: &std::path::Path) -> Providers {
@@ -38,6 +40,8 @@ fn build_providers(repo_dir: &std::path::Path) -> Providers {
     map.insert(gm.id().to_string(), gm);
     let ms: Arc<dyn ModelProvider> = Arc::new(providers_muse::MuseProvider::new());
     map.insert(ms.id().to_string(), ms);
+    let ds: Arc<dyn ModelProvider> = Arc::new(providers_deepseek::DeepSeekProvider::new());
+    map.insert(ds.id().to_string(), ds);
     // Mock provider — hanya bila MINIME_MOCK_LLM=1 (integration test, bukan produksi).
     if std::env::var("MINIME_MOCK_LLM").is_ok() {
         let mk: Arc<dyn ModelProvider> = Arc::new(providers_mock::MockProvider::new());

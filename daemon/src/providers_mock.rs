@@ -56,16 +56,33 @@ impl ModelProvider for MockProvider {
             }
             // Canned response per agent role, derived from the system prompt.
             let sp = req.system_prompt.to_lowercase();
+            // Fase 3: echo playbook yang di-inject executor — bukti wiring skill.
+            // Dihitung dulu agar muncul di SEMUA cabang output mock.
+            let mut playbooks = Vec::new();
+            for line in req.system_prompt.lines() {
+                if let Some(rest) = line.strip_prefix("=== PLAYBOOK: ") {
+                    if let Some(name) = rest.strip_suffix(" ===") {
+                        playbooks.push(name.to_string());
+                    }
+                }
+            }
+            let pb_line = if playbooks.is_empty() {
+                "PLAYBOOK AKTIF: (tidak ada playbook stage-level yang aktif)".to_string()
+            } else {
+                format!("PLAYBOOK AKTIF: {}", playbooks.join(", "))
+            };
             let text = if sp.contains("juri senior") || sp.contains("qc") {
-                "Hasil penilaian QC terhadap output tahap produksi:\n\
-                 - Kebenaran & sumber: cukup (20/30)\n\
-                 - Kesesuaian brief: baik (22/25)\n\
-                 - Quality bar konten: baik (20/25)\n\
-                 - Kesiapan produksi: baik (18/20)\n\
-                 Total: 80/100 → LOLOS ke Approval dengan catatan ringan.\n\
-                 SKOR: 80\n\
-                 ALASAN: Output sesuai brief dan memenuhi quality bar dengan catatan minor."
-                    .to_string()
+                format!(
+                    "Hasil penilaian QC terhadap output tahap produksi:\n\
+                     - Kebenaran & sumber: cukup (20/30)\n\
+                     - Kesesuaian brief: baik (22/25)\n\
+                     - Quality bar konten: baik (20/25)\n\
+                     - Kesiapan produksi: baik (18/20)\n\
+                     Total: 80/100 → LOLOS ke Approval dengan catatan ringan.\n\
+                     SKOR: 80\n\
+                     ALASAN: Output sesuai brief dan memenuhi quality bar dengan catatan minor.\n\
+                     {pb_line}"
+                )
             } else {
                 let task_line = req
                     .messages
@@ -76,6 +93,7 @@ impl ModelProvider for MockProvider {
                 format!(
                     "[MOCK OUTPUT — model: {}]\nRingkasan eksekusi mock untuk task ini. \
                      Konteks diterima: {}…\n\
+                     {pb_line}\n\
                      (Ini adalah output deterministik dari mock provider untuk verifikasi pipeline.)",
                     req.model, task_line
                 )

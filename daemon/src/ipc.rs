@@ -2,11 +2,13 @@
 //! Only the daemon writes the DB; the UI talks exclusively through here.
 
 use crate::db::Db;
+use crate::drive_oauth;
 use crate::events::Event;
 use crate::executor::enqueue_task;
 use crate::models::{Agent, Approval, Deliverable, Run, Task};
 use crate::pipeline;
 use crate::runner;
+use crate::secrets;
 use anyhow::{Context, Result};
 use rusqlite::params;
 use serde_json::{json, Value};
@@ -300,6 +302,30 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
                 runner::run_pipeline(db.clone(), app.tx.clone(), app.repo.clone(), &name, input)
                     .await?;
             Ok(json!({"run_id": run_id}))
+        }
+
+        "secrets.set" => {
+            // Write-only: UI menyimpan secret ke Keychain; tidak ada jalur baca.
+            let account = p_str(&params, "account").context("params.account required")?;
+            let value = p_str(&params, "value").context("params.value required")?;
+            if account.trim().is_empty() || value.trim().is_empty() {
+                anyhow::bail!("account dan value tidak boleh kosong");
+            }
+            secrets::set_api_key(&account, &value)
+                .map_err(|e| anyhow::anyhow!("gagal menyimpan secret: {e}"))?;
+            Ok(json!({"stored": account}))
+        }
+        "secrets.has" => {
+            // Hanya boolean — nilai secret tidak pernah dikembalikan.
+            let account = p_str(&params, "account").context("params.account required")?;
+            Ok(json!({"account": account, "has": secrets::api_key(&account).is_some()}))
+        }
+
+        "drive.auth_url" => drive_oauth::start_flow(app.tx.clone()).await,
+        "drive.status" => Ok(drive_oauth::status()),
+        "drive.disconnect" => {
+            drive_oauth::disconnect()?;
+            Ok(json!({"disconnected": true}))
         }
 
         _ => anyhow::bail!("unknown method '{method}'"),

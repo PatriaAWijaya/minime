@@ -45,3 +45,15 @@ pub fn set_api_key(account: &str, key: &str) -> Result<(), String> {
         .set_password(key.trim())
         .map_err(|e| format!("keyring write failed: {e}"))
 }
+
+/// Delete a stored secret (used by IPC `drive.disconnect`).
+pub fn delete_api_key(account: &str) -> Result<(), String> {
+    let entry =
+        keyring::Entry::new(SERVICE, account).map_err(|e| format!("keyring unavailable: {e}"))?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        // Hilang = sudah terputus; anggap sukses agar idempotent.
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("keyring delete failed: {e}")),
+    }
+}

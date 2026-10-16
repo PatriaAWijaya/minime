@@ -166,3 +166,69 @@ Patria 16 Okt ~19:56 WIB: **"Build arsitektur"** — mulai Fase 1. Scope tambaha
 1. Vonis: lanjut Fase 3, atau ada revisi.
 2. Putuskan: coba ulang OpenCode free dari MacBook Patria, atau sediakan API key (via Keychain, bukan chat) untuk live test Gemini/Muse.
 3. Konfirmasi ulang: boleh buat remote GitHub privat untuk repo ini? (ditunda dari Fase 1)
+
+## 16 Okt 2026 — Fase 3 SELESAI: Skills & knowledge
+
+### Yang dibangun
+- **10 skills playbook penuh** (`skills/*/SKILL.md` v1.0.0) — kontrak "agen senior" per skill:
+  SOP/playbook, toolbox, quality bar, trigger eskalasi, proof of work.
+  - Strategi Bisnis (6): branding-playbook, marketing-playbook, selling-playbook,
+    operational-playbook, finance-playbook, code-builder-playbook.
+  - Creative Director (4): storytelling, copywriting, content, smo-playbook.
+- **Knowledge disuling dari 4 dokumen Drive** (dibaca read-only via connector, tidak diubah):
+  `docs/fase3-knowledge/{branding,marketing,selling,operasional}.md` — inti framework, SOP,
+  toolbox, quality bar, catatan eskalasi, dan "yang TIDAK ada di dokumen" (jujur).
+- **Finance & Code Builder**: struktur skill lengkap + placeholder `[KNOWLEDGE PATRIA]` yang
+  ditandai jelas — TIDAK dikarang isinya (menunggu dokumen final Patria).
+- **Creative skills** (tanpa dokumen Drive): storytelling (Golden Circle — Sinek),
+  copywriting (PAS + 7 pola kualitas dari 4 konten acuan IG), content (pilar + kalender +
+  repurpose), smo-playbook (checklist 6 channel + ⛔ ATURAN KERAS: distribusi hanya draft,
+  dilarang auto-posting). Catatan jujur: 13-item quality bar rinci hilang bersama reset
+  PENDOPO — 7 pola intinya terdokumentasi; daftar penuh dimasukkan kembali bila acuan tersedia.
+- **Provider DeepSeek** (`daemon/src/providers_deepseek.rs`): OpenAI-compatible
+  (`api.deepseek.com/v1/chat/completions`), model deepseek-chat + deepseek-reasoner,
+  key via Keychain/env `MINIME_DEEPSEEK_KEY`, tanpa key → NoKey → fallback.
+  Masuk fallback chain strategi-bisnis (muse → gemini → deepseek → opencode).
+- **OAuth Google Drive** (`daemon/src/drive_oauth.rs`): authorization code flow +
+  loopback listener (127.0.0.1:port acak) + state anti-CSRF; scope `drive.readonly`;
+  refresh token di Keychain (write-only, tidak pernah di-log/dikembalikan);
+  auto-refresh access token. IPC baru: `drive.auth_url`, `drive.status`, `drive.disconnect`,
+  `secrets.set` (write-only), `secrets.has` (boolean saja). Event baru `minime://drive-auth`.
+  Panduan uji MacBook: `docs/drive-oauth.md` (buat OAuth client Desktop app → simpan
+  client_id via secrets.set → buka URL → approve).
+- **Executor: injeksi playbook stage-level** (`executor.rs::build_system_prompt`):
+  bila task input menyebut `skills: [...]`, isi penuh SKILL.md (tanpa frontmatter,
+  cap 6000 karakter/skill) di-inject ke system prompt di bawah header "PLAYBOOK AKTIF".
+  Mock provider (test-only) meng-echo playbook aktif untuk bukti wiring.
+
+### Bukti verifikasi (Linux, 16 Okt)
+- `cargo build` ✅, `cargo fmt` ✅, `cargo clippy` ✅ (8 warnings dead-code pre-existing, tanpa error).
+- 18/18 skills ter-load di daemon (sebelumnya 3 gagal karena `:` di frontmatter YAML — diperbaiki).
+- **Uji wiring 10/10 TERBUKTI**: 1 task per skill via mock (`MINIME_MOCK_LLM=1`) dengan
+  `input.skills=[<skill>]` → semua `done`, semua output mock memuat `PLAYBOOK AKTIF: <skill>`.
+  Sampel tersimpan: `docs/fase3-samples/<skill>.md` (10 file).
+- **DeepSeek wiring terbukti**: fallback chain dieksekusi muse→gemini→deepseek→opencode;
+  deepseek tanpa key → NoKey → lanjut fallback (terlihat di log). Live call menunggu key.
+- **OAuth URL terverifikasi via IPC**: `drive.auth_url` → URL accounts.google.com valid
+  (client_id, scope drive.readonly, state 32-char, redirect 127.0.0.1/callback,
+  access_type=offline); `drive.status` → `{"connected": false, "has_client_id": true}`;
+  `drive.disconnect` idempotent ✅.
+- **OpenCode free dicoba ulang 1x** (bonus E): masih hang — timeout 300 dtk, stdout kosong,
+  hanya banner model di stderr. Backend free tier belum pulih di environment ini.
+  Tidak dibakar waktu lebih lanjut (sesuai instruksi).
+
+### Blocker jujur (eksternal, bukan kode)
+1. OpenCode free tier masih tidak bisa dipakai (hang/timeout; sebelumnya 400 "Model is unavailable").
+   → Coba dari MacBook Patria / lain waktu.
+2. API key Gemini, Muse, DeepSeek belum ada → live test ketiga provider menunggu key
+   (via Keychain di MacBook, bukan chat).
+3. Flow browser OAuth penuh (approve di browser + callback) hanya bisa diuji di MacBook Patria.
+4. Knowledge finance & code-builder menunggu dokumen final Patria (placeholder jelas, tanpa karangan).
+5. 13-item quality bar rinci (4 konten acuan IG) hilang bersama reset PENDOPO —
+   perlu dimasukkan kembali dari acuan bila Patria menghendaki.
+
+### Untuk review gate Fase 3 (butuh Patria)
+1. Review 10 SKILL.md + 4 knowledge + 10 sampel (`docs/fase3-samples/`) — vonis: lanjut Fase 4 / revisi.
+2. Kirim dokumen final knowledge Finance & Code Builder (bila sudah ada).
+3. Putuskan: sediakan API key (Gemini/Muse/DeepSeek) via Keychain untuk live test, atau lanjut dengan mock.
+4. Konfirmasi ulang: boleh buat remote GitHub privat untuk repo ini? (ditunda dari Fase 1–2)
