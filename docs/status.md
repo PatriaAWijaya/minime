@@ -525,3 +525,42 @@ Perintah Patria: hapus fal.ai, ganti dengan Canva Video sebagai fallback.
 - **Kesimpulan: Canva MCP API tidak bisa generate video dari prompt.** Canva tetap berguna untuk thumbnail/cover (image.generate) dan export desain video yang dibuat manual di Canva UI (export-design → mp4), tetapi BUKAN pengganti fal.ai untuk render video AI otomatis.
 
 **Yang dilakukan:** backend fal.ai dihapus total dari `daemon/src/tools/veo3.rs` (fungsi `render_fal`, konstanta, key, dan rantai dihapus; `cargo build` bersih). Rantai akhir: **Gemini API (Veo 3.1) → HyperFrames lokal**. `params.backend`: auto|gemini|local. Pipeline naik ke v3; docs/TODO/status/sampel/content-skill diselaraskan.
+
+---
+
+## 17 Okt 2026 — Blotato DIGANTI postiz (perintah Patria)
+
+Perintah Patria: "ganti blotato dengan postiz".
+
+**Yang dilakukan:**
+- Tool daemon `postiz` baru (`daemon/src/tools/postiz.rs`): op `draft` (DRAFT-ONLY, `POST /public/v1/posts` type `draft`), `schedule` (WAJIB `approval_id` approved — tanpa itu DITOLAK), `accounts` + `list` (read-only). Platform Meta (instagram/facebook/threads) DITOLAK di tool ini — pakai tool `meta`.
+- `daemon/src/tools/blotato.rs` DIHAPUS total (kode lama pulih via git history). Registry `tools.rs`, allowlist `agents/creative-director/agent.yaml`, `skills/smo-playbook/SKILL.md` §E.2, pipeline `konten-video-otomatis` v4 (stage `distribusi-nometa` → tool `postiz`) diselaraskan.
+- postiz-app (AGPL-3.0) = layanan EKSTERNAL di MacBook Patria (`http://localhost:4007`); daemon hanya panggil Public API via Bearer `pos_...` (Keychain akun `postiz` / env `MINIME_POSTIZ_KEY`). Endpoint terverifikasi dari kode postiz (`/tmp/eval-blotato-alt/postiz`): `GET /is-connected`, `GET /integrations`, `POST /posts`, `GET /posts`.
+- Wiring mock TERBUKTI (lihat `docs/fase4-samples/konten-postiz.md`).
+
+**Belum teruji (butuh MacBook Patria):** kirim draft nyata via API (butuh 1 channel terhubung + API key `pos_...` di Keychain).
+
+---
+
+## 17 Okt 2026 (sore) — Uji Instagram via postiz BERHASIL; token meta diparkir; OpenCreator → Gemini
+
+**Uji Instagram end-to-end (terbimbing tahap demi tahap, BERHASIL ~17:12 WIB):**
+- Meta App "Minime" dibuat (ID 4452783818294531, tipe Bisnis) + produk Facebook Login for Business
+- 2 Valid OAuth Redirect URIs tersimpan (`/integrations/social/facebook`, `/integrations/social/instagram`)
+- FACEBOOK_APP_ID/SECRET ditempel ke .env postiz + restart
+- Channel IG "Branding, Marke..." tersambung via OAuth di dashboard postiz
+- 1 DRAFT ("uji coba dari Minime - abaikan") tersimpan via Create Post — **tanpa publish**
+- Rantai Meta App → OAuth → channel → draft TERBUKTI jalan
+
+**Token tool `meta` (draft-only) — DIAGNOSA TUNTAS, DIPARKIR atas pilihan Patria ~18:55:**
+- 5 permission di-generate via Graph API Explorer (pages_show_list, pages_read_engagement, instagram_basic, instagram_manage_insights, instagram_manage_contents)
+- Hasil: `me/accounts` → kosong; query Page by ID → error 100/33, MESKI sudah "Setujui semua Halaman" via Edit pengaturan
+- Penyebab: token user dari Facebook Login for Business bersifat business-scoped — tidak mengembalikan Page via `/me/accounts`
+- Jalur benar: System User token (tidak expire). System user "Minime" (Admin, ID 61595283518683) SUDAH dibuat; sisa: tambah App ke bisnis → assign aset → "Buat token". Detail di `docs/koneksi-meta.md`
+- Catatan: op `draft` tool meta TIDAK butuh token (file lokal); token hanya untuk op `accounts` (verifikasi)
+
+**Keputusan Patria: OpenCreator pakai Gemini** (bukan kunci OpenAI-compatible terpisah)
+- Diterapkan: `daemon/src/tools/opencreator.rs` gate ke Keychain akun `gemini`; `docs/open-creator.md` diperbarui
+- Manual sekali di MacBook: OpenCreator → Settings → AI Services → Gemini
+
+**Push 4 commit** (via push_rebased.py, tree identik): 14ffd9b→548b8cf (Veo 3.1), 1e86a0a→5495a30 (tool meta), 1bba756→c7cf70c (hapus fal.ai), 57ff9d7→01a90de (OpenCreator-Gemini). Remote HEAD: 01a90de.

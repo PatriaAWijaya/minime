@@ -19,7 +19,6 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 pub mod affinity;
-pub mod blotato;
 pub mod browser;
 pub mod canva;
 pub mod hyperframes;
@@ -27,6 +26,7 @@ pub mod instagram;
 pub mod manimgx;
 pub mod meta;
 pub mod opencreator;
+pub mod postiz;
 pub mod quant;
 pub mod valyu;
 pub mod veo3;
@@ -44,7 +44,7 @@ pub const TOOL_MANIMGX: &str = "manimgx";
 pub const TOOL_QUANT: &str = "quant";
 pub const TOOL_VALYU: &str = "valyu";
 pub const TOOL_VEO3: &str = "veo3";
-pub const TOOL_BLOTATO: &str = "blotato";
+pub const TOOL_POSTIZ: &str = "postiz";
 pub const TOOL_META: &str = "meta";
 
 pub const KNOWN_TOOLS: &[&str] = &[
@@ -59,7 +59,7 @@ pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_QUANT,
     TOOL_VALYU,
     TOOL_VEO3,
-    TOOL_BLOTATO,
+    TOOL_POSTIZ,
     TOOL_META,
 ];
 
@@ -144,7 +144,7 @@ pub async fn readiness(data_dir: &Path, repo_dir: &Path) -> Vec<ToolStatus> {
     out.push(quant::readiness().await);
     out.push(valyu::readiness().await);
     out.push(veo3::readiness().await);
-    out.push(blotato::readiness().await);
+    out.push(postiz::readiness().await);
     out.push(meta::readiness().await);
     out
 }
@@ -215,7 +215,7 @@ async fn dispatch(
         TOOL_QUANT => quant::run(op, params, ctx).await,
         TOOL_VALYU => valyu::run(op, params, ctx).await,
         TOOL_VEO3 => veo3::run(db, op, params, ctx).await,
-        TOOL_BLOTATO => blotato::run(db, op, params, ctx).await,
+        TOOL_POSTIZ => postiz::run(db, op, params, ctx).await,
         TOOL_META => meta::run(db, op, params, ctx).await,
         _ => anyhow::bail!("tool tidak dikenal: '{tool}'"),
     }

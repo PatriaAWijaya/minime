@@ -101,20 +101,23 @@ Instagram/Facebook/Threads, **Blotato** untuk 6 platform non-Meta.
 - **Token Meta:** Keychain akun `meta` / env `MINIME_META_TOKEN` (lihat
   `docs/koneksi-meta.md` untuk langkah setup oleh Patria).
 
-**E.2. Enam platform non-Meta — tool `blotato` (DRAFT-ONLY)**
-- YouTube, TikTok, Twitter/X, LinkedIn, Bluesky, Pinterest.
-- **Alur:** tool `blotato` op `draft` — upload video ke Blotato (bila API key ada)
-  + simpan bundle draft lokal per platform (`drafts/blotato-draft-<platform>-<ts>.json`).
-  Op ini TIDAK PERNAH memanggil publish.
-- **Publish:** HANYA via op `blotato.publish` dengan `approval_id` yang merujuk
-  approval berstatus `approved` di inbox. Tanpa itu → ditolak. Tidak ada publish
+**E.2. Enam platform non-Meta — tool `postiz` (DRAFT-ONLY + SCHEDULE-TERKUNCI)**
+- YouTube, TikTok, X, LinkedIn, Bluesky, Pinterest.
+- **Alur:** tool `postiz` op `draft` — kirim draft ke postiz-app
+  (layanan eksternal di MacBook Patria, `POST /public/v1/posts` type `draft`,
+  bila API key ada) + simpan bundle draft lokal per platform
+  (`drafts/postiz-draft-<platform>-<ts>.json`).
+  Op ini TIDAK PERNAH membuat type `schedule`/`now`.
+- **Schedule:** HANYA via op `postiz.schedule` dengan `approval_id` yang merujuk
+  approval berstatus `approved` di inbox. Tanpa itu → ditolak. Tidak ada schedule
   otomatis dari pipeline.
-- **API key Blotato:** Keychain akun `blotato` / env `MINIME_BLOTATO_KEY`
-  (minta ke Patria; tidak pernah di-commit/diminta via chat).
+- **API key postiz:** Keychain akun `postiz` / env `MINIME_POSTIZ_KEY`
+  (format `pos_...`; minta ke Patria; tidak pernah di-commit/diminta via chat).
+  URL layanan: env `MINIME_POSTIZ_URL` (default `http://localhost:4007`).
 - **Konvensi caption:** stage skrip pipeline menulis baris `CAPTION: ...`;
   stage distribusi mengambilnya otomatis bila params caption kosong.
 - **Tanpa key:** draft lokal tetap dibuat (video_path + caption + hashtag) —
-  distribusi tidak gagal diam-diam, hanya menunggu key untuk upload.
+  distribusi tidak gagal diam-diam, hanya menunggu key + layanan postiz.
 
 ## Toolbox
 
@@ -126,7 +129,7 @@ Instagram/Facebook/Threads, **Blotato** untuk 6 platform non-Meta.
 - Aturan ukur: follows/inbound/klik > likes/views
 - Bundle draft per platform: `video_path`/`media` valid + `caption` + `hashtags`
   + `status: draft` + catatan publish yang benar (Meta = manual Patria; tool `meta`
-  untuk IG/FB/Threads, tool `blotato` untuk 6 non-Meta)
+  untuk IG/FB/Threads, tool `postiz` untuk 6 non-Meta)
 
 ## Quality bar
 

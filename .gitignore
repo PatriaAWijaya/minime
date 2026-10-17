@@ -22,3 +22,6 @@ Thumbs.db
 
 # OpenCode CLI (diunduh otomatis oleh daemon saat pertama dipakai; 178MB)
 tools/bin/
+
+# HyperFrames render artifacts (state lokal, bukan sumber)
+**/.hyperframes/

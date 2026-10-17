@@ -77,3 +77,27 @@ membuka kunci publish:
 - [x] Pipeline `konten-video-otomatis` v3: stage `distribusi-meta` (tool meta)
 - [ ] Token Meta dari Patria (langkah 1–4 di atas)
 - [ ] Live test `accounts` (verifikasi FB Page + IG + Threads terbaca)
+
+## Catatan live test 17 Okt 2026 (Patria)
+
+**Hasil:** user access token dari Graph API Explorer TIDAK bisa mengakses FB Page
+untuk Business app, meskipun:
+- 5 permission terpilih (pages_show_list, pages_read_engagement, instagram_basic,
+  instagram_manage_insights, instagram_manage_contents)
+- Dialog OAuth "Setujui semua Halaman saat ini dan di masa mendatang" dipilih
+- Token valid (`me?fields=id,name` → "Patria A. Wijaya" benar)
+
+Gejala: `me/accounts` → `{"data": []}`; query Page langsung by ID →
+error 100/subcode 33 (no access). Penyebab: token user dari **Facebook Login for
+Business** bersifat business-scoped — `/me/accounts` tidak mengembalikan Page
+meski user mengelolanya via facebook.com/pages.
+
+**Jalur yang benar untuk Business app: System User** (tidak expire, akses
+langsung ke aset bisnis):
+1. Business Settings → Users → System Users → buat "Minime" (Admin) ✅ dibuat 17 Okt
+2. Assign aset (Page + IG) ke system user
+3. Business Settings → Apps → tambahkan App ID Minime ke bisnis
+4. System user → "Buat token" → pilih app + scope → token long-lived
+
+**Catatan:** op `draft` tool `meta` TIDAK butuh token (file lokal saja).
+Token hanya dibutuhkan op `accounts` (verifikasi read-only).

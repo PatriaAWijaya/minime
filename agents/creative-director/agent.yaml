@@ -26,7 +26,7 @@ tools_allowlist:
   - instagram-cli
   - manimgx
   - veo3
-  - blotato
+  - postiz
 daily_budget_usd: 8.0
 avatar: assets/avatars/creative.webp
 color: "#1B5E20"

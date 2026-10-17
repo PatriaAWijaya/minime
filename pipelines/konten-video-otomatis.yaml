@@ -10,15 +10,16 @@
 #   Model default: veo-3.1-fast-generate-preview (1080p/8 dtk/16:9).
 #   Tanpa key Gemini → langsung HyperFrames lokal;
 #   tiap langkah dicatat jujur di "attempts".
-# STEP 3 (diagram): ambil video → upload Blotato → assign IDs → publish 9
-#   platform → log Sheets. Di Minime (17 Okt, perintah Patria): distribusi
-#   HYBRID — 3 platform Meta (IG/FB/Threads) via tool `meta` (koneksi langsung
-#   Graph API/Threads API, DRAFT-ONLY), 6 platform non-Meta via tool `blotato`
-#   (op draft — tidak pernah publish otomatis).
+# STEP 3 (diagram): ambil video → draft postiz → assign channel → schedule
+#   6 platform (setelah approval) → log. Di Minime (17 Okt, perintah Patria):
+#   distribusi HYBRID — 3 platform Meta (IG/FB/Threads) via tool `meta`
+#   (koneksi langsung Graph API/Threads API, DRAFT-ONLY), 6 platform non-Meta
+#   via tool `postiz` (postiz-app eksternal di MacBook; op draft — tidak pernah
+#   schedule otomatis).
 #
 # ATURAN KERAS (rule #3): TIDAK ADA auto-posting. Seluruh 9 platform hanya
 # berupa DRAFT; publish IG/FB/Threads DITOLAK di kode (manual oleh Patria);
-# 6 platform lain hanya via op blotato.publish dengan approval_id yang sudah
+# 6 platform lain hanya via op postiz.schedule dengan approval_id yang sudah
 # di-approve. Gate approval Patria (stage distribusi → approval) menghentikan
 # run; logging utama di SQLite Minime (Sheets opsional).
 #
@@ -29,7 +30,7 @@
 #     output stage skrip / artefak MP4 stage render dari runs.context.
 name: konten-video-otomatis
 version: 3
-description: Video AI harian — skrip → render Veo 3.1 (Gemini API → HyperFrames) → QC → draft distribusi hybrid (Meta langsung + Blotato non-Meta) → approval Patria (DRAFT-ONLY)
+description: Video AI harian — skrip → render Veo 3.1 (Gemini API → HyperFrames) → QC → draft distribusi hybrid (Meta langsung + postiz non-Meta) → approval Patria (DRAFT-ONLY)
 
 stages:
   - id: skrip
@@ -100,10 +101,10 @@ stages:
 
   - id: distribusi-nometa
     agent: creative-director
-    title: Draft distribusi non-Meta via Blotato (DRAFT-ONLY)
+    title: Draft distribusi non-Meta via postiz (DRAFT-ONLY)
     skills: [smo-playbook]
     tool:
-      id: blotato
+      id: postiz
       op: draft
       params:
         video_path: ""
@@ -112,12 +113,13 @@ stages:
         platforms:
           - youtube
           - tiktok
-          - twitter
+          - x
           - linkedin
           - bluesky
           - pinterest
     notes: >-
-      ATURAN KERAS — HANYA DRAFT. 6 platform non-Meta via Blotato; op publish
-      hanya dengan approval_id yang sudah di-approve Patria (Meta tidak
-      dilayani tool ini lagi).
+      ATURAN KERAS — HANYA DRAFT. 6 platform non-Meta via postiz-app
+      (layanan eksternal di MacBook Patria); op schedule hanya dengan
+      approval_id yang sudah di-approve Patria (Meta tidak dilayani tool
+      ini).
     on_done: approval

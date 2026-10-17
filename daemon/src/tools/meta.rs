@@ -140,14 +140,19 @@ async fn draft(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
                 .filter_map(|x| x.as_str().map(|s| s.to_string().to_lowercase()))
                 .collect()
         })
-        .unwrap_or_else(|| META_DIRECT_PLATFORMS.iter().map(|s| s.to_string()).collect());
+        .unwrap_or_else(|| {
+            META_DIRECT_PLATFORMS
+                .iter()
+                .map(|s| s.to_string())
+                .collect()
+        });
     if platforms.is_empty() {
         anyhow::bail!("params.platforms kosong");
     }
     for p in &platforms {
         if !META_DIRECT_PLATFORMS.contains(&p.as_str()) {
             anyhow::bail!(
-                "platform '{p}' bukan Meta — tool ini hanya untuk instagram/facebook/threads (6 platform lain via blotato)"
+                "platform '{p}' bukan Meta — tool ini hanya untuk instagram/facebook/threads (6 platform lain via postiz)"
             );
         }
     }
@@ -317,7 +322,9 @@ fn manual_steps(platform: &str, media: &[String]) -> Value {
     };
     let steps: Vec<String> = match platform {
         "instagram" => vec![
-            format!("Buka aplikasi Instagram / Meta Business Suite → buat Reels baru ({media_desc})."),
+            format!(
+                "Buka aplikasi Instagram / Meta Business Suite → buat Reels baru ({media_desc})."
+            ),
             "Tempel caption + hashtag dari bundle ini.".to_string(),
             "Posting manual — JANGAN via tool (rule #3).".to_string(),
         ],
@@ -408,10 +415,7 @@ async fn accounts() -> Result<Value> {
     // 3. Threads profile (host terpisah).
     let threads_resp: Value = client()?
         .get(format!("{GRAPH_THREADS}/me"))
-        .query(&[
-            ("fields", "id,username"),
-            ("access_token", token.as_str()),
-        ])
+        .query(&[("fields", "id,username"), ("access_token", token.as_str())])
         .send()
         .await
         .context("gagal menghubungi Threads API /me")?
