@@ -3,11 +3,12 @@
 # STEP 1 (diagram): trigger harian → AI Agent generate konsep → simpan ke Sheets
 #   → AI Agent format prompt Veo3. Di Minime: stage `skrip` (LLM via routing
 #   provider Minime: Muse/Gemini/DeepSeek/OpenCode-free — BUKAN GPT-4.1).
-# STEP 2 (diagram): call Veo3 API (fal.ai queue) → tunggu ±5 mnt → ambil URL
-#   → log. Di Minime (17 Okt, perintah Patria): stage `render` (tool veo3)
-#   dengan rantai backend GEMINI API PRIMER → fal.ai → HyperFrames lokal.
+# STEP 2 (diagram): call Veo3 API → tunggu → ambil URL → log.
+#   Di Minime (17 Okt, perintah Patria): stage `render` (tool veo3)
+#   dengan rantai backend GEMINI API → HyperFrames lokal (fal.ai DIHAPUS
+#   TOTAL 17 Okt — bukan fallback).
 #   Model default: veo-3.1-fast-generate-preview (1080p/8 dtk/16:9).
-#   Tanpa key Gemini → coba fal.ai → tanpa keduanya → HyperFrames lokal;
+#   Tanpa key Gemini → langsung HyperFrames lokal;
 #   tiap langkah dicatat jujur di "attempts".
 # STEP 3 (diagram): ambil video → upload Blotato → assign IDs → publish 9
 #   platform → log Sheets. Di Minime (17 Okt, perintah Patria): distribusi
@@ -27,8 +28,8 @@
 #   - stage render/distribusi memakai params eksplisit bila diisi, else baca
 #     output stage skrip / artefak MP4 stage render dari runs.context.
 name: konten-video-otomatis
-version: 2
-description: Video AI harian — skrip → render Veo 3.1 (Gemini API primer → fal.ai → HyperFrames) → QC → draft distribusi hybrid (Meta langsung + Blotato non-Meta) → approval Patria (DRAFT-ONLY)
+version: 3
+description: Video AI harian — skrip → render Veo 3.1 (Gemini API → HyperFrames) → QC → draft distribusi hybrid (Meta langsung + Blotato non-Meta) → approval Patria (DRAFT-ONLY)
 
 stages:
   - id: skrip
@@ -59,9 +60,9 @@ stages:
         output: "video-harian.mp4"
     notes: >-
       params.prompt kosong = ambil dari baris PROMPT_VEO3: stage skrip.
-      backend "auto" (default): Gemini API (Veo 3.1 Fast) → fal.ai →
+      backend "auto" (default): Gemini API (Veo 3.1 Fast) →
       HyperFrames lokal; tiap percobaan dicatat di "attempts" (jujur).
-      backend bisa dipaksa: "gemini"|"fal"|"local". Perkiraan biaya klip
+      backend bisa dipaksa: "gemini"|"local". Perkiraan biaya klip
       8 dtk 1080p Fast ≈ $0,96 (harga publik Google, bukan janji).
     on_done: handoff(qc)
 

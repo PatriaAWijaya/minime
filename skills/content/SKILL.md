@@ -58,7 +58,7 @@ Satu arsitektur pesan untuk semua channel.
 
 | Kebutuhan | Pakai | Catatan |
 |---|---|---|
-| Footage generatif sinematik, b-roll AI, visual eye-catching dari prompt teks | **Veo** — tool `veo3` op `render` (Gemini API primer → fal.ai fallback) | Dipakai pipeline `konten-video-otomatis`. Model default `veo-3.1-fast-generate-preview` (1080p/8 dtk/16:9). Perkiraan biaya: ±$0,96/klip (harga publik Google, bukan janji). Key: Keychain akun `gemini` |
+| Footage generatif sinematik, b-roll AI, visual eye-catching dari prompt teks | **Veo** — tool `veo3` op `render` (Gemini API → HyperFrames lokal; fal.ai DIHAPUS 17 Okt) | Dipakai pipeline `konten-video-otomatis`. Model default `veo-3.1-fast-generate-preview` (1080p/8 dtk/16:9). Perkiraan biaya: ±$0,96/klip (harga publik Google, bukan janji). Key: Keychain akun `gemini` |
 | Naskah → video + voiceover Bahasa Indonesia; eksplainer, konten bernarasi, faceless video | **OpenCreator** — skill `open-creator` (sidecar) | Live test menunggu kunci Patria |
 | Tanpa kunci / offline / cepat | **HyperFrames** (HTML→MP4) atau **manimgx** (animasi edukasi) | Fallback lokal otomatis bila backend AI tidak tersedia |
 

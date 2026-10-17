@@ -2,7 +2,7 @@
 
 > **CATATAN JUJUR:** ini bukti wiring MOCK (`MINIME_MOCK_LLM=1`), bukan produksi
 > video AI beneran. LLM diganti mock provider; `veo3.render` mengembalikan hasil
-> mock eksplisit (tidak memanggil fal.ai, tidak membuat MP4); `blotato.draft`
+> mock eksplisit (tidak memanggil API, tidak membuat MP4); `blotato.draft`
 > membuat bundle draft lokal (upload dilewati — API key belum diset).
 > Render Veo3 asli dan upload Blotato menunggu API key Patria via Keychain.
 
@@ -42,7 +42,7 @@ MINIME_DATA_DIR=/tmp/minime-videotest MINIME_MOCK_LLM=1 ./daemon/target/debug/mi
 ## Yang belum teruji (butuh kunci / MacBook)
 
 - Render Veo 3.1 asli via Gemini API (butuh Keychain akun `gemini` / `MINIME_GEMINI_KEY`).
-- Render Veo3 asli via fal.ai (butuh `MINIME_FAL_KEY` / Keychain akun `fal`) — kini fallback.
+- Render Veo3 asli via Gemini API (butuh Keychain akun `gemini`).
 - Upload media + `publish` non-Meta via Blotato (butuh `MINIME_BLOTATO_KEY` /
   Keychain akun `blotato` + approval approved).
 

@@ -1,7 +1,7 @@
-//! Render video Veo 3.1 — rantai backend: Gemini API (primer) → fal.ai → HyperFrames lokal.
+//! Render video Veo 3.1 — rantai backend: Gemini API → HyperFrames lokal.
 //!
-//! Perintah Patria 17 Okt 2026: primer pindah dari fal.ai ke Gemini API (Veo 3.1),
-//! fal.ai jadi fallback. Endpoint terverifikasi dari docs resmi Google AI for
+//! Perintah Patria 17 Okt 2026: primer via Gemini API (Veo 3.1); fal.ai
+//! DIHAPUS TOTAL dari rantai (bukan fallback). Endpoint terverifikasi dari docs resmi Google AI for
 //! Developers (https://ai.google.dev/gemini-api/docs/veo):
 //!   POST {BASE}/models/{model}:predictLongRunning
 //!     header `x-goog-api-key`, body {"instances":[{"prompt"}],"parameters":{...}}
@@ -14,10 +14,9 @@
 //! untuk 1080p/4k); resolution "720p"/"1080p"; personGeneration "allow_all"
 //! untuk text-to-video. 1 video per request, 24fps, MP4, audio native.
 //!
-//! - readiness: cek key Gemini (Keychain akun `gemini` / env MINIME_GEMINI_KEY),
-//!   lalu key fal (Keychain akun `fal` / env MINIME_FAL_KEY).
-//! - render: params.backend = auto|gemini|fal|local (default auto).
-//!   auto: gemini (bila key ada) → fal.ai (bila key ada) → HyperFrames lokal.
+//! - readiness: cek key Gemini (Keychain akun `gemini` / env MINIME_GEMINI_KEY).
+//! - render: params.backend = auto|gemini|local (default auto).
+//!   auto: gemini (bila key ada) → HyperFrames lokal.
 //!   Setiap percobaan dicatat di "attempts" — tidak ada kegagalan diam-diam.
 //! - MINIME_MOCK_LLM=1 → hasil mock eksplisit (uji wiring pipeline).
 //! Kredensial tidak pernah di-log (rule #2).
@@ -30,7 +29,6 @@ use serde_json::{json, Value};
 use std::time::Duration;
 
 const GEMINI_BASE: &str = "https://generativelanguage.googleapis.com/v1beta";
-const FAL_QUEUE_BASE: &str = "https://queue.fal.run";
 /// Default: Veo 3.1 Fast via Gemini API (1080p/8 dtk ≈ tercepat & termurah untuk harian).
 const DEFAULT_MODEL: &str = "veo-3.1-fast-generate-preview";
 /// Poll tiap 15 detik, maksimal ~10 menit (docs: latensi maks 6 menit).
@@ -41,38 +39,28 @@ fn gemini_key() -> Option<String> {
     secrets::api_key("gemini")
 }
 
-fn fal_key() -> Option<String> {
-    secrets::api_key("fal")
-}
-
 fn mock_mode() -> bool {
     std::env::var("MINIME_MOCK_LLM").is_ok()
 }
 
 pub async fn readiness() -> ToolStatus {
-    match (gemini_key().is_some(), fal_key().is_some()) {
-        (true, _) => ToolStatus::ready(
+    if gemini_key().is_some() {
+        ToolStatus::ready(
             super::TOOL_VEO3,
             "Veo 3.1 (Gemini API)",
             "api",
-            "API key Gemini tersedia — render primer via Veo 3.1 Fast (1080p/8 dtk/16:9).",
-            "Fallback berantai: fal.ai → HyperFrames lokal (dicatat jujur di log).",
-        ),
-        (false, true) => ToolStatus::ready(
-            super::TOOL_VEO3,
-            "Veo 3.1 (fallback fal.ai)",
-            "api",
-            "JUJUR: key Gemini belum diset — primer nonaktif; render via fallback fal.ai.",
-            "Fallback berantai: HyperFrames lokal bila fal.ai gagal (dicatat jujur).",
-        ),
-        (false, false) => ToolStatus::not(
+            "API key Gemini tersedia — render via Veo 3.1 Fast (1080p/8 dtk/16:9).",
+            "Fallback: HyperFrames lokal (dicatat jujur di log).",
+        )
+    } else {
+        ToolStatus::not(
             super::TOOL_VEO3,
             "Veo 3.1",
             "api",
             super::STATE_NOT_CONFIGURED,
-            "Key Gemini (akun `gemini`/MINIME_GEMINI_KEY) dan key fal.ai belum diset.",
+            "Key Gemini (akun `gemini`/MINIME_GEMINI_KEY) belum diset.",
             "Fallback otomatis: render lokal via HyperFrames (dicatat jujur di log).",
-        ),
+        )
     }
 }
 
@@ -240,18 +228,17 @@ async fn render(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
         return Ok(json!({
             "mock": true,
             "video_path": video_path.to_string_lossy(),
-            "backend_chain": ["gemini", "fal", "hyperframes"],
+            "backend_chain": ["gemini", "hyperframes"],
             "prompt_source": prompt_source,
-            "note": "MOCK (MINIME_MOCK_LLM=1): render dilewati — file MP4 tidak dibuat. Rantai nyata: Gemini API (Veo 3.1) → fal.ai → HyperFrames lokal. Uji wiring saja.",
+            "note": "MOCK (MINIME_MOCK_LLM=1): render dilewati — file MP4 tidak dibuat. Rantai nyata: Gemini API (Veo 3.1) → HyperFrames lokal. Uji wiring saja.",
         }));
     }
 
-    // Rantai backend: primer → fallback. "local" = pamungkas tanpa AI.
+    // Rantai backend: Gemini → HyperFrames lokal. "local" = langsung pamungkas.
     let order: &[&str] = match backend {
-        "gemini" => &["gemini", "fal", "hyperframes"],
-        "fal" => &["fal", "hyperframes"],
+        "gemini" => &["gemini", "hyperframes"],
         "local" => &["hyperframes"],
-        _ => &["gemini", "fal", "hyperframes"], // "auto" (default)
+        _ => &["gemini", "hyperframes"], // "auto" (default)
     };
     let mut attempts: Vec<Value> = Vec::new();
     for b in order {
@@ -283,30 +270,6 @@ async fn render(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
                         }
                         Err(e) => attempts.push(json!({
                             "backend": "gemini",
-                            "status": "failed",
-                            "reason": format!("{e:#}"),
-                        })),
-                    }
-                }
-            },
-            "fal" => match fal_key() {
-                None => attempts.push(json!({
-                    "backend": "fal",
-                    "status": "skipped",
-                    "reason": "API key fal.ai belum diset (Keychain akun `fal` / env MINIME_FAL_KEY) — lanjut ke fallback.",
-                })),
-                Some(key) => {
-                    match render_fal(&key, model, &prompt, duration_s, aspect_ratio, output, ctx)
-                        .await
-                    {
-                        Ok(mut v) => {
-                            v["backend"] = json!("fal");
-                            v["attempts"] = json!(attempts);
-                            v["prompt_source"] = json!(prompt_source);
-                            return Ok(v);
-                        }
-                        Err(e) => attempts.push(json!({
-                            "backend": "fal",
                             "status": "failed",
                             "reason": format!("{e:#}"),
                         })),
@@ -440,112 +403,6 @@ async fn render_gemini(
         "bytes": bytes.len(),
         "est_cost_usd": est_cost_usd(model, secs),
         "cost_note": "PERKIRAAN kasar dari harga publik Google (bukan janji/tagihan aktual).",
-    }))
-}
-
-/// Alur queue fal.ai: POST → request_id → poll status → unduh video.
-/// Kini berperan sebagai FALLBACK bila primer Gemini tidak tersedia/gagal.
-async fn render_fal(
-    key: &str,
-    model: &str,
-    prompt: &str,
-    duration_s: u64,
-    aspect_ratio: &str,
-    output: &str,
-    ctx: &ToolCtx,
-) -> Result<Value> {
-    // Model default tool ini kini ID Gemini; untuk fal.ai pakai ID fal bila
-    // params.model masih default Gemini.
-    let fal_model = if model.starts_with("veo-3.1") {
-        "fal-ai/veo3.1"
-    } else {
-        model
-    };
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(120))
-        .build()?;
-    // 1. Submit queue.
-    let submit: Value = client
-        .post(format!("{FAL_QUEUE_BASE}/{fal_model}"))
-        .header("Authorization", format!("Key {key}"))
-        .json(&json!({
-            "prompt": prompt,
-            "duration": format!("{duration_s}s"),
-            "aspect_ratio": aspect_ratio,
-        }))
-        .send()
-        .await
-        .context("gagal menghubungi fal.ai queue")?
-        .json()
-        .await
-        .context("respons submit fal.ai bukan JSON")?;
-    let request_id = submit
-        .get("request_id")
-        .and_then(|v| v.as_str())
-        .context("fal.ai tidak mengembalikan request_id")?
-        .to_string();
-
-    // 2. Poll status.
-    let status_url = format!("{FAL_QUEUE_BASE}/{fal_model}/requests/{request_id}/status");
-    let mut video_url: Option<String> = None;
-    for _ in 0..POLL_MAX {
-        tokio::time::sleep(POLL_EVERY).await;
-        let st: Value = client
-            .get(&status_url)
-            .header("Authorization", format!("Key {key}"))
-            .send()
-            .await
-            .context("gagal poll status fal.ai")?
-            .json()
-            .await
-            .context("respons status fal.ai bukan JSON")?;
-        match st.get("status").and_then(|v| v.as_str()).unwrap_or("") {
-            "COMPLETED" => {
-                // Ambil hasil penuh via response_url.
-                let resp_url = format!("{FAL_QUEUE_BASE}/{fal_model}/requests/{request_id}");
-                let full: Value = client
-                    .get(&resp_url)
-                    .header("Authorization", format!("Key {key}"))
-                    .send()
-                    .await
-                    .context("gagal ambil hasil fal.ai")?
-                    .json()
-                    .await
-                    .context("respons hasil fal.ai bukan JSON")?;
-                video_url = full
-                    .get("video")
-                    .and_then(|v| v.get("url"))
-                    .and_then(|u| u.as_str())
-                    .map(|s| s.to_string());
-                break;
-            }
-            "FAILED" | "CANCELED" => {
-                anyhow::bail!("render fal.ai gagal/dibatalkan: {request_id}");
-            }
-            _ => {} // IN_QUEUE / IN_PROGRESS → lanjut poll.
-        }
-    }
-    let video_url = video_url.context("timeout menunggu render fal.ai (±10 menit)")?;
-
-    // 3. Unduh MP4 ke artifact dir (deliverable lokal, bukan cuma URL).
-    let bytes = client
-        .get(&video_url)
-        .send()
-        .await
-        .context("gagal mengunduh video fal.ai")?
-        .bytes()
-        .await
-        .context("gagal membaca body video")?;
-    let dir = ctx.artifact_dir()?;
-    let video_path = dir.join(output);
-    std::fs::write(&video_path, &bytes)
-        .with_context(|| format!("gagal menulis {}", video_path.display()))?;
-    Ok(json!({
-        "video_path": video_path.to_string_lossy(),
-        "video_url": video_url,
-        "model": fal_model,
-        "request_id": request_id,
-        "bytes": bytes.len(),
     }))
 }
 

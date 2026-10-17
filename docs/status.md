@@ -512,3 +512,16 @@ bersih (warning doc-style pre-existing, sama seperti tool lain).
 
 **Belum teruji (butuh Patria):** token Meta (ikuti `docs/koneksi-meta.md`),
 lalu live test `accounts` untuk verifikasi FB Page + IG Bisnis + Threads terbaca.
+
+---
+
+## 17 Okt 2026 — fal.ai DIHAPUS TOTAL; Canva Video tidak bisa jadi pengganti (terbukti)
+
+Perintah Patria: hapus fal.ai, ganti dengan Canva Video sebagai fallback.
+
+**Hasil verifikasi jujur (3x test live via `canva` CLI di VM):**
+- `create-design` dengan brief video → 2x GAGAL ("The design could not be generated from this brief").
+- `generate-design` → enum `design_type` TIDAK memuat tipe video apa pun (hanya: business_card, card, poster, presentation, youtube_thumbnail, dst — tidak ada video/reel).
+- **Kesimpulan: Canva MCP API tidak bisa generate video dari prompt.** Canva tetap berguna untuk thumbnail/cover (image.generate) dan export desain video yang dibuat manual di Canva UI (export-design → mp4), tetapi BUKAN pengganti fal.ai untuk render video AI otomatis.
+
+**Yang dilakukan:** backend fal.ai dihapus total dari `daemon/src/tools/veo3.rs` (fungsi `render_fal`, konstanta, key, dan rantai dihapus; `cargo build` bersih). Rantai akhir: **Gemini API (Veo 3.1) → HyperFrames lokal**. `params.backend`: auto|gemini|local. Pipeline naik ke v3; docs/TODO/status/sampel/content-skill diselaraskan.
