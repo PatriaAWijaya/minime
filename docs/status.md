@@ -564,3 +564,16 @@ Perintah Patria: "ganti blotato dengan postiz".
 - Manual sekali di MacBook: OpenCreator → Settings → AI Services → Gemini
 
 **Push 4 commit** (via push_rebased.py, tree identik): 14ffd9b→548b8cf (Veo 3.1), 1e86a0a→5495a30 (tool meta), 1bba756→c7cf70c (hapus fal.ai), 57ff9d7→01a90de (OpenCreator-Gemini). Remote HEAD: 01a90de.
+
+---
+
+## 17 Okt 2026 (malam) — VONIS GATE FASE 4: LOLOS BERSYARAT → lanjut Fase 5
+
+Vonis Patria: Gate 4 **lolos bersyarat** — Fase 5 dimulai besok (18 Okt), sambil
+memperbaiki backlog Gate 4 yang tersisa paralel dengan pekerjaan Fase 5.
+
+**Backlog Gate 4 yang dibawa ke Fase 5:**
+- Live test postiz via API nyata (butuh MacBook Patria: koneksi + API key `pos_...` di Keychain)
+- Live test Meta `accounts` (butuh system user token — diparkir, fondasi sudah dibuat)
+- Uji 1 video OpenCreator via Gemini (butuh kunci Gemini + instalasi OpenCreator di MacBook)
+- Sisa live test provider (Gemini/Muse/DeepSeek) di MacBook
