@@ -41,7 +41,49 @@ MINIME_DATA_DIR=/tmp/minime-videotest MINIME_MOCK_LLM=1 ./daemon/target/debug/mi
 
 ## Yang belum teruji (butuh kunci / MacBook)
 
-- Render Veo3 asli via fal.ai (butuh `MINIME_FAL_KEY` / Keychain akun `fal`).
-- Fallback HyperFrames lokal (kode ada; render nyata belum dijalankan di uji ini).
+- Render Veo 3.1 asli via Gemini API (butuh Keychain akun `gemini` / `MINIME_GEMINI_KEY`).
+- Render Veo3 asli via fal.ai (butuh `MINIME_FAL_KEY` / Keychain akun `fal`) — kini fallback.
 - Upload media + `publish` non-Meta via Blotato (butuh `MINIME_BLOTATO_KEY` /
   Keychain akun `blotato` + approval approved).
+
+---
+
+## 17 Okt 2026 — Rantai backend: Gemini API (primer) → fal.ai → HyperFrames
+
+Perintah Patria: primer pindah dari fal.ai ke **Gemini API (Veo 3.1)**.
+
+**Endpoint terverifikasi** (docs resmi Google AI for Developers,
+`ai.google.dev/gemini-api/docs/veo`):
+- `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:predictLongRunning`
+  (header `x-goog-api-key`, body `{"instances":[{"prompt"}],"parameters":{...}}`)
+  → `{"name": "operations/..."}` → `GET {BASE}/{name}` → cek `.done`
+  → `.response.generateVideoResponse.generatedSamples[0].video.uri` → unduh MP4.
+- Model IDs (Gemini API): `veo-3.1-fast-generate-preview` (default tool),
+  `veo-3.1-generate-preview`. ID `-001` adalah Vertex AI, bukan Gemini API.
+- Parameters: `aspectRatio` 16:9/9:16; `durationSeconds` "4"/"6"/"8"
+  (wajib "8" untuk 1080p); `resolution` 720p/1080p; `personGeneration`
+  "allow_all" (text-to-video). Latensi 11 dtk–6 mnt (docs).
+
+**Uji wiring mock** (`MINIME_MOCK_LLM=1`, daemon terisolasi) — LULUS:
+- `tools.status` → `veo3` label "Veo 3.1", `ready=false`, `state=not_configured`,
+  detail jujur menyebut key Gemini DAN key fal.ai.
+- `tools.run veo3.render` (mock) → `{"mock":true, "backend_chain":["gemini","fal","hyperframes"]}`.
+- `blotato.publish` instagram → **tetap DITOLAK** (guard tidak tersentuh).
+
+**Uji rantai fallback nyata** (tanpa mock, tanpa key) — LULUS (perilaku jujur):
+- `gemini` → skipped (key belum diset) → `fal` → skipped (key belum diset) →
+  `hyperframes` → dicoba, gagal jujur (ruang /tmp habis — 0,2 GB; lingkungan,
+  bukan bug) → error akhir memuat SELURUH `attempts`. Tidak ada kegagalan diam-diam.
+
+**Bug ditemukan & diperbaiki saat uji:** `fallback_hyperframes` panic
+(index out of range) untuk prompt < 24 kata — `start` tidak di-clamp ke
+panjang slice. Sudah diperbaiki (clamp `start` juga).
+
+**Perkiraan biaya** (harga publik Google, BUKAN janji): klip 8 dtk 1080p
+tier Fast ≈ $0,12/dtk → **≈ $0,96/klip**. Tercatat sebagai `est_cost_usd`
+di hasil render + di `docs/status.md`.
+
+**Panduan routing produksi video** (keputusan Patria: Veo & OpenCreator paralel):
+ditambahkan sebagai §E di `skills/content/SKILL.md` — Veo untuk footage
+generatif sinematik/b-roll AI; OpenCreator untuk naskah → video + voiceover
+Indonesia (menunggu kunci); HyperFrames/manimgx fallback lokal tanpa kunci.

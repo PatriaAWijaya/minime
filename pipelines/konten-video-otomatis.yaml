@@ -4,11 +4,16 @@
 #   → AI Agent format prompt Veo3. Di Minime: stage `skrip` (LLM via routing
 #   provider Minime: Muse/Gemini/DeepSeek/OpenCode-free — BUKAN GPT-4.1).
 # STEP 2 (diagram): call Veo3 API (fal.ai queue) → tunggu ±5 mnt → ambil URL
-#   → log. Di Minime: stage `render` (tool veo3; fallback HyperFrames lokal
-#   bila key fal.ai belum diset — dicatat jujur).
+#   → log. Di Minime (17 Okt, perintah Patria): stage `render` (tool veo3)
+#   dengan rantai backend GEMINI API PRIMER → fal.ai → HyperFrames lokal.
+#   Model default: veo-3.1-fast-generate-preview (1080p/8 dtk/16:9).
+#   Tanpa key Gemini → coba fal.ai → tanpa keduanya → HyperFrames lokal;
+#   tiap langkah dicatat jujur di "attempts".
 # STEP 3 (diagram): ambil video → upload Blotato → assign IDs → publish 9
-#   platform → log Sheets. Di Minime: stage `distribusi` (tool blotato, op
-#   DRAFT — tidak pernah publish otomatis).
+#   platform → log Sheets. Di Minime (17 Okt, perintah Patria): distribusi
+#   HYBRID — 3 platform Meta (IG/FB/Threads) via tool `meta` (koneksi langsung
+#   Graph API/Threads API, DRAFT-ONLY), 6 platform non-Meta via tool `blotato`
+#   (op draft — tidak pernah publish otomatis).
 #
 # ATURAN KERAS (rule #3): TIDAK ADA auto-posting. Seluruh 9 platform hanya
 # berupa DRAFT; publish IG/FB/Threads DITOLAK di kode (manual oleh Patria);
@@ -22,8 +27,8 @@
 #   - stage render/distribusi memakai params eksplisit bila diisi, else baca
 #     output stage skrip / artefak MP4 stage render dari runs.context.
 name: konten-video-otomatis
-version: 1
-description: Video AI harian — skrip → render Veo3 → QC → draft distribusi 9 platform → approval Patria (DRAFT-ONLY)
+version: 2
+description: Video AI harian — skrip → render Veo 3.1 (Gemini API primer → fal.ai → HyperFrames) → QC → draft distribusi hybrid (Meta langsung + Blotato non-Meta) → approval Patria (DRAFT-ONLY)
 
 stages:
   - id: skrip
@@ -40,7 +45,7 @@ stages:
 
   - id: render
     agent: creative-director
-    title: Render video (Veo3 / fallback lokal)
+    title: Render video (Veo 3.1 Gemini API / fallback berantai)
     skills: [content]
     tool:
       id: veo3
@@ -49,10 +54,15 @@ stages:
         prompt: ""
         duration_s: 8
         aspect_ratio: "16:9"
+        resolution: "1080p"
+        backend: "auto"
         output: "video-harian.mp4"
     notes: >-
       params.prompt kosong = ambil dari baris PROMPT_VEO3: stage skrip.
-      Tanpa API key fal.ai → fallback HyperFrames lokal (dicatat jujur).
+      backend "auto" (default): Gemini API (Veo 3.1 Fast) → fal.ai →
+      HyperFrames lokal; tiap percobaan dicatat di "attempts" (jujur).
+      backend bisa dipaksa: "gemini"|"fal"|"local". Perkiraan biaya klip
+      8 dtk 1080p Fast ≈ $0,96 (harga publik Google, bukan janji).
     on_done: handoff(qc)
 
   - id: qc
@@ -65,9 +75,31 @@ stages:
       kepatuhan brand & rule #3. Format: "SKOR: <0-100>" + alasan.
     on_done: handoff(creative-director)
 
-  - id: distribusi
+  - id: distribusi-meta
     agent: creative-director
-    title: Draft distribusi 9 platform (DRAFT-ONLY)
+    title: Draft distribusi Meta langsung (DRAFT-ONLY)
+    skills: [smo-playbook]
+    tool:
+      id: meta
+      op: draft
+      params:
+        video_path: ""
+        caption: ""
+        hashtags: []
+        platforms:
+          - instagram
+          - facebook
+          - threads
+    notes: >-
+      ATURAN KERAS — HANYA DRAFT. Koneksi langsung Meta (Graph API + Threads
+      API); op publish DITOLAK di kode tool. video_path/caption kosong = ambil
+      artefak MP4 stage render + baris CAPTION: stage skrip. IG/FB/Threads
+      selalu manual oleh Patria.
+    on_done: handoff(creative-director)
+
+  - id: distribusi-nometa
+    agent: creative-director
+    title: Draft distribusi non-Meta via Blotato (DRAFT-ONLY)
     skills: [smo-playbook]
     tool:
       id: blotato
@@ -77,17 +109,14 @@ stages:
         caption: ""
         hashtags: []
         platforms:
-          - instagram
           - youtube
           - tiktok
-          - facebook
-          - threads
           - twitter
           - linkedin
           - bluesky
           - pinterest
     notes: >-
-      ATURAN KERAS — HANYA DRAFT. video_path/caption kosong = ambil artefak MP4
-      stage render + baris CAPTION: stage skrip. Dilarang mempublish dari stage
-      ini; IG/FB/Threads selalu manual oleh Patria.
+      ATURAN KERAS — HANYA DRAFT. 6 platform non-Meta via Blotato; op publish
+      hanya dengan approval_id yang sudah di-approve Patria (Meta tidak
+      dilayani tool ini lagi).
     on_done: approval

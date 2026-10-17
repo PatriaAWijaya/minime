@@ -417,3 +417,46 @@ Perintah Patria: integrasikan pipeline otomasi video AI (diagram n8n 3-step) ke 
 **Uji wiring mock** (`MINIME_MOCK_LLM=1`, daemon terisolasi): 4 stage → `waiting-approval`, approval `pending` dengan `qc_score=80`, 9 bundle draft lokal terbuat. Guard terverifikasi: publish IG ditolak; publish YT tanpa approval ditolak; `tools.status` jujur `not_configured` untuk kedua tool. Sampel: `docs/fase4-samples/konten-video-otomatis.md`.
 
 **Belum teruji (butuh Patria):** render Veo3 asli (key fal.ai), upload/publish Blotato (key Blotato), fallback HyperFrames render nyata.
+
+---
+
+## 17 Okt 2026 — Render video primer pindah ke Gemini API (Veo 3.1)
+
+Perintah Patria ("ganti ke gemini"): tool `veo3` tidak lagi primer fal.ai.
+Rantai backend baru: **Gemini API (primer) → fal.ai (fallback) → HyperFrames lokal**.
+
+**Endpoint terverifikasi** dari docs resmi Google AI for Developers
+(`ai.google.dev/gemini-api/docs/veo`):
+- `POST {BASE}/models/{model}:predictLongRunning` (header `x-goog-api-key`,
+  body `{"instances":[{"prompt"}],"parameters":{aspectRatio, durationSeconds,
+  resolution, personGeneration}}`) → `{"name":"operations/..."}` →
+  `GET {BASE}/{name}` → `.done` →
+  `.response.generateVideoResponse.generatedSamples[0].video.uri` → unduh MP4.
+- Model default: `veo-3.1-fast-generate-preview` (1080p/8 dtk/16:9).
+  ID `-001` adalah Vertex AI — Gemini API memakai `-preview`.
+- Key: Keychain akun `gemini` / env `MINIME_GEMINI_KEY` (pola sama dengan
+  provider Gemini Fase 2 — tidak ada key baru).
+
+**Perilaku:** params `backend` = auto (default) | gemini | fal | local.
+auto: gemini (bila key ada) → fal.ai (bila key ada) → HyperFrames lokal.
+Tiap percobaan dicatat di `attempts`; kegagalan total memuat seluruh attempts
+(tidak ada kegagalan diam-diam). `est_cost_usd` di hasil render = PERKIRAAN
+kasar dari harga publik Google.
+
+**Perkiraan biaya** (harga publik Google, BUKAN janji/tagihan aktual):
+klip 8 dtk 1080p tier Fast ≈ $0,12/dtk → **≈ $0,96/klip**.
+
+**Keputusan arsitektur Patria 17 Okt:** Gemini Veo dan OpenCreator dipasang
+**paralel**, pemakaian tergantung kebutuhan — keduanya tetap ter-wire, tidak
+ada yang dicopot. Panduan routing ditambahkan sebagai §E di
+`skills/content/SKILL.md` (Veo: footage generatif sinematik/b-roll AI;
+OpenCreator: naskah → video + voiceover Indonesia, menunggu kunci;
+HyperFrames/manimgx: fallback lokal tanpa kunci).
+
+**Uji:** wiring mock LULUS (`backend_chain: [gemini, fal, hyperframes]`);
+uji rantai nyata tanpa key LULUS (gemini skipped → fal skipped → hyperframes
+dicoba; attempts jujur). Guard `blotato.publish` IG tetap DITOLAK (tidak
+tersentuh). Bug panic `fallback_hyperframes` untuk prompt pendek ditemukan
+& diperbaiki saat uji. `cargo build` + `clippy` + `cargo fmt` bersih.
+
+**Belum teruji:** render Veo 3.1 asli (menunggu API key Gemini Patria via Keychain).

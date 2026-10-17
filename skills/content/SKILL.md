@@ -52,6 +52,18 @@ standar per format (reels, carousel, stories, long-form).
 TikTok/IG mendatangkan → YouTube meyakinkan (perpustakaan otoritas) → WhatsApp menutup.
 Satu arsitektur pesan untuk semua channel.
 
+### E. Routing produksi video (keputusan arsitektur Patria 17 Okt)
+
+**Veo dan OpenCreator dipasang PARALEL — tidak ada yang dicopot.** Pilih per kebutuhan:
+
+| Kebutuhan | Pakai | Catatan |
+|---|---|---|
+| Footage generatif sinematik, b-roll AI, visual eye-catching dari prompt teks | **Veo** — tool `veo3` op `render` (Gemini API primer → fal.ai fallback) | Dipakai pipeline `konten-video-otomatis`. Model default `veo-3.1-fast-generate-preview` (1080p/8 dtk/16:9). Perkiraan biaya: ±$0,96/klip (harga publik Google, bukan janji). Key: Keychain akun `gemini` |
+| Naskah → video + voiceover Bahasa Indonesia; eksplainer, konten bernarasi, faceless video | **OpenCreator** — skill `open-creator` (sidecar) | Live test menunggu kunci Patria |
+| Tanpa kunci / offline / cepat | **HyperFrames** (HTML→MP4) atau **manimgx** (animasi edukasi) | Fallback lokal otomatis bila backend AI tidak tersedia |
+
+Aturan: render AI (Veo/OpenCreator) WAJIB lewat QC sebelum distribusi; distribusi tetap draft-only + approval Patria (rule #3).
+
 ## Toolbox
 
 - Template content pilar: nama pilar → tujuan funnel → contoh topik (10 per pilar)
