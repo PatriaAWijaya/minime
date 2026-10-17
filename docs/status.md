@@ -639,3 +639,16 @@ fallback premium untuk retrieval proprietary yang dalam.
 - Dry run instalasi: **xerj v1.0.0-rc.96** (node → autoindex → retrieval OK) dan
   **openviking 0.5.0** (pip install → CLI OK) terverifikasi di VM;
   panduan MacBook di `docs/instalasi-xerj-openviking.md`.
+
+---
+
+## 18 Okt 2026 (dini hari) — Evaluasi ArtCraft: DITOLAK untuk saat ini
+
+Keputusan Patria: abaikan `storytold/artcraft` untuk saat ini.
+Alasan: bukan mesin text-to-video melainkan studio GUI untuk manusia
+(butuh langganan/kredit sendiri, tanpa CLI/API untuk agen); fungsinya
+tumpang tindih dengan Veo/OpenCreator/HyperFrames; tidak menyelesaikan
+hambatan aktual (kunci Gemini, instalasi OpenCreator). Satu nilai yang diakui:
+konsep scene-blocking untuk konsistensi karakter antar-shot (lubang nyata di
+pipeline). Evaluasi ulang HANYA bila ArtCraft merilis mode headless/API yang
+bisa disetir agen.
