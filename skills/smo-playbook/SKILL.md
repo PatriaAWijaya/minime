@@ -78,18 +78,37 @@ Setiap rencana distribusi menghasilkan: jadwal draft (tanggal, channel, format, 
 bukan penjadwalan otomatis. Status tiap item: `draft` → menunggu approval Patria →
 `approved` (diterbitkan manual oleh manusia).
 
-### E. Distribusi video AI via Blotato (pipeline konten-video-otomatis)
-- **9 platform** (sesuai diagram Patria): Instagram, YouTube, TikTok, Facebook,
-  Threads, Twitter/X, LinkedIn, Bluesky, Pinterest.
+### E. Distribusi video AI hybrid (pipeline konten-video-otomatis)
+
+Arsitektur hybrid (keputusan Patria, 17 Okt 2026): **Meta langsung** untuk
+Instagram/Facebook/Threads, **Blotato** untuk 6 platform non-Meta.
+
+**E.1. Tiga platform Meta — tool `meta` (koneksi langsung, DRAFT-ONLY)**
+- **Endpoint resmi** (terverifikasi docs Meta): IG Graph API
+  (`POST /{ig-user-id}/media` → poll `status_code` → `POST /{ig-user-id}/media_publish`;
+  permission `instagram_business_basic` + `instagram_business_content_publish`;
+  hanya akun Bisnis/Kreator; limit 100 post/24 jam), FB Pages API
+  (`GET /{user-id}/accounts` → `POST /{page-id}/feed|photos|videos|video_reels`;
+  permission `pages_show_list` + `pages_manage_posts`), Threads API
+  (`POST /{threads-user-id}/threads` → tunggu ±30 dtk → `POST /{threads-user-id}/threads_publish`;
+  permission `threads_basic` + `threads_content_publish`).
+- **Alur:** tool `meta` op `draft` — simpan bundle draft lokal per platform
+  (`drafts/meta-draft-<platform>-<ts>.json`) berisi caption + media + hashtag +
+  panduan posting manual. Op ini TIDAK PERNAH memanggil endpoint publish.
+- **Op `publish` DITOLAK di kode** untuk ketiga platform dalam kondisi apa pun
+  (rule #3) — Patria posting manual. Op `accounts` read-only untuk verifikasi
+  aset terhubung (FB Page, IG Bisnis, Threads).
+- **Token Meta:** Keychain akun `meta` / env `MINIME_META_TOKEN` (lihat
+  `docs/koneksi-meta.md` untuk langkah setup oleh Patria).
+
+**E.2. Enam platform non-Meta — tool `blotato` (DRAFT-ONLY)**
+- YouTube, TikTok, Twitter/X, LinkedIn, Bluesky, Pinterest.
 - **Alur:** tool `blotato` op `draft` — upload video ke Blotato (bila API key ada)
   + simpan bundle draft lokal per platform (`drafts/blotato-draft-<platform>-<ts>.json`).
   Op ini TIDAK PERNAH memanggil publish.
-- **IG/FB/Threads = manual Patria.** Fungsi publish untuk ketiga platform ini
-  DITOLAK di kode tool (rule #3) — draft diserahkan, Patria yang menekan tombol
-  di aplikasi masing-masing/Blotato dashboard.
-- **6 platform non-Meta:** publish HANYA via op `blotato.publish` dengan
-  `approval_id` yang merujuk approval berstatus `approved` di inbox. Tanpa itu
-  → ditolak. Tidak ada publish otomatis dari pipeline.
+- **Publish:** HANYA via op `blotato.publish` dengan `approval_id` yang merujuk
+  approval berstatus `approved` di inbox. Tanpa itu → ditolak. Tidak ada publish
+  otomatis dari pipeline.
 - **API key Blotato:** Keychain akun `blotato` / env `MINIME_BLOTATO_KEY`
   (minta ke Patria; tidak pernah di-commit/diminta via chat).
 - **Konvensi caption:** stage skrip pipeline menulis baris `CAPTION: ...`;
@@ -105,8 +124,9 @@ bukan penjadwalan otomatis. Status tiap item: `draft` → menunggu approval Patr
   Stories (replies + link clicks), YouTube (CTR + retention), LinkedIn (profile views + inbound),
   TikTok (watch time + follows/video), WA (read rate + reply rate + opt-out rate)
 - Aturan ukur: follows/inbound/klik > likes/views
-- Bundle draft Blotato per platform: `video_path` valid + `caption` + `hashtags`
-  + `status: draft` + catatan publish yang benar (Meta = manual Patria)
+- Bundle draft per platform: `video_path`/`media` valid + `caption` + `hashtags`
+  + `status: draft` + catatan publish yang benar (Meta = manual Patria; tool `meta`
+  untuk IG/FB/Threads, tool `blotato` untuk 6 non-Meta)
 
 ## Quality bar
 

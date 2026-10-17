@@ -460,3 +460,55 @@ tersentuh). Bug panic `fallback_hyperframes` untuk prompt pendek ditemukan
 & diperbaiki saat uji. `cargo build` + `clippy` + `cargo fmt` bersih.
 
 **Belum teruji:** render Veo 3.1 asli (menunggu API key Gemini Patria via Keychain).
+
+---
+
+## 17 Okt 2026 — Koneksi Meta langsung untuk distribusi (hybrid, DRAFT-ONLY)
+
+Perintah Patria ("buat koneksi ke meta"): gantikan Blotato untuk 3 platform Meta
+dengan koneksi langsung ke API resmi Meta. Keputusan arsitektur: **hybrid** —
+Meta langsung untuk Instagram/Facebook/Threads, Blotato tetap untuk 6 platform
+non-Meta (YouTube, TikTok, Twitter/X, LinkedIn, Bluesky, Pinterest).
+
+**Yang dibangun:**
+- Tool daemon baru `meta` (`daemon/src/tools/meta.rs`), terdaftar di `tools.rs`
+  (`TOOL_META`, KNOWN_TOOLS, readiness, dispatch):
+  - op `draft` — bundle draft lokal per platform (`drafts/meta-draft-<platform>-<ts>.json`:
+    caption + media + hashtag + panduan posting manual). Konvensi pipeline:
+    `media`/`video_path` kosong → artefak MP4 stage render; `caption` kosong →
+    baris CAPTION: stage skrip. TIDAK PERNAH memanggil endpoint publish.
+  - op `accounts` — read-only: `GET /me/accounts` (FB Pages),
+    `/{page-id}?fields=instagram_business_account` (IG Bisnis),
+    `GET graph.threads.com/v1.0/me` (Threads). Tidak membuat/mengubah apa pun.
+  - Guard keras: op `publish`/`post`/`upload`/`share`/`send`/`media_publish`/
+    `threads_publish`/`feed`/`reel` DITOLAK di kode (rule #3).
+  - Kredensial: Keychain akun `meta` / env `MINIME_META_TOKEN`.
+- Endpoint terverifikasi dari dokumentasi resmi Meta (Okt 2026), didokumentasikan
+  di header `meta.rs`:
+  - IG Graph API: `POST /{ig-user-id}/media` (container `media_type=REELS`) →
+    poll `status_code` → `POST /{ig-user-id}/media_publish`; permission
+    `instagram_business_basic` + `instagram_business_content_publish`; hanya
+    akun Bisnis/Kreator; limit 100 post/24 jam.
+  - FB Pages API: `GET /{user-id}/accounts` → `POST /{page-id}/feed|photos|videos|video_reels`;
+    permission `pages_show_list` + `pages_manage_posts`.
+  - Threads API: `POST /{threads-user-id}/threads` → tunggu ±30 dtk →
+    `POST /{threads-user-id}/threads_publish`; permission `threads_basic` +
+    `threads_content_publish`; media harus di-host publik.
+- Pipeline `konten-video-otomatis` v3: stage `distribusi` dipecah dua —
+  `distribusi-meta` (tool `meta`: instagram/facebook/threads) →
+  `distribusi-nometa` (tool `blotato`: 6 non-Meta) → approval Patria.
+- `skills/smo-playbook/SKILL.md` §E ditulis ulang jadi SOP distribusi hybrid
+  (E.1 Meta langsung, E.2 Blotato non-Meta).
+- `docs/koneksi-meta.md` (baru): panduan langkah-untuk-Patria — buat Meta App di
+  developers.facebook.com, permission yang diminta, App Review (tidak perlu
+  selama pemakai = Patria sendiri sebagai tester), syarat akun (IG Bisnis/Kreator,
+  Threads publik), cara simpan token ke Keychain.
+
+**Uji wiring mock** (`MINIME_MOCK_LLM=1`, daemon terisolasi): 5/5 PASS —
+`tools.status` memuat `meta` (`not_configured`, jujur); `draft` 3 platform →
+3 bundle lokal; `publish` DITOLAK; `post` DITOLAK; `accounts` mock OK.
+Sampel: `docs/fase4-samples/konten-meta-langsung.md`. `cargo build` + `clippy`
+bersih (warning doc-style pre-existing, sama seperti tool lain).
+
+**Belum teruji (butuh Patria):** token Meta (ikuti `docs/koneksi-meta.md`),
+lalu live test `accounts` untuk verifikasi FB Page + IG Bisnis + Threads terbaca.
