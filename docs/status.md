@@ -588,4 +588,5 @@ Keputusan Patria: karakter bubble 3D jadi identitas visual Minime.
 - Avatar Riset: `riset-bubble.png` (bubble biru + kacamata + jas lab).
 - Avatar QC: `qc-bubble.png` (bubble ungu + kemeja putih).
 - Varian ekspresi Minime tersimpan: `minime-oval`, `minime-squint`, `minime-happy`, `minime-joy`.
-- Avatar Strategi Bisnis & Creative Director masih clay lama — menunggu gambar dari Patria.
+- Avatar Strategi Bisnis: `strategi-bisnis-bubble.png` (bubble abu + tuksedo + dasi kupu).
+- Avatar Creative Director masih clay lama — menunggu gambar dari Patria.

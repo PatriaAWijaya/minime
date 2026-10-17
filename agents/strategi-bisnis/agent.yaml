@@ -30,6 +30,6 @@ tools_allowlist:
   - valyu
   - quant
 daily_budget_usd: 5.0
-avatar: assets/avatars/strategi-bisnis.webp
+avatar: assets/avatars/strategi-bisnis-bubble.png
 color: "#1A237E"
 paused: false
