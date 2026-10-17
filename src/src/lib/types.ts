@@ -60,7 +60,7 @@ export function statusLabel(status: string): string {
 }
 
 export function avatarUrl(avatarPath: string): string {
-  const base = avatarPath.split("/").pop() ?? "mimi-orkestrator.webp";
+  const base = avatarPath.split("/").pop() ?? "minime-standard.jpg";
   return `/avatars/${base}`;
 }
 

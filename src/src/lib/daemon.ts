@@ -25,7 +25,7 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
 const MOCK_AGENTS: Agent[] = [
   {
     id: "mimi", name: "Mimi", role: "Orkestrator", model: "gemini-2.5-pro",
-    provider_id: "gemini", avatar_path: "assets/avatars/mimi-orkestrator.webp",
+    provider_id: "gemini", avatar_path: "assets/avatars/minime-standard.jpg",
     color: "#B71C1C", status: "idle", skills: "[]", tools_allowlist: '["pipeline"]',
     effort: "medium", paused: false, daily_budget_usd: 5,
   },
