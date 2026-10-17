@@ -13,6 +13,14 @@ example-prompt: Cari data pendapatan kuartalan 3 bank BUMN terbesar + sentimen b
 > (lisensi **MIT**): chat interface di atas **satu search API** (Valyu).
 > Referensi: `~/workspace/referensi/yorkeccak-finance/`.
 >
+> **POSISI (keputusan Patria, 18 Okt 2026): Valyu adalah FALLBACK PREMIUM.**
+> Selalu coba lapisan GRATIS dulu via tool `marketdata`
+> (EDGAR/FRED/yfinance) dan `quant` op `openbb_data`. Naik ke Valyu hanya bila
+> data tidak ada di sumber gratis ATAU butuh retrieval proprietary yang dalam
+> (dataset khusus Valyu, pencarian filings mendalam, berita premium).
+> Setiap query tercatat biayanya (`cost`) — laporkan ke Patria bila mendekati
+> batas wajar.
+>
 > **Aturan keras (keputusan Patria, 17 Okt 2026): riset/analisis saja —
 > DILARANG order trading live otomatis.** Skill ini hanya membaca data;
 > tidak ada eksekusi order dalam bentuk apapun.

@@ -613,3 +613,29 @@ Perintah Patria (2 repo):
   Khusus: index pengetahuan per agen (Riset, QC, Strategi Bisnis).
   Referensi clone: `~/workspace/referensi/openviking/`.
 - Instalasi keduanya (binary xerj + server openviking) menunggu MacBook Patria.
+
+---
+
+## 18 Okt 2026 (dini hari) — Tool `marketdata` + routing data finansial
+
+Perintah Patria: koneksikan EDGAR, FRED, OpenBB, yFinance/stooq; Valyu jadi
+fallback premium untuk retrieval proprietary yang dalam.
+- **Tool daemon baru `marketdata`** (`daemon/src/tools/marketdata.rs`,
+  terdaftar di registry + allowlist strategi-bisnis):
+  - `quote` — harga via yfinance (gratis, tanpa key; butuh `pip install yfinance`)
+  - `edgar_ticker` / `edgar_facts` / `edgar_filings` — SEC EDGAR tanpa key
+    (User-Agent jujur sesuai aturan SEC; concept XBRL cth: Revenues, NetIncomeLoss)
+  - `fred` — deret makro Fed (DGS10, FEDFUNDS, CPIAUCSL, UNRATE; butuh key
+    gratis via Keychain akun `fred` / env `MINIME_FRED_KEY`)
+  - Readiness check per komponen + fallback eksplisit; unit test 2 lolos,
+    3 live-test EDGAR di-ignore (jalan di MacBook: `cargo test -- --ignored`)
+- **Stooq DINONAKTIFKAN**: endpoint CSV kini di balik verifikasi JS browser —
+  tidak bisa via HTTP langsung; digantikan yfinance.
+- **OpenBB** sudah terkoneksi (`quant` op `openbb_data`, default provider yfinance).
+- **Routing di `finance-playbook`**: GRATIS dulu (`marketdata` → `openbb`) →
+  Valyu fallback premium hanya bila data tak ada di gratis / butuh proprietary
+  dalam. `valyu-finance` direposisi sebagai fallback premium (aturan
+  no-live-trading tetap).
+- Dry run instalasi: **xerj v1.0.0-rc.96** (node → autoindex → retrieval OK) dan
+  **openviking 0.5.0** (pip install → CLI OK) terverifikasi di VM;
+  panduan MacBook di `docs/instalasi-xerj-openviking.md`.

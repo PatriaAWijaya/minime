@@ -13,9 +13,13 @@
 - [ ] Valyu (`valyu-finance` menunggu ini)
 - [ ] postiz (`pos_...` — untuk live test tool `postiz`)
 
-### 2. Instalasi tools baru (MacBook)
+### 2. Instalasi tools baru (MacBook) — dry run TERVERIFIKASI di VM 18 Okt
 - [ ] xerj: `curl -fsSL https://xerj.org/get | sh` → start node → autoindex awal
-- [ ] OpenViking: `uv tool install openviking` (atau `pip install openviking`) → start server
+      (panduan: `docs/instalasi-xerj-openviking.md`)
+- [ ] OpenViking: `pip install openviking` → `ov language en` → server init → start server
+      (panduan: `docs/instalasi-xerj-openviking.md`)
+- [ ] FRED API key gratis → Keychain akun `fred` / env `MINIME_FRED_KEY`
+- [ ] `pip install yfinance` (untuk op `quote` tool `marketdata`)
 
 ### 3. Backlog Gate 4 — live test (paralel Fase 5)
 - [ ] Live test postiz via API nyata (butuh: postiz di `localhost:4007` + key)

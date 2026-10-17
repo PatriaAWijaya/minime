@@ -51,16 +51,36 @@ example-prompt: Buat proyeksi arus kas 12 bulan untuk produk digital + analisis 
 | Backtest strategi ML / riset quant | `qlib` | `qrun`/kode → metrik + uji robustness [HASIL BACKTEST] |
 | Simulasi order realistis / paper trading | `nautilus` | venue SIM → backtest engine [HASIL SIMULASI] |
 | Data pasar terstruktur | `openbb` | SDK → harga/fundamental/berita |
+| Data GRATIS lapis pertama | tool `marketdata` | lihat § Routing data di bawah |
 | Filings, berita, sentimen (butuh key) |  `valyu-finance` | search API → temuan bersumber [DATA VALYU] |
 
-Alur yang benar: data (`openbb`/ `valyu-finance`) → sinyal (`trading-agents`) →
-validasi (`qlib`/`nautilus`) → **BERHENTI di analisis**. Tidak ada lompatan ke order.
+Alur yang benar: data (`marketdata` gratis dulu → `openbb` → `valyu-finance`
+fallback premium) → sinyal (`trading-agents`) → validasi (`qlib`/`nautilus`) →
+**BERHENTI di analisis**. Tidak ada lompatan ke order.
+
+## Routing data — GRATIS dulu, Valyu fallback premium (keputusan Patria 18 Okt 2026)
+
+| Kebutuhan data | Sumber GRATIS (coba dulu) | Fallback PREMIUM |
+|---|---|---|
+| Harga saham/terkini | tool `marketdata` op `quote` (yfinance) | — |
+| Laporan keuangan emiten AS (10-K/10-Q/8-K) | tool `marketdata` op `edgar_filings` / `edgar_facts` (SEC EDGAR, tanpa key) | tool `valyu` op `search` bila butuh pencarian filings yang dalam |
+| Data makro (suku bunga, inflasi, CPI, unemployment) | tool `marketdata` op `fred` (butuh key gratis FRED) | — |
+| Data pasar terstruktur umum | tool `quant` op `openbb_data` | — |
+| Retrieval proprietary yang dalam (dataset khusus Valyu, pencarian filings mendalam, berita premium) | — | tool `valyu` op `search` **[DATA VALYU — BERBAYAR]** |
+
+Aturan: **selalu coba lapisan gratis dulu**. Naik ke Valyu hanya bila (a) data
+tidak ada di sumber gratis, atau (b) butuh kedalaman proprietary (dataset
+khusus/berita premium). Setiap pemakaian Valyu tercatat biayanya (`cost` di
+respons) — laporkan ke Patria bila mendekati batas wajar.
 
 ## Toolbox
 
 - Template P&L bulanan, arus kas 12 bulan + 13-week, unit economics, break-even.
 - Tool `quant` (daemon): `ta_analyze`, `qlib_backtest`, `nautilus_backtest`,
-  `openbb_data` + tool `valyu` op `search` — masing-masing dengan readiness check.
+  `openbb_data` + tool `valyu` op `search` + tool **`marketdata`**
+  (`quote`/`edgar_ticker`/`edgar_facts`/`edgar_filings`/`fred`) — masing-masing
+  dengan readiness check. Stooq DINONAKTIFKAN (endpoint CSV kini di balik
+  verifikasi JS; digantikan yfinance).
 - [KNOWLEDGE PATRIA] Struktur & rasio khas Patria (menunggu dokumen final).
 
 ## Quality bar

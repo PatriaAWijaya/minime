@@ -29,6 +29,7 @@ skills:
 tools_allowlist:
   - valyu
   - quant
+  - marketdata
 daily_budget_usd: 5.0
 avatar: assets/avatars/strategi-bisnis-bubble.png
 color: "#1A237E"

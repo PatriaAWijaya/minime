@@ -24,6 +24,7 @@ pub mod canva;
 pub mod hyperframes;
 pub mod instagram;
 pub mod manimgx;
+pub mod marketdata;
 pub mod meta;
 pub mod opencreator;
 pub mod postiz;
@@ -41,6 +42,7 @@ pub const TOOL_HYPERFRAMES: &str = "hyperframes";
 pub const TOOL_INSTAGRAM: &str = "instagram-cli";
 pub const TOOL_BROWSER: &str = "browser";
 pub const TOOL_MANIMGX: &str = "manimgx";
+pub const TOOL_MARKETDATA: &str = "marketdata";
 pub const TOOL_QUANT: &str = "quant";
 pub const TOOL_VALYU: &str = "valyu";
 pub const TOOL_VEO3: &str = "veo3";
@@ -56,6 +58,7 @@ pub const KNOWN_TOOLS: &[&str] = &[
     TOOL_INSTAGRAM,
     TOOL_BROWSER,
     TOOL_MANIMGX,
+    TOOL_MARKETDATA,
     TOOL_QUANT,
     TOOL_VALYU,
     TOOL_VEO3,
@@ -141,6 +144,7 @@ pub async fn readiness(data_dir: &Path, repo_dir: &Path) -> Vec<ToolStatus> {
     out.push(instagram::readiness().await);
     out.push(browser::readiness(data_dir, repo_dir).await);
     out.push(manimgx::readiness().await);
+    out.push(marketdata::readiness().await);
     out.push(quant::readiness().await);
     out.push(valyu::readiness().await);
     out.push(veo3::readiness().await);
@@ -212,6 +216,7 @@ async fn dispatch(
         TOOL_INSTAGRAM => instagram::run(op, params, ctx).await,
         TOOL_BROWSER => browser::run(db, browser_store, op, params, ctx).await,
         TOOL_MANIMGX => manimgx::run(op, params, ctx).await,
+        TOOL_MARKETDATA => marketdata::run(op, params, ctx).await,
         TOOL_QUANT => quant::run(op, params, ctx).await,
         TOOL_VALYU => valyu::run(op, params, ctx).await,
         TOOL_VEO3 => veo3::run(db, op, params, ctx).await,
