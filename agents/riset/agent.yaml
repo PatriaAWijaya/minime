@@ -16,6 +16,6 @@ skills:
 tools_allowlist:
   - browser
 daily_budget_usd: 3.0
-avatar: assets/avatars/riset.webp
+avatar: assets/avatars/riset-bubble.png
 color: "#8E24AA"
 paused: false

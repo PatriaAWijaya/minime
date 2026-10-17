@@ -577,3 +577,15 @@ memperbaiki backlog Gate 4 yang tersisa paralel dengan pekerjaan Fase 5.
 - Live test Meta `accounts` (butuh system user token — diparkir, fondasi sudah dibuat)
 - Uji 1 video OpenCreator via Gemini (butuh kunci Gemini + instalasi OpenCreator di MacBook)
 - Sisa live test provider (Gemini/Muse/DeepSeek) di MacBook
+
+---
+
+## 18 Okt 2026 (dini hari) — Identitas visual baru
+
+Keputusan Patria: karakter bubble 3D jadi identitas visual Minime.
+- App icon (`assets/app-icon.jpg`, dipakai `tauri icon`): robot biru → bubble pink mata oval (background hitam).
+- Avatar Mimi: `minime-standard.jpg` (bubble pink, mata bulat) — commit `3094f71`.
+- Avatar Riset: `riset-bubble.png` (bubble biru + kacamata + jas lab).
+- Avatar QC: `qc-bubble.png` (bubble ungu + kemeja putih).
+- Varian ekspresi Minime tersimpan: `minime-oval`, `minime-squint`, `minime-happy`, `minime-joy`.
+- Avatar Strategi Bisnis & Creative Director masih clay lama — menunggu gambar dari Patria.

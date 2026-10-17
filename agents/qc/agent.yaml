@@ -15,6 +15,6 @@ skills:
   - qc-rubrik
 tools_allowlist: []
 daily_budget_usd: 2.0
-avatar: assets/avatars/qc.webp
+avatar: assets/avatars/qc-bubble.png
 color: "#F9A825"
 paused: false
