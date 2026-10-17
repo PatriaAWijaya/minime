@@ -13,6 +13,7 @@ model:
 effort: medium
 skills:
   - riset-web
+  - xerj
 tools_allowlist:
   - browser
 daily_budget_usd: 3.0

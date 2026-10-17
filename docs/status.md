@@ -592,3 +592,24 @@ Keputusan Patria: karakter bubble 3D jadi identitas visual Minime.
 - Avatar Creative Director: `creative-director-bubble.png` (bubble oranye + celana jeans + sabuk).
 
 **Keluarga avatar bubble lengkap (18 Okt):** Mimi pink, Riset biru+kacamata+jas lab, Strategi Bisnis abu+tuksedo, Creative Director oranye+jeans, QC ungu+kemeja putih.
+
+---
+
+## 18 Okt 2026 (dini hari) — Skill baru: xerj (Riset) + openviking (Mimi)
+
+Perintah Patria (2 repo):
+- **`xerj`** (`skills/xerj/`, milik Riset, terdaftar di `agents/riset/agent.yaml`):
+  local AI search engine dari `xerj-org/xerj` (**Apache-2.0** — aman).
+  Satu binary Rust: `autoindex` folder (kode/docs/PDF) sekali → `search`/`def`
+  jawab dengan passage + sitasi file:line; 2,7x lebih hemat output token vs
+  grep (terukur). Pola utama: reference-coding (index repo acuan SEBELUM tulis kode).
+  Referensi clone: `~/workspace/referensi/xerj/`.
+- **`openviking`** (`skills/openviking/`, milik Mimi, terdaftar di
+  `agents/mimi/agent.yaml`): context database dari `volcengine/OpenViking`
+  (**AGPL-3.0** — ⚠️ aturan setara postiz: HANYA sebagai layanan eksternal
+  via `pip`/`ov` CLI, DILARANG vendor kode ke repo). Satukan memory, knowledge
+  RAG, skills dalam filesystem virtual `viking://` (ls/tree/read/find +
+  ringkasan per direktori). Umum: memori lintas-agen + handoff via URI.
+  Khusus: index pengetahuan per agen (Riset, QC, Strategi Bisnis).
+  Referensi clone: `~/workspace/referensi/openviking/`.
+- Instalasi keduanya (binary xerj + server openviking) menunggu MacBook Patria.
