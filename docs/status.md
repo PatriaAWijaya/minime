@@ -652,3 +652,23 @@ hambatan aktual (kunci Gemini, instalasi OpenCreator). Satu nilai yang diakui:
 konsep scene-blocking untuk konsistensi karakter antar-shot (lubang nyata di
 pipeline). Evaluasi ulang HANYA bila ArtCraft merilis mode headless/API yang
 bisa disetir agen.
+
+---
+
+## 18 Okt 2026 (dini hari) — Pireel: disiapkan untuk uji coba
+
+Keputusan Patria: siapkan `pireel/pireel` untuk diuji; bila lancar → permanen.
+- **Skill `pireel`** (`skills/pireel/`, milik Creative Director, terdaftar di
+  `agents/creative-director/agent.yaml`, STATUS: UJI COBA): AI video editor
+  (alternatif CapCut) yang bisa disetir agen via MCP — transcript-aware cuts,
+  captions, talking-head cleanup, multi-source assembly, export.
+- **Lisensi AGPL-3.0** — aturan setara postiz/OpenViking: HANYA layanan
+  eksternal (Studio via `pnpm dev` + MCP), DILARANG vendor kode ke repo.
+- **Posisi bila lolos**: Veo/OpenCreator (generate) → Pireel (edit/rakit) → QC.
+  Pireel = lapisan editing, BUKAN generator (tidak menggantikan Veo).
+- **Rencana uji**: `docs/uji-pireel.md` — 4 tahap di MacBook Patria
+  (install → koneksi MCP → alur penuh → billing check) + rubrik 7 kriteria.
+  Vonis: 7/7 PERMANEN, 5–6 BERSYARAT, ≤4 DITOLAK.
+- Billing: orkestrasi di subscription agen sendiri; tool `[CHARGES]` dilarang
+  tanpa approval Patria.
+- Referensi clone: `~/workspace/referensi/pireel/`.
