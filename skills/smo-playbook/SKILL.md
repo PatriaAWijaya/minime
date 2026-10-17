@@ -81,7 +81,7 @@ bukan penjadwalan otomatis. Status tiap item: `draft` → menunggu approval Patr
 ### E. Distribusi video AI hybrid (pipeline konten-video-otomatis)
 
 Arsitektur hybrid (keputusan Patria, 17 Okt 2026): **Meta langsung** untuk
-Instagram/Facebook/Threads, **Blotato** untuk 6 platform non-Meta.
+Instagram/Facebook/Threads, **postiz** untuk 6 platform non-Meta.
 
 **E.1. Tiga platform Meta — tool `meta` (koneksi langsung, DRAFT-ONLY)**
 - **Endpoint resmi** (terverifikasi docs Meta): IG Graph API

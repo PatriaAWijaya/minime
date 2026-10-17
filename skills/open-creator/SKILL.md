@@ -10,8 +10,8 @@ example-prompt: Render reels 9:16 dari naskah ini.
 
 > Tool skill (bukan playbook). Dieksekusi oleh `minime-daemon` via sidecar
 > binary di samping binary daemon (kontrak: `docs/open-creator.md`).
-> API key via Keychain (`secrets.set` account=`open-creator`) — **live test
-> menunggu kunci dari Patria**.
+> LLM backend: **Gemini** (keputusan Patria 17 Okt 2026) — kunci via Keychain
+> akun `gemini`; **live test menunggu kunci Gemini dari Patria**.
 
 ## Kapan dipakai
 
