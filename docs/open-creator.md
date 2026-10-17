@@ -1,7 +1,9 @@
 # OpenCreator — Kontrak Sidecar (untuk implementasi/packaging)
 
-> Status Fase 4: wiring daemon selesai; **live test menunggu API key dari Patria**
-> dan keputusan terbuka arsitektur §16.9 (kunci LLM OpenAI-compatible ATAU wiring Gemini).
+> Status: wiring daemon selesai. **Keputusan LLM: Gemini** (Patria, 17 Okt 2026 —
+> bukan kunci OpenAI-compatible terpisah). Live test menunggu API key Gemini
+> dari Patria + penyetelan provider Gemini di aplikasi OpenCreator (sekali,
+> manual di MacBook: Settings → AI Services → Gemini).
 
 ## Model sidecar
 
@@ -34,15 +36,21 @@ sebagai `artifact_path` (artefak deliverable).
 
 ## Kredensial
 
-API key via macOS Keychain: `secrets.set` dengan `account="open-creator"`
-(atau env `MINIME_OPENCREATOR_KEY` untuk dev). Daemon memvalidasi keberadaan
-kunci di readiness check — tanpa kunci, op ditolak dengan pesan jelas
-(bukan gagal diam-diam).
+OpenCreator memakai **kunci Gemini** (keputusan Patria 17 Okt 2026):
 
-## Keputusan yang masih dibutuhkan Patria (arsitektur §16.9)
+- **Daemon:** memvalidasi keberadaan kunci Gemini via Keychain akun `gemini`
+  (atau env `MINIME_GEMINI_KEY` untuk dev) di readiness check — tanpa kunci,
+  op ditolak dengan pesan jelas (bukan gagal diam-diam). Tidak ada lagi
+  akun Keychain `open-creator` terpisah.
+- **Aplikasi OpenCreator** (sidecar): penyetelan provider Gemini dilakukan
+  **manual sekali** di MacBook — buka OpenCreator → Settings → AI Services →
+  pilih Gemini → masukkan API key yang sama.
 
-1. Kunci LLM OpenAI-compatible untuk OpenCreator, ATAU
-2. Wiring Gemini + uji 1 video.
+## Keputusan (sudah diputuskan Patria 17 Okt 2026)
 
-Sampai diputuskan, video dirender via **HyperFrames** (fallback bawaan,
-tanpa kunci, terverifikasi Fase 4).
+~~1. Kunci LLM OpenAI-compatible untuk OpenCreator, ATAU~~ → **DITOLAK**
+**2. Wiring Gemini** → **DIPILIH**. Uji 1 video menunggu kunci Gemini + instalasi
+OpenCreator di MacBook.
+
+Fallback tetap: video dirender via **HyperFrames** (lokal, tanpa kunci,
+terverifikasi Fase 4) bila OpenCreator belum siap.

@@ -4,8 +4,11 @@
 //!   `<sidecar> --op <op> --params-json '<json>'` → JSON di stdout.
 //! Ops: `render` (naskah → video), `voices` (daftar suara), `script` (draf naskah).
 //!
-//! API key via Keychain (`secrets.set account='open-creator'`) atau
-//! env MINIME_OPENCREATOR_KEY. Live test menunggu kunci dari Patria.
+//! LLM backend: Gemini (keputusan Patria 17 Okt 2026 — bukan kunci OpenAI-compatible
+//! terpisah). Daemon memvalidasi keberadaan kunci Gemini
+//! (Keychain akun `gemini` / env MINIME_GEMINI_KEY); penyetelan provider Gemini
+//! di dalam aplikasi OpenCreator (Settings → AI Services) dilakukan manual
+//! sekali di MacBook. Live test menunggu kunci Gemini dari Patria.
 
 use super::{ToolCtx, ToolStatus};
 use crate::secrets;
@@ -15,7 +18,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 const ENV_BIN: &str = "MINIME_OPENCREATOR_BIN";
-const SECRET_ACCOUNT: &str = "open-creator";
+/// Akun Keychain untuk kunci Gemini (keputusan Patria 17 Okt 2026:
+/// OpenCreator memakai Gemini, bukan kunci OpenAI-compatible terpisah).
+const SECRET_ACCOUNT: &str = "gemini";
 
 fn sidecar_bin() -> Option<PathBuf> {
     // 1. Env override eksplisit.
@@ -63,7 +68,7 @@ pub async fn readiness() -> ToolStatus {
     if !has_key() {
         return not(
             super::STATE_NO_KEY,
-            "Sidecar ditemukan, tetapi API key belum disimpan (secrets.set account='open-creator'). Live test menunggu kunci dari Patria.",
+            "Kunci Gemini belum disimpan (Keychain akun `gemini` / env MINIME_GEMINI_KEY). OpenCreator memakai Gemini (keputusan Patria 17 Okt 2026).",
         );
     }
     ToolStatus::ready(
@@ -79,7 +84,7 @@ pub async fn run(op: &str, params: &Value, ctx: &ToolCtx) -> Result<Value> {
     let bin = sidecar_bin().with_context(|| "sidecar `open-creator` tidak ditemukan")?;
     if !has_key() {
         anyhow::bail!(
-            "API key OpenCreator belum dikonfigurasi (secrets.set account='open-creator')"
+            "Kunci Gemini belum dikonfigurasi (Keychain akun `gemini` / env MINIME_GEMINI_KEY) — OpenCreator memakai Gemini (keputusan Patria 17 Okt 2026)"
         );
     }
     match op {
