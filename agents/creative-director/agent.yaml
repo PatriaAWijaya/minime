@@ -28,6 +28,6 @@ tools_allowlist:
   - veo3
   - postiz
 daily_budget_usd: 8.0
-avatar: assets/avatars/creative.webp
+avatar: assets/avatars/creative-director-bubble.png
 color: "#1B5E20"
 paused: false
