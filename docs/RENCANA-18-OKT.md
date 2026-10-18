@@ -5,20 +5,20 @@
 
 ## Urutan eksekusi yang disarankan
 
-### 1. Sesi kunci API terpadu (MacBook Patria, via Keychain) — pembuka semua
-- [ ] Gemini (prioritas #1 — membuka: Veo live test + OpenCreator)
-- [ ] Muse
-- [ ] DeepSeek
-- [ ] Valyu (`valyu-finance` menunggu ini)
-- [ ] postiz (`pos_...` — untuk live test tool `postiz`)
+### 1. Sesi kunci API terpadu (MacBook Patria, via Keychain) — pembuka semua ✅ SELESAI
+- [x] Gemini (prioritas #1 — membuka: Veo live test + OpenCreator)
+- [x] Muse (key "Minime"; region Indonesia TERBUKTI bisa)
+- [x] DeepSeek
+- [x] Valyu (`valyu-finance` menunggu ini)
+- [x] postiz (key hex hasil Rotate Key; bug base path/auth diperbaiki commit 357291c)
+- [x] FRED (Keychain akun `fred`) + `pip install yfinance` v1.7.0
 
-### 2. Instalasi tools baru (MacBook) — dry run TERVERIFIKASI di VM 18 Okt
-- [ ] xerj: `curl -fsSL https://xerj.org/get | sh` → start node → autoindex awal
-      (panduan: `docs/instalasi-xerj-openviking.md`)
-- [ ] OpenViking: `pip install openviking` → `ov language en` → server init → start server
-      (panduan: `docs/instalasi-xerj-openviking.md`)
-- [ ] FRED API key gratis → Keychain akun `fred` / env `MINIME_FRED_KEY`
-- [ ] `pip install yfinance` (untuk op `quote` tool `marketdata`)
+### 2. Instalasi tools baru (MacBook) ✅ SELESAI (18 Okt ~10:41)
+- [x] xerj v1.0.0-rc.96: node jalan (127.0.0.1:8080/9200); autoindex ditunda
+- [x] OpenViking 0.5.0: config HEMAT-RAM (embedding lokal 24MB + VLM gemini-2.0-flash + query planner 0.8B); server background, Connected (Healthy); tes memory OK
+      (panduan diperbarui: `docs/instalasi-xerj-openviking.md`)
+- [x] FRED API key gratis → Keychain akun `fred`
+- [x] `pip install yfinance` v1.7.0
 
 ### 2b. Uji coba Pireel (MacBook) — 30–60 menit
 - [ ] Tahap 1: install + Studio jalan (`docs/uji-pireel.md`)
@@ -52,8 +52,9 @@
 
 ## Sudah selesai 17–18 Okt (tidak dikerjakan lagi)
 - ✅ Vonis Gate 4: LOLOS BERSYARAT (tercatat di `docs/TODO.md` + `docs/status.md`)
-- ✅ Push: remote HEAD `8548214` (marketdata dkk); 2 commit lokal menunggu push
-      (`1d4f8e8` evaluasi ArtCraft, `e8c1cf8` skill pireel + rencana uji)
+- ✅ Push: remote HEAD `d1ff357` (18 Okt 10:42); tidak ada commit lokal tertunda
+- ✅ Sesi kunci API 5/5 + FRED + yfinance (semua terverifikasi live)
+- ✅ Instalasi xerj + OpenViking MacBook (config hemat-RAM)
 - ✅ Identitas visual: app icon bubble pink + 5 avatar agen + 4 varian ekspresi Minime
 - ✅ Skill `xerj` (Riset) + `openviking` (Mimi) — kode selesai & terdaftar
 - ✅ Dry run instalasi xerj (v1.0.0-rc.96) + OpenViking (0.5.0) di VM
