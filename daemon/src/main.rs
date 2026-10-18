@@ -184,7 +184,7 @@ async fn live_test() -> Result<()> {
         Case {
             name: "gemini",
             provider: std::sync::Arc::new(providers_gemini::GeminiProvider::new()),
-            model: "gemini-2.0-flash",
+            model: "gemini-3.8-flash",
         },
         Case {
             name: "muse",
