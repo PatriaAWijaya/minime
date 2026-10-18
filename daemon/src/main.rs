@@ -68,6 +68,19 @@ async fn main() -> Result<()> {
     if std::env::args().any(|a| a == "--live-test") {
         return live_test().await;
     }
+    // Store a provider key into the OS keychain via the daemon's own write
+    // path (same as IPC `secrets.set`, which the Tauri Providers UI uses).
+    // Keys are read from stdin (paste it; nothing lands in shell history).
+    // Needed because items created manually in Keychain Access.app are not
+    // visible to the keyring query (Gate 4 finding, 18 Okt 2026).
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--set-key") {
+        let account = args.get(i + 1).cloned().unwrap_or_default();
+        if account.is_empty() {
+            anyhow::bail!("usage: minime-daemon --set-key <account>");
+        }
+        return set_key_interactive(&account);
+    }
 
     let data_dir = db::data_dir()?;
     let repo_dir = db::repo_dir();
@@ -251,5 +264,26 @@ async fn live_test() -> Result<()> {
         anyhow::bail!("{failures} provider(s) failed live test");
     }
     println!("[live-test] all 3 providers OK");
+    Ok(())
+}
+
+/// Read a key from stdin (no shell history) and store it via secrets::set_api_key.
+fn set_key_interactive(account: &str) -> Result<()> {
+    use std::io::{self, BufRead, Write};
+    print!("API key untuk '{account}' (paste, lalu Enter): ");
+    io::stdout().flush()?;
+    let mut line = String::new();
+    io::stdin().lock().read_line(&mut line)?;
+    let key = line.trim();
+    if key.is_empty() {
+        anyhow::bail!("key kosong, dibatalkan");
+    }
+    secrets::set_api_key(account, key)
+        .map_err(|e| anyhow::anyhow!("gagal simpan ke keychain: {e}"))?;
+    // Verify the round-trip through the same read path production uses.
+    match secrets::api_key(account) {
+        Some(_) => println!("[set-key] '{account}' tersimpan & terbaca OK"),
+        None => anyhow::bail!("tersimpan tapi tidak terbaca kembali (keychain bermasalah)"),
+    }
     Ok(())
 }
