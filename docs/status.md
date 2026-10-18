@@ -806,3 +806,22 @@ Patria: icon/avatar 5 agen di dashboard TIDAK sesuai yang ia mau.
 Belum ada detail spesifik — perlu ditindaklanjuti: tanya Patria maunya seperti apa
 (warna/bentuk/ekspresi tiap agen) sebelum revisi avatar.
 Status: sesi dihentikan sampai sini; lanjut lain waktu.
+
+## 2026-10-18 14:28 WIB — Rencana redesign UI ala OpenBot (sesi berikutnya)
+
+Patria mau UI seperti OpenBot:
+- Sidebar kiri: daftar workflow (pipelines)
+- Sebelahnya: daftar agen (5 agen senior)
+- Main area: chat + delivery
+- Paling kanan: monitor tugas berjalan
+
+Progress (belum selesai, belum di-commit):
+- `src/src/components/WorkflowSidebar.svelte` — daftar 5 pipeline statis
+- `src/src/components/AgentList.svelte` — daftar agen compact dgn status dot
+- `src/src/components/TaskMonitor.svelte` — monitor task running/queued (poll 5 dtk)
+
+Sisa untuk sesi berikutnya:
+- Komponen main area (chat + delivery tabs)
+- Rewrite `src/src/App.svelte` ke layout 4 kolom
+- Pengaturan/Penggunaan/Peralatan dipindah (menu atau tab di main area)
+- Build + uji di MacBook
