@@ -66,5 +66,4 @@
   .meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .state { min-width: 90px; }
   .row-actions { display: flex; gap: 8px; }
-  .btn-ghost.sm { min-height: 40px; padding: 0 14px; font-size: 14px; }
 </style>

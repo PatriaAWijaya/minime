@@ -78,11 +78,16 @@ backend Rust menyatu di proses Tauri.
   pengguna, memecah jadi tugas, mendelegasikan ke agen yang tepat,
   menggabungkan hasil, dan meminta approval pengguna.
 
-### 4.2 Model router
-- Model default per agen dapat diatur pengguna; default Patria = Gemini 3.8.
-- Fallback berlapis: model utama → model lokal gratis → (opsional) model
-  custom yang didaftarkan pengguna.
-- Metering: catat pemakaian per agen; budget cap opsional per agen.
+### 4.2 Model router (keputusan Patria 18 Okt 22:40)
+- **Gratis: Ollama = default**, OpenCode = fallback (pola UI Providers
+  meniru layar Providers OpenBot: daftar radio, status koneksi,
+  penyedia custom, deteksi lokal otomatis).
+- **Berbayar: Muse = default**, fallback model populer lain
+  (Gemini 3.8, DeepSeek).
+- Routing per-agen: tiap agen punya model default yang bisa diganti.
+- Fallback berlapis: utama → cadangan → custom pengguna.
+- Metering: catat token & estimasi biaya per agen; budget cap opsional
+  (peringatan saat mendekati batas).
 
 ### 4.3 Skills engine
 - Skill = playbook terstruktur (diadaptasi dari `skills/` v1 di repo):

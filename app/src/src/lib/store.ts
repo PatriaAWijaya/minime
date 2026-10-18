@@ -7,6 +7,7 @@ import type {
   CostRow,
   LibraryItem,
   Message,
+  ProviderInfo,
   ScheduledItem,
   Skill,
 } from "./types";
@@ -76,11 +77,42 @@ function persistRecord<T>(key: string, store: Writable<Record<string, T>>) {
   });
 }
 
-/** Per-agent AI choice (placeholder; real routing lands in Phase 2). */
-export const agentAiChoice = writable<Record<string, string>>(
-  loadRecord<string>("minime.agent-ai"),
+/** Specific model per agent (mock, persisted).
+    Default: Mimi = Muse, others = Ollama/Llama 3.1 (free-first principle). */
+export const agentModel = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-model"),
 );
-persistRecord("minime.agent-ai", agentAiChoice);
+persistRecord("minime.agent-model", agentModel);
+
+export interface ModelOption {
+  id: string;
+  providerId: string;
+  /** Display label (brand/model name, not translated) */
+  label: string;
+  kind: "free" | "paid";
+}
+
+/** Model catalog (mock). Free: Ollama local models + OpenCode free models.
+    Paid: Muse, Gemini 3.8, DeepSeek. */
+export const MODEL_CATALOG: ModelOption[] = [
+  { id: "ollama:llama3.1", providerId: "ollama", label: "Llama 3.1", kind: "free" },
+  { id: "ollama:qwen2.5", providerId: "ollama", label: "Qwen 2.5", kind: "free" },
+  { id: "ollama:mistral", providerId: "ollama", label: "Mistral", kind: "free" },
+  { id: "ollama:gemma2", providerId: "ollama", label: "Gemma 2", kind: "free" },
+  { id: "opencode:deepseek-v3", providerId: "opencode", label: "DeepSeek V3", kind: "free" },
+  { id: "opencode:qwen2.5-coder", providerId: "opencode", label: "Qwen 2.5 Coder", kind: "free" },
+  { id: "claude", providerId: "claude", label: "Muse", kind: "paid" },
+  { id: "gemini", providerId: "gemini", label: "Gemini 3.8", kind: "paid" },
+  { id: "deepseek", providerId: "deepseek", label: "DeepSeek", kind: "paid" },
+];
+
+export function getModel(id: string): ModelOption {
+  return MODEL_CATALOG.find((m) => m.id === id) ?? MODEL_CATALOG[0];
+}
+
+export function defaultModelFor(agentId: string): string {
+  return agentId === "mimi" ? "claude" : "ollama:llama3.1";
+}
 
 /** Reasoning effort per agent (mock, persisted). */
 export const agentReasoning = writable<Record<string, "low" | "mid" | "high">>(
@@ -199,4 +231,104 @@ export function addSkill(name: string) {
     ...list,
     { id: skillSeq++, customName: trimmed, installed: true },
   ]);
+}
+
+/* ---------- Model providers (Patria's decision 18 Oct ~22:40) ----------
+   Free: Ollama = default, OpenCode = fallback.
+   Paid: Muse = default, fallback = other popular models (Gemini 3.8, DeepSeek).
+   All state below is local mock, persisted on this device. */
+
+/** Built-in providers. */
+export const PROVIDERS: ProviderInfo[] = [
+  { id: "ollama", name: "Ollama", kind: "free", tagKey: "providers.defaultFree", local: true },
+  { id: "opencode", name: "OpenCode", kind: "free", tagKey: "providers.backupFree" },
+  { id: "claude", name: "Muse", kind: "paid", tagKey: "providers.defaultPaid" },
+  { id: "gemini", name: "Gemini 3.8", kind: "paid" },
+  { id: "deepseek", name: "DeepSeek", kind: "paid" },
+];
+
+/** Per-provider mock state: connected + active toggle. */
+export const providerState = writable<Record<string, { connected: boolean; active: boolean }>>(
+  loadRecord("minime.providers"),
+);
+persistRecord("minime.providers", providerState);
+
+export function connectProvider(id: string) {
+  providerState.update((s) => ({
+    ...s,
+    [id]: { connected: true, active: s[id]?.active ?? true },
+  }));
+}
+
+export function toggleProvider(id: string, active: boolean) {
+  providerState.update((s) => ({
+    ...s,
+    [id]: { connected: s[id]?.connected ?? false, active },
+  }));
+}
+
+function loadString(key: string, fallback: string): string {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Default provider id (radio selection). */
+export const defaultProviderId = writable<string>(
+  loadString("minime.default-provider", "ollama"),
+);
+defaultProviderId.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.default-provider", v);
+  } catch {
+    /* ignore */
+  }
+});
+
+function loadBool(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+/** Auto-discover local models & agents (mock). */
+export const autoScan = writable<boolean>(loadBool("minime.auto-scan", true));
+autoScan.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.auto-scan", v ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+});
+
+export interface CustomProvider {
+  id: number;
+  name: string;
+  endpoint: string;
+  active: boolean;
+}
+
+/** Custom providers added by the user (mock). */
+let customProvSeq = 1;
+export const customProviders = writable<CustomProvider[]>([]);
+
+export function addCustomProvider(name: string, endpoint: string) {
+  const n = name.trim();
+  const e = endpoint.trim();
+  if (!n || !e) return;
+  customProviders.update((list) => [
+    ...list,
+    { id: customProvSeq++, name: n, endpoint: e, active: true },
+  ]);
+}
+
+export function toggleCustomProvider(id: number, active: boolean) {
+  customProviders.update((list) =>
+    list.map((p) => (p.id === id ? { ...p, active } : p)),
+  );
 }

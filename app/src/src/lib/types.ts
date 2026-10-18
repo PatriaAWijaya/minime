@@ -71,3 +71,14 @@ export interface Skill {
   descKey?: string;
   installed: boolean;
 }
+
+export interface ProviderInfo {
+  id: string;
+  /** Display name (brand name, not translated) */
+  name: string;
+  kind: "free" | "paid";
+  /** i18n key for the tag chip, e.g. "providers.defaultFree" */
+  tagKey?: string;
+  /** true → status shows "available on this computer" */
+  local?: boolean;
+}
