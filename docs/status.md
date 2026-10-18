@@ -770,3 +770,9 @@ Temuan & perbaikan (semua di-push):
 2. `rustls-tls-manual-roots` = tanpa root certs → semua HTTPS gagal → TLS pakai OS trust store via `rustls-platform-verifier` (`provider::http_client()`).
 3. Konflik crypto provider (`ring` vs `aws_lc_rs` dari default features) → `rustls` no-default-features + `ring, std, tls12`.
 4. Google mempensiunkan `gemini-2.5-flash` & `2.0-flash` (404) → default kini `gemini-3.8-flash` (list_models + default + live-test).
+
+## 18 Okt 2026 ~13:45 — Uji OpenCreator-Gemini SELESAI (vonis: gagal dengan catatan)
+- Instalasi Desktop app (dmg Apple Silicon) OK; UI English via Settings → Display language.
+- Provider Gemini terkonfigurasi: Custom OpenAI-compatible → `https://generativelanguage.googleapis.com/v1beta/openai/`, model `gemini-3.8-flash`, status "Text tasks ready".
+- Render video (Seedance 2.5) GAGAL: `creator_agent_failed` + `HTTP_ERROR` — akun baru 0 kredit, tanpa free tier.
+- Kesimpulan: OpenCreator = LLM agent saja (naskah), BUKAN jalur render gratis. Render tetap Veo 3.1 + HyperFrames.

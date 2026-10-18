@@ -38,14 +38,18 @@
         (2) `rustls-tls-manual-roots` tanpa root certs → TLS pakai OS trust store (`rustls-platform-verifier`);
         (3) konflik crypto provider ring vs aws_lc_rs → `rustls` no-default-features;
         (4) model `gemini-2.5-flash` & `2.0-flash` dipensiunkan Google → default `gemini-3.8-flash`.
-- [ ] Uji 1 video OpenCreator via Gemini (butuh: instalasi OpenCreator + set provider Gemini di Settings → AI Services)
+- [x] Uji 1 video OpenCreator via Gemini — **SELESAI 18 Okt ~13:45 (vonis: GAGAL dengan catatan)**:
+      - ✅ Instalasi Desktop app (dmg Apple Silicon) berhasil; UI bisa English (Settings → Display language)
+      - ✅ Provider Gemini terkonfigurasi (Custom OpenAI-compatible → `https://generativelanguage.googleapis.com/v1beta/openai/`, model `gemini-3.8-flash`, status "Text tasks ready")
+      - ❌ Render video (Seedance 2.5) GAGAL: error `creator_agent_failed` + `HTTP_ERROR` — akun baru **0 kredit**, tidak ada free tier, video generation butuh beli kredit
+      - **Kesimpulan**: OpenCreator hanya untuk LLM agent (naskah); BUKAN jalur render gratis. Jalur render tetap **Veo 3.1** (key Gemini ada) + **HyperFrames** (lokal gratis). OpenCreator dipertimbangkan lagi bila beli kredit.
 - [ ] Live test Meta `accounts` (butuh: system user token — **diparkir**, fondasi sudah dibuat)
 
 ### 4. Fase 5 — Hardening & rilis v1 pribadi
 - [x] QC judge penuh (rubrik skor 0–100) — `skills/qc-rubrik/SKILL.md` v1.0.0 (18 Okt)
 - [x] Metering + budget caps + view Penggunaan — IPC `usage.summary` + `PenggunaanView` (18 Okt; budget guard sudah ada di executor)
 - [x] Providers settings UI — `PengaturanView` + IPC `secrets.set`/`secrets.has` + Tauri commands (18 Okt)
-- [ ] Upload deliverable ke Drive folder MIMI
+- [x] Upload deliverable ke Drive folder MIMI — `drive_upload.rs` best-effort pasca-approval (18 Okt)
 - [ ] Build dmg ad-hoc + setup LaunchAgent
 - [ ] Tes MacBook: notifikasi `osascript`, buktikan quit app ≠ stop agents (daemon tetap jalan)
 - [ ] Tes OAuth Google Drive (mode penuh)
