@@ -98,3 +98,12 @@ export function toolStateLabel(state: string): string {
       return state;
   }
 }
+
+export interface UsageRow {
+  agent_id: string;
+  agent_name: string;
+  daily_budget_usd: number;
+  spent_today_usd: number;
+  spent_total_usd: number;
+  tokens_total: number;
+}

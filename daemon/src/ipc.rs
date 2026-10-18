@@ -223,6 +223,33 @@ async fn dispatch(app: &App, method: &str, params: Value) -> Result<Value> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(json!(runs))
         }
+        "usage.summary" => {
+            // Ringkasan penggunaan per agen: budget harian vs belanja hari ini + total.
+            let guard = db.lock().await;
+            let mut stmt = guard.prepare(
+                "SELECT a.id, a.name, a.daily_budget_usd,
+                        COALESCE(SUM(CASE WHEN date(r.created_at) = date('now') THEN r.cost_usd_est ELSE 0 END), 0.0) AS spent_today,
+                        COALESCE(SUM(r.cost_usd_est), 0.0) AS spent_total,
+                        COALESCE(SUM(r.input_tokens + r.output_tokens), 0) AS tokens_total
+                 FROM agents a
+                 LEFT JOIN tasks t ON t.agent_id = a.id
+                 LEFT JOIN runs r ON r.id = t.run_id
+                 GROUP BY a.id ORDER BY a.id",
+            )?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok(json!({
+                        "agent_id": r.get::<_, String>(0)?,
+                        "agent_name": r.get::<_, String>(1)?,
+                        "daily_budget_usd": r.get::<_, f64>(2)?,
+                        "spent_today_usd": r.get::<_, f64>(3)?,
+                        "spent_total_usd": r.get::<_, f64>(4)?,
+                        "tokens_total": r.get::<_, i64>(5)?,
+                    }))
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(json!(rows))
+        }
         "runs.get" => {
             let id = p_str(&params, "run_id").context("params.run_id required")?;
             let guard = db.lock().await;

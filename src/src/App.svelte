@@ -5,9 +5,10 @@
   import PersetujuanView from "./views/PersetujuanView.svelte";
   import DeliverableView from "./views/DeliverableView.svelte";
   import PengaturanView from "./views/PengaturanView.svelte";
+  import PenggunaanView from "./views/PenggunaanView.svelte";
   import PeralatanView from "./views/PeralatanView.svelte";
 
-  type ViewId = "agen" | "antrean" | "berjalan" | "persetujuan" | "deliverable" | "peralatan" | "pengaturan";
+  type ViewId = "agen" | "antrean" | "berjalan" | "persetujuan" | "deliverable" | "peralatan" | "penggunaan" | "pengaturan";
 
   let view = $state<ViewId>("agen");
 
@@ -18,6 +19,7 @@
     { id: "persetujuan", label: "Persetujuan" },
     { id: "deliverable", label: "Deliverable" },
     { id: "peralatan", label: "Peralatan" },
+    { id: "penggunaan", label: "Penggunaan" },
     { id: "pengaturan", label: "Pengaturan" },
   ];
 </script>
@@ -52,6 +54,8 @@
       <DeliverableView />
     {:else if view === "peralatan"}
       <PeralatanView />
+    {:else if view === "penggunaan"}
+      <PenggunaanView />
     {:else}
       <PengaturanView />
     {/if}

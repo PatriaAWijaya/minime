@@ -81,10 +81,20 @@ async function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Prom
       return { stored: (_args as Record<string, unknown>)?.account ?? "" } as unknown as T;
     case "secrets_has":
       return { account: (_args as Record<string, unknown>)?.account ?? "", has: false } as unknown as T;
+    case "usage_summary":
+      return MOCK_USAGE as unknown as T;
     default:
       throw new Error(`Perintah ${cmd} belum tersedia di mode demo (Fase 1)`);
   }
 }
+
+const MOCK_USAGE = [
+  { agent_id: "mimi", agent_name: "Mimi", daily_budget_usd: 5, spent_today_usd: 0.12, spent_total_usd: 1.4, tokens_total: 52000 },
+  { agent_id: "riset", agent_name: "Riset", daily_budget_usd: 3, spent_today_usd: 0.08, spent_total_usd: 0.9, tokens_total: 38000 },
+  { agent_id: "strategi-bisnis", agent_name: "Strategi Bisnis", daily_budget_usd: 5, spent_today_usd: 0, spent_total_usd: 0.3, tokens_total: 12000 },
+  { agent_id: "creative-director", agent_name: "Creative Director", daily_budget_usd: 8, spent_today_usd: 0.21, spent_total_usd: 2.1, tokens_total: 84000 },
+  { agent_id: "qc", agent_name: "QC", daily_budget_usd: 2, spent_today_usd: 0.02, spent_total_usd: 0.4, tokens_total: 15000 },
+];
 
 // ---------- API publik ----------
 
@@ -119,4 +129,5 @@ export const api = {
     invoke<{ stored: string }>("secrets_set", { account, value }),
   secretsHas: (account: string) =>
     invoke<{ account: string; has: boolean }>("secrets_has", { account }),
+  usageSummary: () => invoke<UsageRow[]>("usage_summary"),
 };
