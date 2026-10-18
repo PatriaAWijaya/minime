@@ -713,3 +713,33 @@ Urutan gratis-dulu → Valyu fallback (keputusan Patria) kini didukung penuh:
 - **OpenBB** ✅ kode `quant` op `openbb_data` siap (default provider yfinance)
 - **Valyu** ✅ fallback premium, key valid, setiap query tercatat `cost`
 - Stooq tetap DINONAKTIFKAN (endpoint di balik verifikasi JS)
+
+---
+
+## 18 Okt 2026 — Instalasi xerj + OpenViking di MacBook: SELESAI ✅
+
+Dipandu langkah-demi-langkah (langkah 32–55), terverifikasi live.
+
+**xerj v1.0.0-rc.96** ✅
+- Install via `curl -fsSL https://xerj.org/get | sh` → `~/.local/bin/xerj` (aarch64, SHA verified)
+- Node jalan: REST 127.0.0.1:8080, ES-kompatibel 127.0.0.1:9200, console `localhost:9200/_xerj-console/`
+- Data dir `~/.minime/xerj-data`; tes `curl :9200/` → `cluster_name: xerj` ✅
+- Autoindex korpus ditunda sampai repo Minime ada di MacBook
+
+**OpenViking 0.5.0** ✅ (config final hemat-RAM — lihat insiden di bawah)
+- `pip3 install openviking` langsung OK di macOS (tanpa venv; Python 3.13)
+- Gotcha: binary CLI bernama `openviking`, BUKAN `ov` → symlink `~/.local/bin/ov` + PATH di `~/.zshrc`
+- `openviking-server init` → **Start over** → **Step-by-step setup**:
+  - Embedding: **Lightweight CPU** (llama-cpp-python, model `bge-small-zh-v1.5-f16` 512d ~24MB; satu-satunya opsi ringan; catatan: fokus Mandarin, kualitas retrieval Indonesia tidak maksimal — bisa diganti manual via `ov.conf` bila perlu)
+  - VLM: **Custom (OpenAI-compatible)** → `https://generativelanguage.googleapis.com/v1beta/openai/` + key Gemini dari Keychain + model `gemini-2.0-flash`
+  - Query planner: `ov_intent_analysis_sft v7_q8` (~0.8B, ringan)
+  - Server: 127.0.0.1:1933, dev mode (no auth)
+- `openviking-server doctor`: **All checks passed** ✅
+- Server jalan di background (`nohup`), `ov status` → **Connected (Healthy)** ✅
+- Tes tulis+baca: `ov add-memory` → OK; `ov find "auto-posting" --uri viking://` → 7 hasil ranked ✅
+
+**Insiden: MacBook mendadak berat → restart (10:15 WIB)**
+- Penyebab: tumpukan xerj + openviking-server + Ollama (model VLM qwen3.5:4b ~3.4GB di RAM 8GB) + Chrome + Docker postiz
+- Solusi (keputusan Patria): OpenViking dikonfigurasi ulang TANPA model Ollama berat (config di atas)
+- Gotcha: ganti dimensi embedding (1024→512) membuat server gagal start (`EmbeddingRebuildRequiredError`) → hapus `~/.openviking/data` lama (kosong, aman), start ulang OK
+- Peringatan disk: xerj sempat log write-block (98%); doctor OpenViking baca 50.3 GB free — Patria cek `docker system df` sendiri (Viralin ~1,7 GB di Docker)

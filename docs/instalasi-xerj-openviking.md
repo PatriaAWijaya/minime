@@ -46,11 +46,24 @@ murni dokumen, query via API Elasticsearch-kompatibel di `localhost:9200`.
 
 ## OpenViking (10 menit)
 
+> **Pelajaran instalasi nyata 18 Okt 2026 (MacBook, RAM 8GB):**
+> - `pip3 install openviking` langsung OK (tanpa venv — macOS tidak kena PEP 668)
+> - Binary CLI bernama **`openviking`**, bukan `ov` → buat symlink dulu:
+>   `ln -sf /Library/Frameworks/Python.framework/Versions/3.13/bin/openviking ~/.local/bin/ov`
+> - Config final HEMAT-RAM (wajib di 8GB — setup Ollama penuh bikin MacBook berat sampai restart):
+>   init → **Start over** → **Step-by-step** → Embedding **Lightweight CPU**
+>   (llama-cpp-python + `bge-small-zh-v1.5-f16`, ~24MB) → VLM **Custom (OpenAI-compatible)**
+>   (`https://generativelanguage.googleapis.com/v1beta/openai/` + key Gemini Keychain +
+>   `gemini-2.0-flash`) → Query planner `ov_intent_analysis_sft v7_q8` (~0.8B)
+>   → server 127.0.0.1:1933 dev mode
+> - Ganti dimensi embedding (mis. 1024→512) → server gagal start
+>   (`EmbeddingRebuildRequiredError`); solusi: `rm -rf ~/.openviking/data` (bila kosong)
+
 ```sh
-pip install openviking
-# alternatif: uv tool install openviking --upgrade
+pip3 install openviking
+ln -sf /Library/Frameworks/Python.framework/Versions/3.13/bin/openviking ~/.local/bin/ov
 ov language en
-openviking-server init     # interaktif — ikuti wizard
+openviking-server init     # interaktif — ikuti wizard (lihat pelajaran di atas)
 ```
 
 Jalankan server background:
