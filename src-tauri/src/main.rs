@@ -121,6 +121,16 @@ async fn browser_list() -> Result<serde_json::Value, String> {
     call_daemon("browser.list", serde_json::json!({})).await
 }
 
+#[tauri::command]
+async fn secrets_set(account: String, value: String) -> Result<serde_json::Value, String> {
+    call_daemon("secrets.set", serde_json::json!({"account": account, "value": value})).await
+}
+
+#[tauri::command]
+async fn secrets_has(account: String) -> Result<serde_json::Value, String> {
+    call_daemon("secrets.has", serde_json::json!({"account": account})).await
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -131,7 +141,9 @@ fn main() {
             approvals_list,
             approvals_decide,
             tools_status,
-            browser_list
+            browser_list,
+            secrets_set,
+            secrets_has
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

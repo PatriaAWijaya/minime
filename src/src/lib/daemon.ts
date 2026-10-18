@@ -77,6 +77,10 @@ async function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Prom
       return MOCK_TOOLS as unknown as T;
     case "browser_list":
       return { sessions: [] } as unknown as T;
+    case "secrets_set":
+      return { stored: (_args as Record<string, unknown>)?.account ?? "" } as unknown as T;
+    case "secrets_has":
+      return { account: (_args as Record<string, unknown>)?.account ?? "", has: false } as unknown as T;
     default:
       throw new Error(`Perintah ${cmd} belum tersedia di mode demo (Fase 1)`);
   }
@@ -111,4 +115,8 @@ export const api = {
     }),
   toolsStatus: () => invoke<ToolStatus[]>("tools_status"),
   browserList: () => invoke<{ sessions: BrowserSession[] }>("browser_list"),
+  secretsSet: (account: string, value: string) =>
+    invoke<{ stored: string }>("secrets_set", { account, value }),
+  secretsHas: (account: string) =>
+    invoke<{ account: string; has: boolean }>("secrets_has", { account }),
 };
