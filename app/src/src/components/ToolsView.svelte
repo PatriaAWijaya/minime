@@ -1,45 +1,142 @@
 <script lang="ts">
+  import { addSkill, skills, templates } from "../lib/store";
   import { t } from "../lib/i18n";
 
-  const tools = [
-    { nameKey: "tools.meta", descKey: "tools.metaDesc" },
-    { nameKey: "tools.postiz", descKey: "tools.postizDesc" },
-    { nameKey: "tools.pireel", descKey: "tools.pireelDesc" },
-    { nameKey: "tools.drive", descKey: "tools.driveDesc" },
+  // Apps stay disabled until Phase 3; the note under each card says so.
+  const apps: { nameKey: string; descKey: string; badge: string; color: string }[] = [
+    { nameKey: "tools.meta", descKey: "tools.metaDesc", badge: "M", color: "#2563eb" },
+    { nameKey: "tools.postiz", descKey: "tools.postizDesc", badge: "P", color: "#7c3aed" },
+    { nameKey: "tools.pireel", descKey: "tools.pireelDesc", badge: "P", color: "#e11d48" },
+    { nameKey: "tools.drive", descKey: "tools.driveDesc", badge: "D", color: "#059669" },
+    { nameKey: "tools.slack", descKey: "tools.slackDesc", badge: "S", color: "#d97706" },
+    { nameKey: "tools.discord", descKey: "tools.discordDesc", badge: "D", color: "#5865F2" },
+    { nameKey: "tools.telegram", descKey: "tools.telegramDesc", badge: "T", color: "#0891b2" },
+    { nameKey: "tools.github", descKey: "tools.githubDesc", badge: "G", color: "#6b7280" },
+    { nameKey: "tools.notion", descKey: "tools.notionDesc", badge: "N", color: "#a3a3a3" },
+    { nameKey: "tools.canva", descKey: "tools.canvaDesc", badge: "C", color: "#0ea5e9" },
   ];
+
+  let showDialog = $state(false);
+  let skillName = $state("");
+
+  function toggleTemplate(id: number) {
+    templates.update((list) =>
+      list.map((tpl) => (tpl.id === id ? { ...tpl, enabled: !tpl.enabled } : tpl)),
+    );
+  }
+
+  function toggleSkill(id: number) {
+    skills.update((list) =>
+      list.map((s) => (s.id === id ? { ...s, installed: !s.installed } : s)),
+    );
+  }
+
+  function createSkill() {
+    addSkill(skillName);
+    skillName = "";
+    showDialog = false;
+  }
+
+  function skillNameOf(s: { nameKey?: string; customName?: string }): string {
+    return s.customName ?? $t(s.nameKey ?? "");
+  }
 </script>
 
-<section class="view">
-  <h2 class="title">{$t("tools.title")}</h2>
-  <div class="list">
-    {#each tools as tool}
-      <div class="tool">
-        <div class="info">
-          <div class="name">{$t(tool.nameKey)}</div>
-          <div class="desc">{$t(tool.descKey)}</div>
-        </div>
-        <span class="status"><span class="dot attention"></span>{$t("tools.notConnected")}</span>
-        <button class="btn-ghost" disabled title="Tahap 3">{$t("tools.connect")}</button>
-      </div>
-    {/each}
+<div class="page">
+  <div class="page-head">
+    <h2>{$t("tools.title")}</h2>
   </div>
-  <p class="note">{$t("tools.note")}</p>
-</section>
+
+  <div class="section">
+    <h3>{$t("tools.agents")}</h3>
+    <p class="lede">{$t("tools.agents.desc")}</p>
+    <div class="grid">
+      {#each $templates as tpl (tpl.id)}
+        <div class="card">
+          <h4>{$t(tpl.nameKey)}</h4>
+          <p>{$t(tpl.descKey)}</p>
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleTemplate(tpl.id)}>
+              {tpl.enabled ? $t("tools.deactivate") : $t("tools.activate")}
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>{$t("tools.apps")}</h3>
+    <p class="lede">{$t("tools.apps.desc")}</p>
+    <div class="grid">
+      {#each apps as app}
+        <div class="card">
+          <div class="top">
+            <span class="mini-badge" style:background={app.color}>{app.badge}</span>
+            <h4>{$t(app.nameKey)}</h4>
+          </div>
+          <p>{$t(app.descKey)}</p>
+          <div class="actions">
+            <button class="btn-ghost" disabled title={$t("tools.soon")}>
+              {$t("tools.connect")}
+            </button>
+          </div>
+          <span class="soon-note">{$t("tools.soon")}</span>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="page-head">
+      <div>
+        <h3>{$t("tools.skills")}</h3>
+        <p class="lede">{$t("tools.skills.desc")}</p>
+      </div>
+      <button class="btn-primary" onclick={() => (showDialog = true)}>
+        {$t("tools.newSkill")}
+      </button>
+    </div>
+    <div class="grid">
+      {#each $skills as skill (skill.id)}
+        <div class="card">
+          <h4>{skillNameOf(skill)}</h4>
+          {#if skill.descKey}<p>{$t(skill.descKey)}</p>{/if}
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleSkill(skill.id)}>
+              {skill.installed ? $t("tools.installed") : $t("tools.install")}
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+</div>
+
+{#if showDialog}
+  <div class="overlay" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) showDialog = false; }}>
+    <div class="dialog" role="dialog" aria-modal="true" aria-label={$t("tools.newSkill.title")}>
+      <h3>{$t("tools.newSkill.title")}</h3>
+      <div class="field">
+        <label for="skill-name">{$t("tools.newSkill.prompt")}</label>
+        <input
+          id="skill-name"
+          bind:value={skillName}
+          placeholder={$t("tools.newSkill.placeholder")}
+        />
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" onclick={() => (showDialog = false)}>
+          {$t("tools.newSkill.cancel")}
+        </button>
+        <button class="btn-primary" onclick={createSkill} disabled={!skillName.trim()}>
+          {$t("tools.newSkill.create")}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
-  .view { padding: 24px; max-width: 720px; overflow-y: auto; }
-  .title { font-size: 22px; margin-bottom: 20px; }
-  .list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .tool {
-    display: flex; align-items: center; gap: 14px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-  }
-  .info { flex: 1; min-width: 0; }
-  .name { font-size: 15px; font-weight: 700; }
-  .desc { font-size: 13px; color: var(--dim); }
-  .status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dim); white-space: nowrap; }
-  .note { font-size: 14px; color: var(--dim); }
+  .page-head .btn-primary { flex: none; }
 </style>

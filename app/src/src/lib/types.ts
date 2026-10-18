@@ -22,10 +22,52 @@ export interface Message {
   time: string;
 }
 
-export interface Task {
+export type ScheduleRange = "day" | "week" | "month";
+
+export interface ScheduledItem {
+  id: number;
+  nameKey: string;
+  whenKey: string;
+  range: ScheduleRange;
+  active: boolean;
+}
+
+export type LibraryType = "doc" | "table" | "deck" | "image" | "video" | "app";
+
+export interface LibraryItem {
   id: number;
   titleKey: string;
+  dateKey: string;
+  /** Approximate age in days, used by the mock time filter */
+  daysAgo: number;
+  type: LibraryType;
   agentId: string;
-  progress: number; // 0..100
-  done: boolean;
+  taskKey: string;
+}
+
+export interface CostRow {
+  id: number;
+  agentId: string;
+  tokens: number;
+  /** USD, mock */
+  costUsd: number;
+  dateKey: string;
+  /** Approximate age in days, used by the mock range filter */
+  daysAgo: number;
+}
+
+export interface AgentTemplate {
+  id: number;
+  nameKey: string;
+  descKey: string;
+  enabled: boolean;
+}
+
+export interface Skill {
+  id: number;
+  /** i18n key, or customName when created by the user */
+  nameKey?: string;
+  customName?: string;
+  descKey?: string;
+  installed: boolean;
 }

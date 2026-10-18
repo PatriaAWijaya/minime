@@ -1,37 +1,41 @@
 <script lang="ts">
-  import Sidebar from "./components/Sidebar.svelte";
-  import AgentList from "./components/AgentList.svelte";
-  import ChatPanel from "./components/ChatPanel.svelte";
-  import TaskMonitor from "./components/TaskMonitor.svelte";
-  import SettingsView from "./components/SettingsView.svelte";
-  import UsageView from "./components/UsageView.svelte";
+  import IconSidebar from "./components/IconSidebar.svelte";
+  import AgentsView from "./components/AgentsView.svelte";
+  import TasksView from "./components/TasksView.svelte";
+  import ScheduleView from "./components/ScheduleView.svelte";
+  import LibraryView from "./components/LibraryView.svelte";
+  import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
+  import SettingsView from "./components/SettingsView.svelte";
   import { activeView } from "./lib/store";
 </script>
 
 <div class="layout">
-  <Sidebar />
-  <AgentList />
+  <IconSidebar />
   <main class="content">
-    {#if $activeView === "chat"}
-      <ChatPanel />
-    {:else if $activeView === "settings"}
-      <SettingsView />
-    {:else if $activeView === "usage"}
-      <UsageView />
-    {:else}
+    {#if $activeView === "agents"}
+      <AgentsView />
+    {:else if $activeView === "tasks"}
+      <TasksView />
+    {:else if $activeView === "schedule"}
+      <ScheduleView />
+    {:else if $activeView === "library"}
+      <LibraryView />
+    {:else if $activeView === "cost"}
+      <CostView />
+    {:else if $activeView === "tools"}
       <ToolsView />
+    {:else}
+      <SettingsView />
     {/if}
   </main>
-  <TaskMonitor />
 </div>
 
 <style>
   .layout {
     display: grid;
-    grid-template-columns: 208px 248px minmax(0, 1fr) 264px;
+    grid-template-columns: 56px minmax(0, 1fr);
     height: 100%;
-    min-width: 1100px;
   }
   .content {
     min-height: 0;
