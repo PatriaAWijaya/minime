@@ -776,3 +776,26 @@ Temuan & perbaikan (semua di-push):
 - Provider Gemini terkonfigurasi: Custom OpenAI-compatible → `https://generativelanguage.googleapis.com/v1beta/openai/`, model `gemini-3.8-flash`, status "Text tasks ready".
 - Render video (Seedance 2.5) GAGAL: `creator_agent_failed` + `HTTP_ERROR` — akun baru 0 kredit, tanpa free tier.
 - Kesimpulan: OpenCreator = LLM agent saja (naskah), BUKAN jalur render gratis. Render tetap Veo 3.1 + HyperFrames.
+
+## 2026-10-18 14:20 WIB — dmg ad-hoc + LaunchAgent SELESAI
+
+Build Tauri di MacBook Patria sukses. Aplikasi Minime.app jalan dan TERHUBUNG ke daemon
+(demo badge hilang, 5 agen tampil dengan data realtime dari daemon).
+
+Perbaikan selama build (semua ter-push):
+- `src-tauri/build.rs` ditambahkan (tauri_build::build) — fix OUT_DIR error
+- `src-tauri/icons/` di-generate (RGBA PNG + ICO + ICNS via `tauri icon --fit cover`)
+- `bundle.icon` diarahkan ke icons hasil generate (bukan JPG)
+- `src-tauri/capabilities/default.json` ditambahkan (Tauri v2 wajib)
+- `beforeBuildCommand` dihapus (build frontend manual: `npm run build` di src/)
+- `isTauri` detection: Tauri v2 pakai `__TAURI_INTERNALS__`, bukan `__TAURI__`
+
+LaunchAgent `id.minime.daemon`:
+- Plist: `~/Library/LaunchAgents/id.minime.daemon.plist`
+- Binary: `~/minime/daemon/target/release/minime-daemon`
+- WorkingDirectory: `/Users/mac/minime` (wajib — daemon butuh ./daemon/migrations)
+- RunAtLoad + KeepAlive; log: `~/.minime/daemon.log`
+- Daemon listening di `~/Library/Application Support/com.minime.app/minime.sock`
+
+Tools status saat start: valyu ready, veo3 ready, postiz unreachable (Docker mati),
+meta not_configured (token diparkir).
