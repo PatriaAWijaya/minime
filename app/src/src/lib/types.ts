@@ -101,3 +101,32 @@ export interface TaskFolder {
   agentIds: string[];
   open: boolean;
 }
+
+/** Kanban column id (mock task board). */
+export type KanbanCol = "queue" | "doing" | "done";
+
+/** A task card on the Kanban board (mock). */
+export interface KanbanCard {
+  id: number;
+  /** Card title, plain text entered by the user */
+  title: string;
+  agentId: string;
+  col: KanbanCol;
+  /** Display date string, e.g. "18 Okt" */
+  createdAt: string;
+}
+
+/** A node on the connection canvas (mock). */
+export interface FlowNode {
+  id: string;
+  agentId: string;
+  x: number;
+  y: number;
+}
+
+/** A connection between two canvas nodes (mock). */
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+}

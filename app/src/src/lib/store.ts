@@ -1,11 +1,15 @@
 // Central UI state (Phase 1: all local, no backend yet).
 
-import { writable, type Writable } from "svelte/store";
+import { writable, get, type Writable } from "svelte/store";
 import type {
   Agent,
   AgentStatus,
   AgentTemplate,
   CostRow,
+  FlowEdge,
+  FlowNode,
+  KanbanCard,
+  KanbanCol,
   LibraryItem,
   Message,
   ProviderInfo,
@@ -434,6 +438,109 @@ const CUSTOM_AGENT_COLORS = ["#64748b", "#0ea5e9", "#f43f5e", "#a855f7"];
 
 /** Agents created in-app via the "+" menu (mock). */
 export const customAgents = writable<Agent[]>([]);
+
+/** Tasks sub-view: Kanban board or connection canvas (mock). */
+export type TasksViewKind = "kanban" | "flow";
+
+export const tasksView = writable<TasksViewKind>("kanban");
+
+/** Small helper: load/persist a JSON list in localStorage. */
+function loadList<T>(key: string, seed: () => T[]): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw) as T[];
+  } catch {
+    /* fall through to seed */
+  }
+  return seed();
+}
+
+function persistList<T>(key: string, store: Writable<T[]>) {
+  store.subscribe((v) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+let kanbanSeq = 1;
+
+function seedKanban(): KanbanCard[] {
+  const seed: KanbanCard[] = [
+    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", createdAt: "18 Okt" },
+    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", createdAt: "19 Okt" },
+    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", createdAt: "17 Okt" },
+    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", createdAt: "18 Okt" },
+    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", createdAt: "15 Okt" },
+  ];
+  return seed;
+}
+
+/** Kanban cards (mock, persisted). */
+export const kanbanCards = writable<KanbanCard[]>(loadList("minime.kanban", seedKanban));
+persistList("minime.kanban", kanbanCards);
+// Continue the id sequence past any persisted cards.
+kanbanSeq =
+  get(kanbanCards).reduce((m, c) => Math.max(m, c.id), 0) + 1;
+
+export function addKanbanCard(title: string, agentId: string, col: KanbanCol) {
+  kanbanCards.update((list) => [
+    ...list,
+    { id: kanbanSeq++, title, agentId, col, createdAt: "19 Okt" },
+  ]);
+}
+
+export function moveKanbanCard(id: number, col: KanbanCol) {
+  kanbanCards.update((list) =>
+    list.map((c) => (c.id === id ? { ...c, col } : c)),
+  );
+}
+
+let flowSeq = 1;
+
+function seedFlow(): FlowNode[] {
+  return [
+    { id: `node-${flowSeq++}`, agentId: "mimi", x: 80, y: 120 },
+    { id: `node-${flowSeq++}`, agentId: "kreatif", x: 400, y: 120 },
+  ];
+}
+
+/** Connection-canvas nodes (mock, persisted). */
+export const flowNodes = writable<FlowNode[]>(loadList("minime.flow-nodes", seedFlow));
+persistList("minime.flow-nodes", flowNodes);
+
+function seedEdges(): FlowEdge[] {
+  return [{ id: "edge-1", source: "node-1", target: "node-2" }];
+}
+
+/** Connection-canvas edges (mock, persisted). */
+export const flowEdges = writable<FlowEdge[]>(loadList("minime.flow-edges", seedEdges));
+persistList("minime.flow-edges", flowEdges);
+
+export function addFlowNode(agentId: string) {
+  const id = `node-${flowSeq++}-${Date.now() % 100000}`;
+  flowNodes.update((list) => {
+    const x = 80 + (list.length % 4) * 320;
+    const y = 80 + Math.floor(list.length / 4) * 220;
+    return [...list, { id, agentId, x, y }];
+  });
+}
+
+export function addFlowEdge(source: string, target: string) {
+  if (source === target) return;
+  flowEdges.update((list) => {
+    if (list.some((e) => e.source === source && e.target === target)) return list;
+    return [...list, { id: `edge-${source}-${target}`, source, target }];
+  });
+}
+
+export function moveFlowNode(id: string, x: number, y: number) {
+  flowNodes.update((list) =>
+    list.map((n) => (n.id === id ? { ...n, x: Math.round(x), y: Math.round(y) } : n)),
+  );
+}
 
 export function addCustomAgent() {
   const n = customAgentSeq++;
