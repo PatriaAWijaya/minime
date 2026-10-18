@@ -54,7 +54,7 @@
 - [ ] Tes MacBook: notifikasi `osascript`, buktikan quit app ≠ stop agents (daemon tetap jalan)
 - [ ] Tes OAuth Google Drive (mode penuh)
 - [x] Security audit (skill `local_security_audit`) — 18 Okt: 2 temuan hardening rendah (socket permission, secrets allowlist), 0 kritis; perbaikan butuh approval Patria
-- [ ] Audit Impeccable (UI)
+- [x] Audit Impeccable (UI) — 18 Okt: 2 anti-pattern (thick side border) diperbaiki, scan bersih
 - [ ] **Gate: v1 rilis di MacBook Patria** (vonis Patria)
 
 ### 5. Keputusan yang masih menunggu Patria
