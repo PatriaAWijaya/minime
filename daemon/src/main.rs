@@ -61,6 +61,14 @@ fn build_providers(repo_dir: &std::path::Path) -> Providers {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Live-test harness (Gate 4): `--live-test` memanggil Gemini / Muse /
+    // DeepSeek langsung via kode provider daemon, tanpa DB/IPC. Kunci dibaca
+    // dari env MINIME_*_KEY atau Keychain (service com.minime.app) — sama
+    // seperti jalur produksi di secrets.rs.
+    if std::env::args().any(|a| a == "--live-test") {
+        return live_test().await;
+    }
+
     let data_dir = db::data_dir()?;
     let repo_dir = db::repo_dir();
     eprintln!(
@@ -143,5 +151,93 @@ async fn main() -> Result<()> {
             std::fs::remove_file(&sock).ok();
         }
     }
+    Ok(())
+}
+
+/// Live-test harness for Gate 4: calls Gemini / Muse / DeepSeek through the
+/// real provider implementations with a tiny prompt. Keys resolve via
+/// secrets::api_key (env MINIME_*_KEY, then OS keychain service
+/// `com.minime.app`) — the same path production uses. Prints one line per
+/// provider: OK + reply snippet, or FAIL + typed error.
+async fn live_test() -> Result<()> {
+    use provider::{ChatRequest, ModelProvider};
+
+    struct Case {
+        name: &'static str,
+        provider: std::sync::Arc<dyn ModelProvider>,
+        model: &'static str,
+    }
+    let cases = vec![
+        Case {
+            name: "gemini",
+            provider: std::sync::Arc::new(providers_gemini::GeminiProvider::new()),
+            model: "gemini-2.5-flash",
+        },
+        Case {
+            name: "muse",
+            provider: std::sync::Arc::new(providers_muse::MuseProvider::new()),
+            model: providers_muse::DEFAULT_MODEL,
+        },
+        Case {
+            name: "deepseek",
+            provider: std::sync::Arc::new(providers_deepseek::DeepSeekProvider::new()),
+            model: "deepseek-chat",
+        },
+    ];
+
+    let mut failures = 0;
+    for c in cases {
+        let req = ChatRequest {
+            model: c.model.to_string(),
+            system_prompt: String::new(),
+            messages: serde_json::json!([
+                {"role": "user", "content": "Balas persis dengan satu kata: OK"}
+            ]),
+            effort: "low".to_string(),
+            max_tokens: Some(16),
+            workdir: None,
+        };
+        let mut rx = c.provider.complete_stream(req);
+        let mut text = String::new();
+        let mut err: Option<String> = None;
+        let outcome = tokio::time::timeout(std::time::Duration::from_secs(60), async {
+            while let Some(chunk) = rx.recv().await {
+                match chunk {
+                    Ok(ch) => {
+                        text.push_str(&ch.delta_text);
+                        if ch.done {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        err = Some(format!("{e:?}"));
+                        break;
+                    }
+                }
+            }
+        })
+        .await;
+        match (outcome, err) {
+            (Err(_), _) => {
+                failures += 1;
+                println!("[live-test] {:<8} FAIL timeout after 60s", c.name);
+            }
+            (Ok(_), Some(e)) => {
+                failures += 1;
+                println!("[live-test] {:<8} FAIL {e}", c.name);
+            }
+            (Ok(_), None) => {
+                let snippet: String = text.trim().chars().take(80).collect();
+                println!(
+                    "[live-test] {:<8} OK model={} reply={:?}",
+                    c.name, c.model, snippet
+                );
+            }
+        }
+    }
+    if failures > 0 {
+        anyhow::bail!("{failures} provider(s) failed live test");
+    }
+    println!("[live-test] all 3 providers OK");
     Ok(())
 }

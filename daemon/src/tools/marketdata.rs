@@ -48,32 +48,28 @@ pub async fn readiness() -> ToolStatus {
         )
     };
     // 1. EDGAR: cek jangkauan ringan.
-    let edgar_ok = client()
-        .map(|c| c)
-        .map(|c| async move {
-            c.get("https://www.sec.gov/files/company_tickers.json")
-                .timeout(Duration::from_secs(15))
-                .send()
-                .await
-                .map(|r| r.status().is_success())
-                .unwrap_or(false)
-        });
+    let edgar_ok = client().map(|c| c).map(|c| async move {
+        c.get("https://www.sec.gov/files/company_tickers.json")
+            .timeout(Duration::from_secs(15))
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false)
+    });
     let edgar_ok = match edgar_ok {
         Ok(fut) => fut.await,
         Err(_) => false,
     };
     // 2. yfinance via python.
     let yf_ok = match quant_python() {
-        Some(py) => {
-            super::run_cmd(
-                &py,
-                &["-c", "import yfinance"],
-                None,
-                Duration::from_secs(60),
-            )
-            .await
-            .is_ok()
-        }
+        Some(py) => super::run_cmd(
+            &py,
+            &["-c", "import yfinance"],
+            None,
+            Duration::from_secs(60),
+        )
+        .await
+        .is_ok(),
         None => false,
     };
     // 3. FRED key.
@@ -173,9 +169,16 @@ async fn cik_for_ticker(ticker: &str) -> Result<String> {
         .await
         .context("gagal parse company_tickers.json")?;
     let want = ticker.to_uppercase();
-    let obj = v.as_object().context("format company_tickers tak dikenal")?;
+    let obj = v
+        .as_object()
+        .context("format company_tickers tak dikenal")?;
     for entry in obj.values() {
-        if entry.get("ticker").and_then(|t| t.as_str()).map(|t| t.to_uppercase()) == Some(want.clone()) {
+        if entry
+            .get("ticker")
+            .and_then(|t| t.as_str())
+            .map(|t| t.to_uppercase())
+            == Some(want.clone())
+        {
             let cik_num = entry
                 .get("cik_str")
                 .and_then(|c| c.as_u64())

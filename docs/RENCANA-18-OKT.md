@@ -59,7 +59,7 @@
 - ✅ Skill `xerj` (Riset) + `openviking` (Mimi) — kode selesai & terdaftar
 - ✅ Dry run instalasi xerj (v1.0.0-rc.96) + OpenViking (0.5.0) di VM
 - ✅ Tool daemon `marketdata` (EDGAR/FRED/yfinance) + routing Valyu fallback premium
-- ✅ Skill `pireel` (status UJI COBA) + `docs/uji-pireel.md` — siap diuji
+- ✅ Skill `pireel` — **PERMANEN** (vonis Patria 18 Okt, 7/7; `skills/pireel/SKILL.md` v1.0.0)
 - ✅ Audit konsistensi docs (2 kontradiksi diperbaiki)
 - ✅ Keputusan: OpenCreator pakai Gemini; fal.ai dihapus total; Blotato → postiz;
       ArtCraft DITOLAK untuk saat ini; yorkeccak/finance clone diabaikan
