@@ -14,20 +14,24 @@
 4. **Local-first.** Data di mesin sendiri.
 5. **Human-in-the-loop.** Approval wajib sebelum aksi eksternal.
 
-## 2. Lapisan (usulan — stack menunggu verdict Patria)
+## 2. Lapisan (ramuan sendiri: Tauri 2 + Svelte 5)
 
 ```
 ┌──────────────────────────────────────────────┐
-│ UI (meniru layout OpenBot)                   │
+│ UI Svelte 5 (tiru layout OpenBot)             │
 │ sidebar workflow | daftar agen | chat+delivery │
 │ | monitor tugas berjalan                      │
 └──────────────────┬───────────────────────────┘
-                   │ IPC
+                   │ Tauri IPC (command)
 ┌──────────────────▼───────────────────────────┐
-│ Backend: agen runtime, model router, SQLite   │
-│ skills, tools (meta/postiz/pireel)           │
+│ Backend Rust: agen runtime, model router      │
+│ (Gemini 3.8 default), SQLite, skills, tools  │
 └──────────────────────────────────────────────┘
 ```
+
+Prinsip: thin client + backend Rust (pola terbukti v1).
+Tidak ada daemon terpisah di v2 awal — backend menyatu di Tauri
+(disederhanakan dari v1; persistensi via SQLite langsung).
 
 ## 3. Roster agen (seed)
 

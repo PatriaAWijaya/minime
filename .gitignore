@@ -30,6 +30,7 @@ tools/bin/
 arsip-v1/**/node_modules/
 arsip-v1/**/target/
 arsip-v1/**/dist/
+arsip-v1/tools/bin/
 binary/**
 
 # Minime v2 app

@@ -1,9 +1,10 @@
 # AGENTS.md — Minime v2
 
 > Visi ditetapkan Patria 18 Okt 2026. Kode v1 diarsipkan di `arsip-v1/`.
-> UI/UX meniru OpenBot (referensi: `~/workspace/referensi/openbot-base/`,
-> TIDAK menyalin kode — clean-room, lisensi aman).
-> Status: menunggu review Patria.
+> **Keputusan 18 Okt 2026: rekonstruksi OpenBot dengan ramuan sendiri** —
+> UI/UX meniru OpenBot, kode 100% buatan sendiri (clean-room).
+> Stack: **Tauri 2 + Svelte 5** (terbukti di v1).
+> Referensi visual (JANGAN salin kode): `~/workspace/referensi/openbot-base/`.
 
 ---
 
