@@ -593,7 +593,7 @@ async fn approve_run(app: &App, approval_id: &str, run_id: &str, note: &str) -> 
         note = if note.is_empty() { "-" } else { note },
         payload = payload_summary,
     );
-    std::fs::write(&file_path, draft)?;
+    std::fs::write(&file_path, &draft)?;
 
     let deliverable_id = uuid::Uuid::new_v4().to_string();
     {
@@ -622,5 +622,13 @@ async fn approve_run(app: &App, approval_id: &str, run_id: &str, note: &str) -> 
             current_stage: String::new(),
         })
         .ok();
+
+    // Fase 5: upload best-effort ke Drive folder MIMI. Kegagalan TIDAK
+    // menggagalkan approval — draft lokal tetap tersimpan.
+    let filename = format!("{run_id}.md");
+    match crate::drive_upload::upload_text("MIMI", &filename, &draft).await {
+        Ok(file_id) => eprintln!("[approve] deliverable ter-upload ke Drive (id={file_id})"),
+        Err(e) => eprintln!("[approve] upload Drive dilewati: {e:#}"),
+    }
     Ok(())
 }

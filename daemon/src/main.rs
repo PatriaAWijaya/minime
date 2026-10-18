@@ -4,6 +4,7 @@
 mod agent_loader;
 mod db;
 mod drive_oauth;
+mod drive_upload;
 mod events;
 mod executor;
 mod ipc;

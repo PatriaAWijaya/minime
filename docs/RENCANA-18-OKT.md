@@ -42,9 +42,9 @@
 - [ ] Live test Meta `accounts` (butuh: system user token — **diparkir**, fondasi sudah dibuat)
 
 ### 4. Fase 5 — Hardening & rilis v1 pribadi
-- [ ] QC judge penuh (rubrik skor 0–100)
-- [ ] Metering + budget caps + view Penggunaan
-- [ ] Providers settings UI
+- [x] QC judge penuh (rubrik skor 0–100) — `skills/qc-rubrik/SKILL.md` v1.0.0 (18 Okt)
+- [x] Metering + budget caps + view Penggunaan — IPC `usage.summary` + `PenggunaanView` (18 Okt; budget guard sudah ada di executor)
+- [x] Providers settings UI — `PengaturanView` + IPC `secrets.set`/`secrets.has` + Tauri commands (18 Okt)
 - [ ] Upload deliverable ke Drive folder MIMI
 - [ ] Build dmg ad-hoc + setup LaunchAgent
 - [ ] Tes MacBook: notifikasi `osascript`, buktikan quit app ≠ stop agents (daemon tetap jalan)

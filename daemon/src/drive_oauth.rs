@@ -197,10 +197,7 @@ fn decode(s: &str) -> String {
 async fn exchange_and_store(code: &str, redirect_uri: &str) -> Result<()> {
     let client_id = secrets::api_key(CLIENT_ID_ACCOUNT).context("client_id hilang")?;
     let client_secret = secrets::api_key(CLIENT_SECRET_ACCOUNT).unwrap_or_default();
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+    let client = crate::provider::http_client();
     let mut form = vec![
         ("grant_type", "authorization_code".to_string()),
         ("code", code.to_string()),
@@ -283,10 +280,7 @@ pub async fn access_token() -> Result<String> {
     // Refresh.
     let client_id = secrets::api_key(CLIENT_ID_ACCOUNT).context("client_id hilang")?;
     let client_secret = secrets::api_key(CLIENT_SECRET_ACCOUNT).unwrap_or_default();
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+    let client = crate::provider::http_client();
     let mut form = vec![
         ("grant_type", "refresh_token".to_string()),
         ("refresh_token", blob.refresh_token.clone()),
