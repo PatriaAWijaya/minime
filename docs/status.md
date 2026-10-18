@@ -868,3 +868,18 @@ Verdict Patria: stack **Tauri 2 + Svelte 5** (ramuan sendiri, clean-room dari po
 - Push: 3 commit via Git Data API (pasangan SHA di ~/AGENTS.md),
   remote master kini d226573.
 - Gate Tahap 1 TERBUKA: menunggu vonis Patria atas tampilan.
+
+## 2026-10-18 21:55 WIB — Review Tahap 1 (oleh Mimi)
+
+Hasil: **LOLOS** dengan 1 temuan minor (diperbaiki).
+- Build: `npm run build` sukses 2x (129 modul, nol warning/error).
+- Layout 4 kolom sesuai pola OpenBot; 6 agen + badge + status kuning/hijau/merah
+  (locked rule); chat mock kirim→bekerja→balas berfungsi.
+- i18n: 51 key × 3 bahasa (ID/EN/ZH), paritas penuh, tersimpan di localStorage.
+- UI rules: body 15px, tombol min 44px, label di atas field, satu accent emerald.
+- Impeccable: font system (bukan Inter), tanpa gradient, tanpa kartu-bertingkat.
+- Temuan: 1 key i18n mati (`settings.aiKind`) — dihapus, rebuild sukses.
+- Batasan: `cargo check` tak lolos di VM (tanpa header dev GTK/WebKit, tanpa sudo);
+  verifikasi kompilasi Rust penuh harus di MacBook.
+- Sesuai desain Tahap 1: chat = mock lokal, task monitor = seed, LLM = Tahap 2.
+- Gate: menunggu vonis visual Patria.

@@ -59,7 +59,6 @@ const id: Dict = {
   "settings.title": "Pengaturan",
   "settings.language": "Bahasa aplikasi",
   "settings.aiPerAgent": "Pilihan AI per anggota tim",
-  "settings.aiKind": "Jenis AI",
   "settings.advanced": "Pengaturan lanjutan",
   "settings.advancedNote":
     "Opsi teknis kami sembunyikan agar tetap simpel. Pengaturan bawaan sudah optimal untuk kebanyakan pengguna.",
@@ -116,7 +115,6 @@ const en: Dict = {
   "settings.title": "Settings",
   "settings.language": "App language",
   "settings.aiPerAgent": "AI choice per team member",
-  "settings.aiKind": "AI type",
   "settings.advanced": "Advanced settings",
   "settings.advancedNote":
     "Technical options are hidden to keep things simple. The defaults are already optimal for most users.",
@@ -172,7 +170,6 @@ const zh: Dict = {
   "settings.title": "设置",
   "settings.language": "应用语言",
   "settings.aiPerAgent": "每位团队成员的AI选择",
-  "settings.aiKind": "AI类型",
   "settings.advanced": "高级设置",
   "settings.advancedNote": "技术选项已隐藏以保持简洁。默认设置已针对大多数用户优化。",
   "settings.note": "选择会自动保存在此设备上。",
