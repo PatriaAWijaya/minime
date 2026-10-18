@@ -185,6 +185,18 @@ async fn live_test() -> Result<()> {
         },
     ];
 
+    // Diagnose keychain access before the provider calls: the production
+    // path (secrets::api_key) swallows keyring errors, so surface them here.
+    for acct in ["gemini", "muse", "deepseek"] {
+        match keyring::Entry::new("com.minime.app", acct) {
+            Ok(e) => match e.get_password() {
+                Ok(_) => println!("[live-test] keychain {acct}: readable"),
+                Err(err) => println!("[live-test] keychain {acct}: READ FAILED: {err:?}"),
+            },
+            Err(err) => println!("[live-test] keychain {acct}: ENTRY FAILED: {err:?}"),
+        }
+    }
+
     let mut failures = 0;
     for c in cases {
         let req = ChatRequest {
