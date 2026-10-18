@@ -6,11 +6,13 @@ import type { Agent, Approval, BrowserSession, DaemonStatus, Task, ToolStatus } 
 declare global {
   interface Window {
     __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
   }
 }
 
 export const isTauri: boolean =
-  typeof window !== "undefined" && "__TAURI__" in window;
+  typeof window !== "undefined" &&
+  ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (isTauri) {
