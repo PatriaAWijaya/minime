@@ -219,7 +219,7 @@ async fn live_test() -> Result<()> {
                 {"role": "user", "content": "Balas persis dengan satu kata: OK"}
             ]),
             effort: "low".to_string(),
-            max_tokens: Some(16),
+            max_tokens: Some(64),
             workdir: None,
         };
         let mut rx = c.provider.complete_stream(req);
