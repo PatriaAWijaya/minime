@@ -3,20 +3,28 @@
 //! Menggantikan tool `blotato` (17 Okt 2026, perintah Patria). postiz-app
 //! (AGPL-3.0) berjalan sebagai layanan EKSTERNAL di MacBook Patria
 //! (http://localhost:4007); daemon hanya memanggil Public API-nya
-//! (`/public/v1`) via Bearer key `pos_...` — tidak ada kode postiz yang
-//! ditempel ke Minime (batas lisensi AGPL aman, pola nautilus_trader).
+//! (`/api/public/v1`) dengan API key pribadi (hex 64 char, tanpa prefix)
+//! di header `Authorization` mentah (TANPA kata "Bearer") — tidak ada kode
+//! postiz yang ditempel ke Minime (batas lisensi AGPL aman, pola
+//! nautilus_trader).
 //!
-//! Endpoint terverifikasi dari kode postiz
-//! (`/tmp/eval-blotato-alt/postiz`, backend NestJS):
-//!   - GET  /public/v1/is-connected  -> { connected: true } (cek key)
-//!   - GET  /public/v1/integrations  -> daftar channel [{ id, name,
+//! Fakta terverifikasi LIVE dari MacBook Patria (18 Okt 2026) — mengoreksi
+//! asumsi awal dari baca kode:
+//!   - Base path = `/api/public/v1` (BUKAN `/public/v1` — tanpa prefix /api
+//!     request jatuh ke SPA frontend dan redirect ke /auth).
+//!   - Auth = header `Authorization: <key>` mentah (BUKAN `Bearer <key>`).
+//!   - Endpoint `/public/v1/is-connected` TIDAK ADA di API; cek koneksi
+//!     pakai `GET /api/public/v1/integrations` (read-only).
+//!   - API key pribadi = hex 64 char tanpa prefix. Yang berawalan `pos_`
+//!     adalah token OAuth App (tab "Apps"), bukan API key pribadi.
+//!   - GET  /api/public/v1/integrations -> daftar channel [{ id, name,
 //!     identifier (provider), disabled, ... }]
-//!   - POST /public/v1/posts         -> body { type: "draft"|"schedule",
+//!   - POST /api/public/v1/posts       -> body { type: "draft"|"schedule",
 //!     date (ISO, wajib), shortLink, tags: [], posts: [{ integration: { id },
 //!     value: [{ content, image: [] }] }] }; validasi konten dilewati
 //!     untuk type "draft" (controller)
-//!   - GET  /public/v1/posts         -> daftar post
-//!   - DELETE /public/v1/posts/:id   -> hapus post
+//!   - GET  /api/public/v1/posts       -> daftar post
+//!   - DELETE /api/public/v1/posts/:id -> hapus post
 //!
 //! ATURAN KERAS (rule #3): TIDAK ADA auto-posting.
 //!   - `draft`: POST type "draft" per channel + bundle draft lokal.
@@ -28,7 +36,7 @@
 //!   - Platform Meta (instagram/facebook/threads) DITOLAK di tool ini —
 //!     ditangani tool `meta` (koneksi langsung, DRAFT-ONLY).
 //!   - `accounts` / `list`: read-only.
-//! Kredensial: Keychain akun `postiz` / env MINIME_POSTIZ_KEY (format `pos_...`).
+//! Kredensial: Keychain akun `postiz` / env MINIME_POSTIZ_KEY (hex 64 char).
 //! URL layanan: env MINIME_POSTIZ_URL (default http://localhost:4007).
 //! Tidak ada kredensial yang di-log.
 
@@ -61,6 +69,12 @@ fn base_url() -> String {
         .unwrap_or_else(|| DEFAULT_URL.to_string())
 }
 
+/// Root Public API postiz: {service}/api/public/v1
+/// (terverifikasi live 18 Okt 2026 — tanpa prefix /api request jatuh ke SPA).
+fn api_base() -> String {
+    format!("{}/api/public/v1", base_url())
+}
+
 fn mock_mode() -> bool {
     std::env::var("MINIME_MOCK_LLM").is_ok()
 }
@@ -81,16 +95,17 @@ pub async fn readiness() -> ToolStatus {
                 "postiz",
                 "api",
                 super::STATE_NOT_CONFIGURED,
-                "API key postiz belum diset (Keychain akun `postiz` / env MINIME_POSTIZ_KEY, format `pos_...`).",
+                "API key postiz belum diset (Keychain akun `postiz` / env MINIME_POSTIZ_KEY, hex 64 char dari dashboard postiz → Settings → Agents).",
                 "Draft disusun sebagai file lokal; kirim ke postiz menunggu key + layanan jalan di MacBook.",
             )
         }
     };
     // Cek ringan: key valid + layanan menjawab.
+    // GET /api/public/v1/integrations (read-only; /is-connected tidak ada).
     let req = match client() {
         Ok(c) => c
-            .get(format!("{}/public/v1/is-connected", base_url()))
-            .header("Authorization", format!("Bearer {key}")),
+            .get(format!("{}/integrations", api_base()))
+            .header("Authorization", auth_header(&key)),
         Err(e) => {
             return ToolStatus::not(
                 super::TOOL_POSTIZ,
@@ -225,17 +240,18 @@ async fn caption_from_skrip(db: &Db, run_id: &str) -> String {
 }
 
 fn auth_header(key: &str) -> String {
-    format!("Bearer {key}")
+    // postiz Public API: key mentah di header Authorization, TANPA "Bearer".
+    key.to_string()
 }
 
 /// Daftar channel terhubung dari postiz: identifier provider -> integration id.
 async fn integrations_map(key: &str) -> Result<std::collections::HashMap<String, Vec<String>>> {
     let resp = client()?
-        .get(format!("{}/public/v1/integrations", base_url()))
+        .get(format!("{}/integrations", api_base()))
         .header("Authorization", auth_header(key))
         .send()
         .await
-        .context("gagal menghubungi postiz /public/v1/integrations")?;
+        .context("gagal menghubungi postiz /api/public/v1/integrations")?;
     let status = resp.status();
     let body: Value = resp.json().await.context("respons postiz bukan JSON")?;
     if !status.is_success() {
@@ -363,7 +379,7 @@ async fn draft(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
             );
         }
         let resp = client()?
-            .post(format!("{}/public/v1/posts", base_url()))
+            .post(format!("{}/posts", api_base()))
             .header("Authorization", auth_header(&key))
             .json(&json!({
                 "type": "draft",
@@ -374,7 +390,7 @@ async fn draft(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
             }))
             .send()
             .await
-            .context("gagal menghubungi postiz /public/v1/posts")?;
+            .context("gagal menghubungi postiz /api/public/v1/posts")?;
         let status = resp.status();
         let body: Value = resp.json().await.context("respons postiz bukan JSON")?;
         if !status.is_success() {
@@ -498,7 +514,7 @@ async fn schedule(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
         })
         .collect();
     let resp = client()?
-        .post(format!("{}/public/v1/posts", base_url()))
+        .post(format!("{}/posts", api_base()))
         .header("Authorization", auth_header(&key))
         .json(&json!({
             "type": "schedule",
@@ -509,7 +525,7 @@ async fn schedule(db: &Db, params: &Value, ctx: &ToolCtx) -> Result<Value> {
         }))
         .send()
         .await
-        .context("gagal menghubungi postiz /public/v1/posts")?;
+        .context("gagal menghubungi postiz /api/public/v1/posts")?;
     let status_code = resp.status();
     let body: Value = resp.json().await.context("respons postiz bukan JSON")?;
     if !status_code.is_success() {
@@ -557,11 +573,11 @@ async fn accounts() -> Result<Value> {
 async fn list_posts() -> Result<Value> {
     let key = api_key().context("API key postiz belum diset")?;
     let resp = client()?
-        .get(format!("{}/public/v1/posts", base_url()))
+        .get(format!("{}/posts", api_base()))
         .header("Authorization", auth_header(&key))
         .send()
         .await
-        .context("gagal menghubungi postiz /public/v1/posts")?;
+        .context("gagal menghubungi postiz /api/public/v1/posts")?;
     let status = resp.status();
     let body: Value = resp.json().await.context("respons postiz bukan JSON")?;
     if !status.is_success() {

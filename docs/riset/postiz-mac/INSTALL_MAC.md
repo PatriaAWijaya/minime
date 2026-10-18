@@ -117,7 +117,7 @@ Catatan:
 
 1. Di dashboard postiz, buka **Settings → API** (atau menu
    Public API / Integrations).
-2. Generate API key baru — formatnya diawali `pos_`.
+2. Salin API key pribadi — hex 64 char TANPA prefix (Settings → Agents). CATATAN: yang berawalan `pos_` adalah token OAuth App, bukan API key ini (koreksi 18 Okt 2026).
 3. Simpan key ini baik-baik (hanya tampil sekali).
 4. Cara menghubungkannya ke Minime: lihat `INTEGRASI_MINIME.md`.
 

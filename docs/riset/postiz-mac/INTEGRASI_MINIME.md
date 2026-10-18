@@ -11,7 +11,7 @@ menjaga batasan lisensi AGPL-3.0).
 |---|---|
 | Base URL API publik | `http://localhost:4007/public/v1` |
 | Autentikasi | Header `Authorization: Bearer <API_KEY>` |
-| Format API key | diawali `pos_` (dibuat di dashboard postiz) |
+| Format API key | hex 64 char TANPA prefix (dashboard postiz → Settings → Agents). Yang berawalan `pos_` adalah token OAuth App, BUKAN API key pribadi (koreksi 18 Okt 2026) |
 
 ## 2. Simpan kredensial (di MacBook Patria)
 
@@ -20,14 +20,14 @@ JANGAN tulis API key di file repo. Simpan di macOS Keychain:
 ```bash
 # Simpan URL + key (ganti dengan nilai aslimu)
 security add-generic-password -s minime-postiz -a url -w "http://localhost:4007"
-security add-generic-password -s minime-postiz -a api-key -w "pos_..."
+security add-generic-password -s com.minime.app -a postiz -w   # tempel API key hex 64 char
 ```
 
 Untuk development/testing sementara, boleh pakai env:
 
 ```bash
 export MINIME_POSTIZ_URL="http://localhost:4007"
-export MINIME_POSTIZ_KEY="pos_..."
+export MINIME_POSTIZ_KEY="<hex-64-char>"
 ```
 
 > Nama env final (`MINIME_POSTIZ_URL`, `MINIME_POSTIZ_KEY`) adalah
@@ -88,7 +88,7 @@ contoh payload yang benar.
 
 - [x] postiz-app jalan di MacBook (`docker compose ps` semua healthy) — 17 Okt 2026
 - [ ] 1 akun platform terhubung (mis. Threads atau Instagram)
-- [x] API key `pos_...` dibuat dan tersimpan (17 Okt 2026)
+- [x] API key (hex 64 char) dibuat dan tersimpan di Keychain `com.minime.app` / akun `postiz` (18 Okt 2026; koreksi format)
 - [ ] 1 draft berhasil dibuat via curl dan tampil di dashboard
 - [x] ~~Blotato **tetap dipertahankan** sampai draft nyata via postiz terbukti~~ —
       DIGANTI 17 Okt 2026 (perintah Patria "ganti blotato dengan postiz"):
