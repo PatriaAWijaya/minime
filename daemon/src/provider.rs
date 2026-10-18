@@ -4,6 +4,25 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Build the shared HTTP client for LLM providers.
+///
+/// TLS uses the OS-native trust store via rustls-platform-verifier (macOS
+/// Keychain, Windows cert store, Linux system roots), so the daemon trusts
+/// whatever the user's system trusts — including corporate MITM proxies.
+/// (reqwest is built with `rustls-tls-manual-roots`, i.e. no bundled roots.)
+pub fn http_client() -> reqwest::Client {
+    let verifier = std::sync::Arc::new(rustls_platform_verifier::Verifier::new());
+    let tls = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(verifier)
+        .with_no_client_auth();
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .use_preconfigured_tls(Some(tls))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProviderKind {
     Free,

@@ -20,10 +20,7 @@ pub struct DeepSeekProvider {
 impl DeepSeekProvider {
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(180))
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
+            client: crate::provider::http_client(),
         }
     }
 }
