@@ -84,6 +84,11 @@ backend Rust menyatu di proses Tauri.
   penyedia custom, deteksi lokal otomatis).
 - **Berbayar: Muse = default**, fallback model populer lain
   (Gemini 3.8, DeepSeek).
+- **RouterKu (routerku.com, keputusan Patria 19 Okt): gateway AI Indonesia
+  kompatibel OpenAI** — satu API key untuk Claude, GPT, Gemini, Grok,
+  DeepSeek, Kimi, GLM (16+ model); bayar Rupiah via QRIS mulai Rp20rb,
+  tanpa langganan, saldo tak hangus. Dipakai sebagai **gerbang model
+  berbayar** di router (cukup ganti base URL + API key).
 - Routing per-agen: tiap agen punya model default yang bisa diganti.
 - Fallback berlapis: utama → cadangan → custom pengguna.
 - Metering: catat token & estimasi biaya per agen; budget cap opsional

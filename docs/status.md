@@ -921,3 +921,15 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   × 3 bahasa paritas penuh.
 - Rencana STT nyata (Tahap 2/3): Groq Whisper free tier atau whisper.cpp
   lokal — belum diimplementasi.
+
+---
+
+## 2026-10-18 ~23:59 WIB — Personalisasi agen
+
+- Section "Personalisasi" di panel deskripsi agen (di bawah Aturan):
+  jenis kelamin (Pria/Wanita, opsional), usia (1–120), jabatan
+  (C-Level / Senior Manager / Manager), hobi (teks bebas), suara
+  (toggle "Izinkan agen bicara" + pilih suara mock; TTS nyata tahap
+  berikutnya). Semua tersimpan per agen (localStorage).
+- Commit d207fc7 ↔ remote 52aa0f2, ter-push. Build sukses; i18n 282 key
+  × 3 bahasa paritas penuh.
