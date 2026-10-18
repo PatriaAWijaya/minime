@@ -1,7 +1,9 @@
 <script lang="ts">
   import { agents } from "../lib/agents";
+  import ChatPanel from "./ChatPanel.svelte";
   import {
     MODEL_CATALOG,
+    PROVIDERS,
     activeAgentId,
     activeServer,
     addCustomAgent,
@@ -13,6 +15,7 @@
     agentNotify,
     agentReasoning,
     agentStatus,
+    agentTitles,
     customAgents,
     defaultModelFor,
     getModel,
@@ -32,11 +35,16 @@
   const facts = $derived(agentFacts[agent.id] ?? agentFacts.mimi);
   const modelId = $derived($agentModel[agent.id] ?? defaultModelFor(agent.id));
   const model = $derived(getModel(modelId));
+  const providerName = $derived(
+    PROVIDERS.find((p) => p.id === model.providerId)?.name ?? model.providerId,
+  );
   const reasoning = $derived($agentReasoning[agent.id] ?? "mid");
   const notify = $derived($agentNotify[agent.id] ?? true);
   const displayName = $derived(
     $agentNames[agent.id] ?? (agent.nameKey ? $t(agent.nameKey) : agent.name),
   );
+  const agentTitle = $derived($agentTitles[agent.id] ?? "");
+  const chatAgent = $derived({ ...agent, name: displayName });
 
   // Dropdown / menu state
   let panelOpen = $state(false);
@@ -45,6 +53,7 @@
   let layoutOpen = $state(false);
   let detailOpen = $state(true);
   let query = $state("");
+  let agentSearch = $state("");
 
   function closeAll() {
     panelOpen = false;
@@ -52,6 +61,11 @@
     addOpen = false;
     layoutOpen = false;
     query = "";
+  }
+
+  function openModelPanel() {
+    closeAll();
+    panelOpen = true;
   }
 
   function pickServer(kind: "local" | "cloud") {
@@ -70,6 +84,31 @@
   function folderName(f: TaskFolder): string {
     return f.num ? $t(f.nameKey, { n: String(f.num) }) : $t(f.nameKey);
   }
+
+  // Agent-list search
+  const aq = $derived(agentSearch.trim().toLowerCase());
+  const labelOf = (a: Agent) =>
+    (
+      ($agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name)) +
+      " " +
+      $t(a.roleKey)
+    ).toLowerCase();
+  const filteredLoose = $derived(
+    looseAgents.filter((a) => !aq || labelOf(a).includes(aq)),
+  );
+  const folderView = $derived(
+    $taskFolders
+      .map((f) => ({
+        f,
+        agents: folderAgents(f).filter((a) => !aq || labelOf(a).includes(aq)),
+      }))
+      .filter(
+        ({ f, agents }) =>
+          !aq ||
+          folderName(f).toLowerCase().includes(aq) ||
+          agents.length > 0,
+      ),
+  );
 
   const ollamaModels = $derived(
     MODEL_CATALOG.filter((m) => m.providerId === "ollama"),
@@ -92,6 +131,22 @@
   function setNotify(value: boolean) {
     agentNotify.update((m) => ({ ...m, [agent.id]: value }));
   }
+
+  // Single-d SVG icon paths (multi-subpath where needed)
+  const ICONS = {
+    cpu: "M7 7h10v10H7z M4 9h3 M4 15h3 M17 9h3 M17 15h3 M9 4v3 M15 4v3 M9 17v3 M15 17v3",
+    backup: "M7 8h11 M14 4.5L17.5 8 14 11.5 M17 16H6 M10 12.5L6.5 16 10 19.5",
+    memory: "M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z",
+    skills:
+      "M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z",
+    files: "M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M14 2v5h5",
+    tables: "M4 4h16v16H4z M4 10h16 M4 15h16 M10 4v16 M15 4v16",
+    routines: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3.5 2",
+    usage: "M4 19a9 9 0 1 1 16 0 M12 14l4.5-4.5 M2 19h20",
+    publish: "M12 15V3 M7 8l5-5 5 5 M4 21h16",
+    shield: "M12 3l7 2.8v5.4c0 4.8-3.4 7.6-7 9.3-3.6-1.7-7-4.5-7-9.3V5.8z",
+    sliders: "M4 7h16 M4 17h16 M9 4.5v5 M15 14.5v5",
+  } as const;
 </script>
 
 {#snippet agentRow(a: Agent)}
@@ -112,8 +167,41 @@
   </button>
 {/snippet}
 
+{#snippet navRow(icon: string, label: string, valueText: string)}
+  <button class="row nav-row" onclick={closeAll}>
+    <span class="nav-left">
+      <svg
+        class="nav-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d={icon} />
+      </svg>
+      <span class="label">{label}</span>
+    </span>
+    <span class="nav-right">
+      {#if valueText}<span class="value">{valueText}</span>{/if}
+      <svg
+        class="chev-r"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </span>
+  </button>
+{/snippet}
+
 <div class="agents-view">
-  <!-- Top bar: server dropdown | add menu | active agent | model shortcut | panel controls -->
+  <!-- Top bar: server dropdown | active agent | model shortcut | panel controls -->
   <div class="topbar">
     <div class="tb-left">
       <!-- Server selector -->
@@ -203,50 +291,6 @@
                 </div>
               {/if}
             </div>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Add menu: new agent / new task folder -->
-      <div class="menu-wrap">
-        <button
-          class="icon-btn bordered"
-          onclick={() => {
-            const next = !addOpen;
-            closeAll();
-            addOpen = next;
-          }}
-          aria-haspopup="menu"
-          aria-expanded={addOpen}
-          aria-label={$t("agents.add")}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-        {#if addOpen}
-          <div class="scrim" onclick={closeAll} aria-hidden="true"></div>
-          <div class="menu" role="menu" aria-label={$t("agents.add")}>
-            <button
-              class="menu-item"
-              onclick={() => {
-                addCustomAgent();
-                closeAll();
-              }}
-            >
-              <span class="check" aria-hidden="true"></span>
-              <span>{$t("agents.addAgent")}</span>
-            </button>
-            <button
-              class="menu-item"
-              onclick={() => {
-                addTaskFolder();
-                closeAll();
-              }}
-            >
-              <span class="check" aria-hidden="true"></span>
-              <span>{$t("agents.addFolder")}</span>
-            </button>
           </div>
         {/if}
       </div>
@@ -395,66 +439,158 @@
     </div>
   </div>
 
-  <div class="split" class:single={!detailOpen}>
+  <div class="split" class:no-desc={!detailOpen}>
+    <!-- Left column: agent list -->
     <div class="list-col">
-      <h2>{$t("agents.title")}</h2>
-      {#each looseAgents as a (a.id)}
-        {@render agentRow(a)}
-      {/each}
-      {#each $taskFolders as f (f.id)}
-        <div class="folder">
+      <div class="list-head">
+        <h2>{$t("agents.title")}</h2>
+        <div class="menu-wrap">
           <button
-            class="folder-head"
-            onclick={() => toggleFolder(f.id)}
-            aria-expanded={f.open}
+            class="icon-btn bordered"
+            onclick={() => {
+              const next = !addOpen;
+              closeAll();
+              addOpen = next;
+            }}
+            aria-haspopup="menu"
+            aria-expanded={addOpen}
+            aria-label={$t("agents.add")}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+          {#if addOpen}
+            <div class="scrim" onclick={closeAll} aria-hidden="true"></div>
+            <div class="menu" role="menu" aria-label={$t("agents.add")}>
+              <button
+                class="menu-item"
+                onclick={() => {
+                  addCustomAgent();
+                  closeAll();
+                }}
+              >
+                <span class="check" aria-hidden="true"></span>
+                <span>{$t("agents.addAgent")}</span>
+              </button>
+              <button
+                class="menu-item"
+                onclick={() => {
+                  addTaskFolder();
+                  closeAll();
+                }}
+              >
+                <span class="check" aria-hidden="true"></span>
+                <span>{$t("agents.addFolder")}</span>
+              </button>
+            </div>
+          {/if}
+        </div>
+      </div>
+      <input
+        class="list-search"
+        type="search"
+        bind:value={agentSearch}
+        placeholder={$t("agents.search")}
+        aria-label={$t("agents.search")}
+      />
+      <div class="list-body">
+        {#each filteredLoose as a (a.id)}
+          {@render agentRow(a)}
+        {/each}
+        {#each folderView as { f, agents: fAgents } (f.id)}
+          <div class="folder">
+            <button
+              class="folder-head"
+              onclick={() => toggleFolder(f.id)}
+              aria-expanded={f.open || !!aq}
+            >
+              <svg
+                class="chev"
+                class:open={f.open || !!aq}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+              <span class="folder-name">{folderName(f)}</span>
+              <span class="folder-count"
+                >{$t("agents.folder.count", { n: String(fAgents.length) })}</span
+              >
+            </button>
+            {#if f.open || aq}
+              <div class="folder-body">
+                {#each fAgents as a (a.id)}
+                  {@render agentRow(a)}
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Middle column: chat area (widest) -->
+    <div class="chat-col">
+      <ChatPanel agent={chatAgent} header={false} />
+    </div>
+
+    <!-- Right column: agent description -->
+    {#if detailOpen}
+      <div class="desc-col">
+        <div class="avatar-wrap">
+          <span
+            class="badge avatar-big"
+            style:background={agent.color}
+          >{agent.badge}</span>
+          <button
+            class="avatar-edit"
+            aria-label={$t("agents.editAvatar")}
+            onclick={closeAll}
           >
             <svg
-              class="chev"
-              class:open={f.open}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
               aria-hidden="true"
             >
-              <path d="M9 6l6 6-6 6" />
+              <path d="M17 3a2.8 2.8 0 1 1 4 4L8 20l-5 1 1-5z" />
             </svg>
-            <span class="folder-name">{folderName(f)}</span>
-            <span class="folder-count"
-              >{$t("agents.folder.count", { n: String(folderAgents(f).length) })}</span
-            >
           </button>
-          {#if f.open}
-            <div class="folder-body">
-              {#each folderAgents(f) as a (a.id)}
-                {@render agentRow(a)}
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/each}
-    </div>
-
-    {#if detailOpen}
-      <div class="detail">
-        <div class="detail-head">
-          <span class="badge big" style:background={agent.color}>{agent.badge}</span>
-          <div class="who">
-            <input
-              class="name-input"
-              value={displayName}
-              oninput={(e) => agentNames.update((m) => ({ ...m, [agent.id]: e.currentTarget.value }))}
-              aria-label={$t("agents.name")}
-            />
-            <div class="role">{$t(agent.roleKey)}</div>
-          </div>
         </div>
 
         <div class="field">
-          <label for="instructions">{$t("agents.instructions")}</label>
+          <label for="d-name">{$t("agents.name")}</label>
+          <input
+            id="d-name"
+            value={displayName}
+            oninput={(e) =>
+              agentNames.update((m) => ({ ...m, [agent.id]: e.currentTarget.value }))}
+          />
+        </div>
+
+        <div class="field">
+          <label for="d-title">{$t("agents.agentTitle")}</label>
+          <input
+            id="d-title"
+            value={agentTitle}
+            placeholder={$t(agent.roleKey)}
+            oninput={(e) =>
+              agentTitles.update((m) => ({ ...m, [agent.id]: e.currentTarget.value }))}
+          />
+        </div>
+
+        <div class="field">
+          <label for="d-instructions">{$t("agents.instructions")}</label>
           <textarea
-            id="instructions"
-            rows="2"
+            id="d-instructions"
+            rows="3"
             placeholder={$t("agents.instructions.text")}
             value={$agentInstructions[agent.id] ?? ""}
             oninput={(e) =>
@@ -464,26 +600,37 @@
 
         <div class="section">
           <h3>{$t("agents.brain")}</h3>
-          <div class="field">
-            <label for="model">{$t("agents.model")}</label>
-            <select id="model" value={modelId} onchange={(e) => setModel(e.currentTarget.value)}>
-              <optgroup label="Ollama · {$t('providers.free')}">
-                {#each ollamaModels as m}
-                  <option value={m.id} selected={modelId === m.id}>{m.label}</option>
-                {/each}
-              </optgroup>
-              <optgroup label="OpenCode · {$t('providers.free')}">
-                {#each opencodeModels as m}
-                  <option value={m.id} selected={modelId === m.id}>{m.label}</option>
-                {/each}
-              </optgroup>
-              <optgroup label={$t("providers.paid")}>
-                {#each paidModels as m}
-                  <option value={m.id} selected={modelId === m.id}>{m.label}</option>
-                {/each}
-              </optgroup>
-            </select>
-          </div>
+          <button class="row nav-row" onclick={openModelPanel}>
+            <span class="nav-left">
+              <svg
+                class="nav-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={ICONS.cpu} />
+              </svg>
+              <span class="label">{$t("agents.model")}</span>
+            </span>
+            <span class="nav-right">
+              <span class="prov-chip">{providerName}</span>
+              <span class="value">{model.label}</span>
+              <svg
+                class="chev-r"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </span>
+          </button>
           <div class="row">
             <span class="label">{$t("agents.reasoning")}</span>
             <span class="seg" role="group" aria-label={$t("agents.reasoning")}>
@@ -495,52 +642,27 @@
               {/each}
             </span>
           </div>
-          <div class="row">
-            <span class="label">{$t("agents.backup")}</span>
-            <span class="value">{$t("agents.backup.ask")}</span>
-          </div>
+          {@render navRow(ICONS.backup, $t("agents.backup"), $t("agents.backup.ask"))}
         </div>
 
         <div class="section">
           <h3>{$t("agents.knows")}</h3>
-          <div class="row">
-            <span class="label">{$t("agents.memories")}</span>
-            <span class="value">{$t("agents.memories.n", { n: String(facts.memories) })}</span>
-          </div>
-          <div class="row">
-            <span class="label">{$t("agents.skills")}</span>
-            <span class="value">{$t("agents.skills.n", { n: String(facts.skills) })}</span>
-          </div>
-          <div class="row">
-            <span class="label">{$t("agents.files")}</span>
-            <span class="value">{facts.files}</span>
-          </div>
-          <div class="row">
-            <span class="label">{$t("agents.tables")}</span>
-            <span class="value">{$t("agents.tables.n", { n: String(facts.tables) })}</span>
-          </div>
+          {@render navRow(ICONS.memory, $t("agents.memories"), $t("agents.memories.n", { n: String(facts.memories) }))}
+          {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }))}
+          {@render navRow(ICONS.files, $t("agents.files"), facts.files)}
+          {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }))}
         </div>
 
         <div class="section">
           <h3>{$t("agents.does")}</h3>
-          <div class="row">
-            <span class="label">{$t("agents.routines")}</span>
-            <span class="value">{$t("agents.routines.n", { n: String(facts.routines) })}</span>
-          </div>
-          <div class="row">
-            <span class="label">{$t("agents.usage")}</span>
-          </div>
-          <div class="row">
-            <span class="label">{$t("agents.publish")}</span>
-          </div>
+          {@render navRow(ICONS.routines, $t("agents.routines"), $t("agents.routines.n", { n: String(facts.routines) }))}
+          {@render navRow(ICONS.usage, $t("agents.usage"), "")}
+          {@render navRow(ICONS.publish, $t("agents.publish"), "")}
         </div>
 
         <div class="section">
           <h3>{$t("agents.rules")}</h3>
-          <div class="row">
-            <span class="label">{$t("agents.permissions")}</span>
-            <span class="value">{$t("agents.permissions.full")}</span>
-          </div>
+          {@render navRow(ICONS.shield, $t("agents.permissions"), $t("agents.permissions.full"))}
           <div class="row">
             <span class="label">{$t("agents.notifications")}</span>
             <label class="switch">
@@ -553,9 +675,7 @@
               <span class="track" aria-hidden="true"></span>
             </label>
           </div>
-          <div class="row">
-            <span class="label">{$t("agents.advanced")}</span>
-          </div>
+          {@render navRow(ICONS.sliders, $t("agents.advanced"), "")}
         </div>
       </div>
     {/if}
@@ -598,13 +718,166 @@
     gap: 4px;
     flex: none;
   }
+
+  /* 3-column split: list | chat (widest) | description */
   .agents-view .split {
     flex: 1;
     height: auto;
     min-height: 0;
+    grid-template-columns: 300px minmax(0, 1fr) 360px;
   }
-  .agents-view .split.single {
-    grid-template-columns: minmax(0, 1fr);
+  .agents-view .split.no-desc {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  /* Left column: agent list */
+  .list-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .list-head h2 {
+    flex: 1;
+    font-size: 18px;
+    margin: 0;
+    padding: 0 4px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-search {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 14px;
+    flex: none;
+  }
+  .list-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    min-height: 0;
+    flex: 1;
+    padding: 2px;
+  }
+  .list-head .menu .scrim {
+    z-index: 55;
+  }
+
+  /* Middle column: chat area */
+  .chat-col {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .chat-col > :global(.chat) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Right column: agent description */
+  .desc-col {
+    background: var(--panel);
+    padding: 24px;
+    overflow-y: auto;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .avatar-wrap {
+    position: relative;
+    width: 96px;
+    margin: 0 auto;
+    flex: none;
+  }
+  .badge.avatar-big {
+    width: 96px;
+    height: 96px;
+    font-size: 44px;
+    border-radius: 24px;
+  }
+  .avatar-edit {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex: none;
+  }
+  .avatar-edit:hover {
+    border-color: var(--accent);
+  }
+  .avatar-edit svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Navigable rows (mock detail links) */
+  .nav-row {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--text);
+    text-align: left;
+    padding: 10px 0;
+  }
+  button.nav-row:hover {
+    background: var(--panel-2);
+  }
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--dim);
+    flex: none;
+  }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    min-width: 0;
+  }
+  .chev-r {
+    width: 16px;
+    height: 16px;
+    color: var(--dim);
+    flex: none;
+  }
+  .prov-chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    white-space: nowrap;
+    flex: none;
   }
 
   /* Active agent identity in the top bar */
@@ -736,6 +1009,10 @@
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     padding: 6px;
     z-index: 60;
+  }
+  .list-head .menu {
+    left: auto;
+    right: 0;
   }
   .menu.sub {
     top: 0;
@@ -929,6 +1206,23 @@
     padding: 2px 6px 8px;
   }
 
+  @media (max-width: 1280px) {
+    .agents-view .split {
+      grid-template-columns: 260px minmax(0, 1fr) 320px;
+    }
+    .agents-view .split.no-desc {
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 1024px) {
+    .agents-view .split,
+    .agents-view .split.no-desc {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+    .desc-col {
+      display: none;
+    }
+  }
   @media (max-width: 860px) {
     .tb-agent-role,
     .settings-btn span {

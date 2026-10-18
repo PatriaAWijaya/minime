@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { getAgent } from "../lib/agents";
+  import type { Agent } from "../lib/agents";
   import {
     activeAgentId,
     agentStatus,
@@ -10,11 +11,16 @@
   } from "../lib/store";
   import { t } from "../lib/i18n";
 
+  let {
+    agent: agentProp = null,
+    header = true,
+  }: { agent?: Agent | null; header?: boolean } = $props();
+
   let draft = $state("");
   let inputEl: HTMLTextAreaElement | null = $state(null);
   let timer: ReturnType<typeof setTimeout> | null = null;
 
-  const agent = $derived(getAgent($activeAgentId));
+  const agent = $derived(agentProp ?? getAgent($activeAgentId));
   const messages = $derived($messagesByAgent[$activeAgentId] ?? []);
   const status = $derived($agentStatus[$activeAgentId] ?? "idle");
 
@@ -50,6 +56,7 @@
 </script>
 
 <section class="chat">
+  {#if header}
   <header class="chat-head">
     <span class="badge" style:background={agent.color}>{agent.badge}</span>
     <div class="who">
@@ -58,6 +65,7 @@
     </div>
     <span class="status"><span class="dot {status}"></span>{$t(`status.${status}`)}</span>
   </header>
+  {/if}
 
   <div class="messages">
     {#if messages.length === 0}

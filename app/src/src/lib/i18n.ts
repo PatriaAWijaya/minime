@@ -76,7 +76,7 @@ const id: Dict = {
   "agents.tables.n": "{n} tabel",
   "agents.does": "Aksi",
   "agents.routines": "Rutinitas",
-  "agents.routines.n": "{n} diatur",
+  "agents.routines.n": "{n} terkonfigurasi",
   "agents.usage": "Penggunaan",
   "agents.publish": "Publikasikan agen",
   "agents.rules": "Aturan",
@@ -286,6 +286,9 @@ const id: Dict = {
   "agents.agentSettings": "Pengaturan agen",
   "agents.panel.add": "Tambah panel",
   "agents.panel.expand": "Perbesar panel",
+  "agents.search": "Cari agen",
+  "agents.agentTitle": "Judul",
+  "agents.editAvatar": "Ubah avatar",
 };
 
 const en: Dict = {
@@ -335,7 +338,7 @@ const en: Dict = {
   "agents.tables.n": "{n} tables",
   "agents.does": "Actions",
   "agents.routines": "Routines",
-  "agents.routines.n": "{n} set",
+  "agents.routines.n": "{n} configured",
   "agents.usage": "Usage",
   "agents.publish": "Publish agent",
   "agents.rules": "Rules",
@@ -545,6 +548,9 @@ const en: Dict = {
   "agents.agentSettings": "Agent settings",
   "agents.panel.add": "Add panel",
   "agents.panel.expand": "Expand panel",
+  "agents.search": "Search agents",
+  "agents.agentTitle": "Title",
+  "agents.editAvatar": "Change avatar",
 };
 
 const zh: Dict = {
@@ -594,7 +600,7 @@ const zh: Dict = {
   "agents.tables.n": "{n} 个表格",
   "agents.does": "动作",
   "agents.routines": "例行任务",
-  "agents.routines.n": "已安排 {n} 个",
+  "agents.routines.n": "已配置 {n} 个",
   "agents.usage": "使用情况",
   "agents.publish": "发布代理",
   "agents.rules": "规则",
@@ -803,6 +809,9 @@ const zh: Dict = {
   "agents.agentSettings": "代理设置",
   "agents.panel.add": "添加面板",
   "agents.panel.expand": "放大面板",
+  "agents.search": "搜索代理",
+  "agents.agentTitle": "标题",
+  "agents.editAvatar": "更改头像",
 };
 
 const dicts: Record<Lang, Dict> = { id, en, zh };

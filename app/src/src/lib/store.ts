@@ -136,6 +136,12 @@ export const agentNames = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-names", agentNames);
 
+/** Custom title override per agent (mock, persisted). */
+export const agentTitles = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-titles"),
+);
+persistRecord("minime.agent-titles", agentTitles);
+
 /** Custom instructions per agent (mock, persisted). */
 export const agentInstructions = writable<Record<string, string>>(
   loadRecord<string>("minime.agent-instructions"),
