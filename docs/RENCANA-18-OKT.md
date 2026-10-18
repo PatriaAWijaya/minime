@@ -53,7 +53,7 @@
 - [ ] Build dmg ad-hoc + setup LaunchAgent
 - [ ] Tes MacBook: notifikasi `osascript`, buktikan quit app ≠ stop agents (daemon tetap jalan)
 - [ ] Tes OAuth Google Drive (mode penuh)
-- [ ] Security audit (skill `local_security_audit`)
+- [x] Security audit (skill `local_security_audit`) — 18 Okt: 2 temuan hardening rendah (socket permission, secrets allowlist), 0 kritis; perbaikan butuh approval Patria
 - [ ] Audit Impeccable (UI)
 - [ ] **Gate: v1 rilis di MacBook Patria** (vonis Patria)
 

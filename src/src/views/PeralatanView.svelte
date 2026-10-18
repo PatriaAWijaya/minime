@@ -96,10 +96,12 @@
     margin-bottom: 8px;
   }
   .tool-card.ready {
-    border-left: 4px solid #2e7d32;
+    border: 1px solid #a5d6a7;
+    background: #f1f8e9;
   }
   .tool-card.notready {
-    border-left: 4px solid #c62828;
+    border: 1px solid #ef9a9a;
+    background: #fce4ec;
   }
   .tool-head {
     display: flex;
