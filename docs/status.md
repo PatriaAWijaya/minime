@@ -883,3 +883,29 @@ Hasil: **LOLOS** dengan 1 temuan minor (diperbaiki).
   verifikasi kompilasi Rust penuh harus di MacBook.
 - Sesuai desain Tahap 1: chat = mock lokal, task monitor = seed, LLM = Tahap 2.
 - Gate: menunggu vonis visual Patria.
+
+---
+
+## 2026-10-18 ~22:50 WIB — Redesign UI: sidebar icon + 7 tab (gate Tahap 1, versi 2)
+
+Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
+
+- Sidebar kiri HANYA IKON (~56px) + tooltip hover; urutan tab:
+  Agents → Tugas → Jadwal → Library → Cost → Tools; Pengaturan kiri bawah.
+- View Agents: daftar agen + panel detail (Otak/Pengetahuan/Aksi/Aturan);
+  **shortcut model di bar atas** (pill "[Model] · [Effort]" → dropdown
+  model gratis/berbayar + effort).
+- Tugas = chat per agen; Jadwal = pantau cron + filter harian/mingguan/
+  bulanan; Library = grid output + 4 filter; Cost = token & biaya per agen;
+  Tools = template agen / Apps (Hubungkan disabled "Tahap 3") / Skills;
+  Pengaturan = bahasa, notifikasi, **Penyedia Model** (radio 5 provider,
+  custom, deteksi Ollama lokal) — tiru layar Providers OpenBot.
+- Keputusan model (menggantikan default lama):
+  **gratis Ollama default / OpenCode fallback;
+  berbayar Muse default / Gemini 3.8 & DeepSeek fallback.**
+- Commit: a119a87 (redesign) ↔ 7381ae0; 7b50aeb (Penyedia Model) ↔ bf19954;
+  b59618b (shortcut model) ↔ 477ec87 — semua tree identik, ter-push.
+- Verifikasi: `npm run build` sukses nol warning/error; i18n 235 key × 3
+  bahasa (id/en/zh) paritas penuh, tanpa key mati.
+- Preview klik-tayang `preview-minime-v2` sedang direbuild mengikuti UI baru.
+- Gate: menunggu vonis visual Patria atas UI hasil redesign.

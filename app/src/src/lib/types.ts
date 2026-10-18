@@ -4,7 +4,10 @@ export type AgentStatus = "idle" | "working" | "attention";
 
 export interface Agent {
   id: string;
+  /** Plain display name (empty when nameKey is used instead). */
   name: string;
+  /** i18n key for the display name — used by custom agents created in-app. */
+  nameKey?: string;
   /** i18n key for the agent's plain-language role description */
   roleKey: string;
   /** Display label of the AI model behind this agent */
@@ -81,4 +84,20 @@ export interface ProviderInfo {
   tagKey?: string;
   /** true → status shows "available on this computer" */
   local?: boolean;
+}
+
+/** Which model server is in use (mock). */
+export type ServerKind = "local" | "cloud";
+
+/** Server menu layout preference (mock). */
+export type ServerLayout = "rail" | "menu";
+
+/** A task folder groups several agents that work together (mock). */
+export interface TaskFolder {
+  id: number;
+  /** i18n key for the folder name; {n} replaced by num when present */
+  nameKey: string;
+  num?: number;
+  agentIds: string[];
+  open: boolean;
 }

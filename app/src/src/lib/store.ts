@@ -2,6 +2,7 @@
 
 import { writable, type Writable } from "svelte/store";
 import type {
+  Agent,
   AgentStatus,
   AgentTemplate,
   CostRow,
@@ -9,7 +10,10 @@ import type {
   Message,
   ProviderInfo,
   ScheduledItem,
+  ServerKind,
+  ServerLayout,
   Skill,
+  TaskFolder,
 } from "./types";
 
 export type View =
@@ -331,4 +335,76 @@ export function toggleCustomProvider(id: number, active: boolean) {
   customProviders.update((list) =>
     list.map((p) => (p.id === id ? { ...p, active } : p)),
   );
+}
+
+/* ---------- Server selector (mock, persisted) ---------- */
+
+/** Which AI model server is in use: local device or cloud. */
+export const activeServer = writable<ServerKind>(
+  loadString("minime.server", "local") as ServerKind,
+);
+activeServer.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.server", v);
+  } catch {
+    /* ignore */
+  }
+});
+
+/** Server menu layout preference (mock). */
+export const serverLayout = writable<ServerLayout>(
+  loadString("minime.server-layout", "menu") as ServerLayout,
+);
+serverLayout.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.server-layout", v);
+  } catch {
+    /* ignore */
+  }
+});
+
+/* ---------- Task folders + custom agents (mock, in-memory) ---------- */
+
+let folderSeq = 3;
+
+/** Example task folders; each groups agents that work together. */
+export const taskFolders = writable<TaskFolder[]>([
+  { id: 1, nameKey: "agents.folder1.name", agentIds: ["kreatif", "riset"], open: true },
+  { id: 2, nameKey: "agents.folder2.name", agentIds: ["finance", "strategis"], open: false },
+]);
+
+export function addTaskFolder() {
+  const id = folderSeq++;
+  taskFolders.update((list) => [
+    ...list,
+    { id, nameKey: "agents.folderNew.name", num: id, agentIds: [], open: true },
+  ]);
+}
+
+export function toggleFolder(id: number) {
+  taskFolders.update((list) =>
+    list.map((f) => (f.id === id ? { ...f, open: !f.open } : f)),
+  );
+}
+
+let customAgentSeq = 1;
+const CUSTOM_AGENT_COLORS = ["#64748b", "#0ea5e9", "#f43f5e", "#a855f7"];
+
+/** Agents created in-app via the "+" menu (mock). */
+export const customAgents = writable<Agent[]>([]);
+
+export function addCustomAgent() {
+  const n = customAgentSeq++;
+  customAgents.update((list) => [
+    ...list,
+    {
+      id: `custom-${n}`,
+      name: "",
+      nameKey: "agents.agentNew.name",
+      roleKey: "agents.agentNew.role",
+      model: "Ollama",
+      badge: "A",
+      color: CUSTOM_AGENT_COLORS[(n - 1) % CUSTOM_AGENT_COLORS.length],
+    },
+  ]);
 }
