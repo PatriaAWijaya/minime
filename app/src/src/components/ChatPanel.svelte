@@ -20,6 +20,11 @@
   let inputEl: HTMLTextAreaElement | null = $state(null);
   let timer: ReturnType<typeof setTimeout> | null = null;
 
+  // Mock voice input (Phase 1): local recording state per panel.
+  let recording = $state(false);
+  let recSeconds = $state(0);
+  let recTimer: ReturnType<typeof setInterval> | null = null;
+
   const agent = $derived(agentProp ?? getAgent($activeAgentId));
   const messages = $derived($messagesByAgent[$activeAgentId] ?? []);
   const status = $derived($agentStatus[$activeAgentId] ?? "idle");
@@ -31,11 +36,43 @@
   onDestroy(() => {
     unsub();
     if (timer) clearTimeout(timer);
+    if (recTimer) clearInterval(recTimer);
   });
+
+  function startRecording() {
+    if (recording || status === "working") return;
+    recording = true;
+    recSeconds = 0;
+    recTimer = setInterval(() => { recSeconds += 1; }, 1000);
+  }
+
+  function stopRecording() {
+    if (recTimer) clearInterval(recTimer);
+    recTimer = null;
+    if (!recording) return;
+    recording = false;
+    const transcript = $t("chat.mockTranscript");
+    draft = draft.trim() ? `${draft.trim()} ${transcript}` : transcript;
+    queueMicrotask(() => inputEl?.focus());
+  }
+
+  // Stops the timer without injecting a transcript (used when sending mid-record).
+  function stopRecordingSilent() {
+    if (recTimer) clearInterval(recTimer);
+    recTimer = null;
+    recording = false;
+  }
+
+  function formatTime(s: number) {
+    const m = Math.floor(s / 60).toString().padStart(2, "0");
+    const sec = (s % 60).toString().padStart(2, "0");
+    return `${m}:${sec}`;
+  }
 
   function send() {
     const text = draft.trim();
     if (!text || status === "working") return;
+    if (recording) stopRecordingSilent();
     const id = agent.id;
     const translate = $t;
     pushMessage(id, "user", text);
@@ -101,6 +138,29 @@
         aria-label={$t("chat.placeholder")}
       ></textarea>
     </div>
+    {#if recording}
+      <div class="rec-indicator" role="status" aria-live="polite" aria-label={$t("chat.recording")}>
+        <span class="rec-dot"></span>
+        <span class="rec-time">{formatTime(recSeconds)}</span>
+      </div>
+      <button class="btn-ghost btn-stop" onclick={stopRecording} aria-label={$t("chat.stop")}>
+        {$t("chat.stop")}
+      </button>
+    {:else}
+      <button
+        class="btn-mic"
+        onclick={startRecording}
+        disabled={status === "working"}
+        aria-label={$t("chat.record")}
+        title={$t("chat.record")}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <line x1="12" y1="17" x2="12" y2="22" />
+        </svg>
+      </button>
+    {/if}
     <button class="btn-primary" onclick={send} disabled={!draft.trim()}>
       {$t("chat.send")}
     </button>
@@ -160,4 +220,33 @@
   }
   .composer .field { flex: 1; }
   .composer textarea { resize: none; }
+  .btn-mic {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    flex: none;
+  }
+  .btn-mic:hover { background: var(--panel-2); color: var(--text); }
+  .btn-mic:disabled { opacity: 0.45; cursor: default; }
+  .btn-stop { min-height: 44px; flex: none; }
+  .rec-indicator {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0 12px;
+    font-size: 14px; color: var(--text);
+    flex: none;
+  }
+  .rec-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #ef4444;
+    animation: recpulse 1.2s infinite;
+    flex: none;
+  }
+  @keyframes recpulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.85); }
+  }
 </style>
