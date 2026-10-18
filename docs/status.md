@@ -849,3 +849,22 @@ Keputusan Patria: pakai repo awal minime (di-unarchive), hapus yang tidak perlu.
 Catatan: repo GitHub minime-v2 yang sempat dibuat SUDAH tidak jadi dipakai
 (lokal dihapus; remote perlu dihapus manual oleh Patria — token tak punya izin delete).
 Pendekatan v2: clean-room, UI/UX tiru OpenBot, kode bangun dari nol.
+
+## 2026-10-18 21:35 WIB — Tahap 1 UI/UX selesai: scaffold v2 + dokumen arsitektur
+
+Verdict Patria: stack **Tauri 2 + Svelte 5** (ramuan sendiri, clean-room dari pola UI OpenBot).
+- Scaffold `app/`: Tauri 2 backend Rust + Svelte 5, layout 4 kolom
+  (sidebar workflow | daftar agen | chat+delivery | monitor tugas),
+  6 agen seed (Mimi CIO + 5) badge inisial + status kuning/hijau/merah,
+  i18n ID (default)/EN/ZH, tema dark minimalis satu accent.
+- Chat masih mock lokal; LLM + model router = Tahap 2.
+- Ikon app di-generate dari assets/app-icon.jpg.
+- Verifikasi: `npm run build` sukses (129 modul, nol warning/error).
+  `cargo check` tidak bisa lolos di VM (tanpa header dev GTK/WebKit, tanpa sudo)
+  — verifikasi kompilasi Rust penuh di MacBook.
+- Dokumen baru: `docs/arsitektur.md` (visi, prinsip, stack, lapisan, roster),
+  `docs/framework.md` (kontrak agen senior, orkestrasi Mimi, alur tugas, agen custom),
+  `docs/workflow.md` + `docs/TODO.md` diperbarui.
+- Push: 3 commit via Git Data API (pasangan SHA di ~/AGENTS.md),
+  remote master kini d226573.
+- Gate Tahap 1 TERBUKA: menunggu vonis Patria atas tampilan.
