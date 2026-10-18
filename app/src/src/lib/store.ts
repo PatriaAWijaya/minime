@@ -8,6 +8,7 @@ import type {
   CostRow,
   FlowEdge,
   FlowNode,
+  FlowProject,
   KanbanCard,
   KanbanCol,
   LibraryItem,
@@ -468,27 +469,58 @@ function persistList<T>(key: string, store: Writable<T[]>) {
 let kanbanSeq = 1;
 
 function seedKanban(): KanbanCard[] {
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
   const seed: KanbanCard[] = [
-    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", createdAt: "18 Okt" },
-    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", createdAt: "19 Okt" },
-    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", createdAt: "17 Okt" },
-    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", createdAt: "18 Okt" },
-    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", createdAt: "15 Okt" },
+    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", projectId: "proj-a", createdAt: "18 Okt", createdAtTs: now - 1 * day },
+    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
+    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", projectId: "proj-a", createdAt: "9 Okt", createdAtTs: now - 10 * day },
+    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", projectId: "proj-b", createdAt: "18 Okt", createdAtTs: now - 1 * day },
+    { id: kanbanSeq++, title: "Materi kampanye Ramadhan", agentId: "kreatif", col: "approval", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
+    { id: kanbanSeq++, title: "Perbaiki headline brosur", agentId: "strategis", col: "revision", projectId: "proj-b", createdAt: "8 Sep", createdAtTs: now - 40 * day },
+    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", projectId: "proj-a", createdAt: "15 Okt", createdAtTs: now - 4 * day },
+    { id: kanbanSeq++, title: "Evaluasi vendor cetak tahunan", agentId: "finance", col: "done", projectId: "proj-a", createdAt: "10 Jun", createdAtTs: now - 130 * day },
   ];
   return seed;
 }
 
+/** Backfill new card fields for cards persisted before they existed. */
+function normalizeKanban(list: KanbanCard[]): KanbanCard[] {
+  const now = Date.now();
+  return list.map((c) => ({
+    ...c,
+    projectId: c.projectId ?? "proj-a",
+    createdAtTs: c.createdAtTs ?? now,
+  }));
+}
+
 /** Kanban cards (mock, persisted). */
-export const kanbanCards = writable<KanbanCard[]>(loadList("minime.kanban", seedKanban));
+export const kanbanCards = writable<KanbanCard[]>(
+  normalizeKanban(loadList("minime.kanban", seedKanban)),
+);
 persistList("minime.kanban", kanbanCards);
 // Continue the id sequence past any persisted cards.
 kanbanSeq =
   get(kanbanCards).reduce((m, c) => Math.max(m, c.id), 0) + 1;
 
-export function addKanbanCard(title: string, agentId: string, col: KanbanCol) {
+export function addKanbanCard(
+  title: string,
+  agentId: string,
+  col: KanbanCol,
+  projectId: string,
+) {
+  const now = new Date();
   kanbanCards.update((list) => [
     ...list,
-    { id: kanbanSeq++, title, agentId, col, createdAt: "19 Okt" },
+    {
+      id: kanbanSeq++,
+      title,
+      agentId,
+      col,
+      projectId,
+      createdAt: now.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+      createdAtTs: now.getTime(),
+    },
   ]);
 }
 
@@ -498,34 +530,181 @@ export function moveKanbanCard(id: number, col: KanbanCol) {
   );
 }
 
+/** Kanban filter state (persisted). "all" = no filter. */
+export const kanbanFilterProject = writable<string>(
+  loadString("minime.kanban-fproj", "all"),
+);
+kanbanFilterProject.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.kanban-fproj", v);
+  } catch {
+    /* ignore */
+  }
+});
+export const kanbanFilterAgent = writable<string>(
+  loadString("minime.kanban-fagent", "all"),
+);
+kanbanFilterAgent.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.kanban-fagent", v);
+  } catch {
+    /* ignore */
+  }
+});
+/** "all" | "7" | "30" | "90" | "365" (days). */
+export const kanbanFilterPeriod = writable<string>(
+  loadString("minime.kanban-fperiod", "all"),
+);
+kanbanFilterPeriod.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.kanban-fperiod", v);
+  } catch {
+    /* ignore */
+  }
+});
+
 let flowSeq = 1;
 
-function seedFlow(): FlowNode[] {
-  return [
-    { id: `node-${flowSeq++}`, agentId: "mimi", x: 80, y: 120 },
-    { id: `node-${flowSeq++}`, agentId: "kreatif", x: 400, y: 120 },
-  ];
+/** Nodes + edges of one project on the connection canvas (mock). */
+interface FlowProjectCanvas {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
 }
 
-/** Connection-canvas nodes (mock, persisted). */
-export const flowNodes = writable<FlowNode[]>(loadList("minime.flow-nodes", seedFlow));
-persistList("minime.flow-nodes", flowNodes);
-
-function seedEdges(): FlowEdge[] {
-  return [{ id: "edge-1", source: "node-1", target: "node-2" }];
+function loadFlowMap(): Record<string, FlowProjectCanvas> {
+  try {
+    const raw = localStorage.getItem("minime.flow-data");
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, FlowProjectCanvas>;
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch {
+    /* fall through to seed */
+  }
+  return {};
 }
 
-/** Connection-canvas edges (mock, persisted). */
-export const flowEdges = writable<FlowEdge[]>(loadList("minime.flow-edges", seedEdges));
-persistList("minime.flow-edges", flowEdges);
+const flowMap: Record<string, FlowProjectCanvas> = loadFlowMap();
 
-export function addFlowNode(agentId: string) {
+function saveFlowMap(): void {
+  try {
+    localStorage.setItem("minime.flow-data", JSON.stringify(flowMap));
+  } catch {
+    /* ignore */
+  }
+}
+
+function seedProject(id: string, name: string): FlowProject {
+  return { id, name };
+}
+
+/** All projects, shared by the Connection canvas and the Kanban filter. */
+export const projects = writable<FlowProject[]>(
+  loadList("minime.projects", () => [
+    seedProject("proj-a", "Project A"),
+    seedProject("proj-b", "Project B"),
+  ]),
+);
+persistList("minime.projects", projects);
+
+/** Active project on the Connection canvas. */
+export const activeFlowProjectId = writable<string>(
+  loadString("minime.flow-project-active", "proj-a"),
+);
+activeFlowProjectId.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.flow-project-active", v);
+  } catch {
+    /* ignore */
+  }
+});
+
+function seedFlowMap(): void {
+  if (Object.keys(flowMap).length > 0) return;
+  // Migrate the old flat keys (pre-project) into Project A when present.
+  let aNodes: FlowNode[] | null = null;
+  let aEdges: FlowEdge[] | null = null;
+  try {
+    const n = localStorage.getItem("minime.flow-nodes");
+    const e = localStorage.getItem("minime.flow-edges");
+    if (n) aNodes = JSON.parse(n) as FlowNode[];
+    if (e) aEdges = JSON.parse(e) as FlowEdge[];
+  } catch {
+    /* ignore */
+  }
+  flowMap["proj-a"] = {
+    nodes: aNodes ?? [
+      { id: "node-1", agentId: "mimi", x: 80, y: 120 },
+      { id: "node-2", agentId: "kreatif", x: 400, y: 120 },
+    ],
+    edges: aEdges ?? [{ id: "edge-1", source: "node-1", target: "node-2" }],
+  };
+  flowMap["proj-b"] = {
+    nodes: [{ id: "node-b1", agentId: "mimi", x: 80, y: 120 }],
+    edges: [],
+  };
+  saveFlowMap();
+}
+seedFlowMap();
+
+/**
+ * Nodes/edges of the active project. These are buffers: every change is
+ * written back into the per-project map (and localStorage) automatically.
+ */
+export const flowNodes = writable<FlowNode[]>([]);
+export const flowEdges = writable<FlowEdge[]>([]);
+
+function resolveProjectId(): string {
+  const list = get(projects);
+  const id = get(activeFlowProjectId);
+  if (list.some((p) => p.id === id)) return id;
+  return list[0]?.id ?? "proj-a";
+}
+
+function loadActiveCanvas(): void {
+  const d = flowMap[resolveProjectId()] ?? { nodes: [], edges: [] };
+  flowNodes.set(d.nodes);
+  flowEdges.set(d.edges);
+}
+
+function saveActiveCanvas(): void {
+  flowMap[resolveProjectId()] = {
+    nodes: get(flowNodes),
+    edges: get(flowEdges),
+  };
+  saveFlowMap();
+}
+
+flowNodes.subscribe(() => saveActiveCanvas());
+flowEdges.subscribe(() => saveActiveCanvas());
+loadActiveCanvas();
+
+/** Switch the Connection canvas to another project. */
+export function switchFlowProject(id: string): void {
+  if (id === resolveProjectId()) return;
+  activeFlowProjectId.set(id);
+  loadActiveCanvas();
+}
+
+/** Create a project (empty canvas) and switch to it. Returns the new id. */
+export function addFlowProject(name: string): string {
+  const id = `proj-${Date.now()}`;
+  projects.update((list) => [...list, { id, name }]);
+  flowMap[id] = { nodes: [], edges: [] };
+  saveFlowMap();
+  activeFlowProjectId.set(id);
+  loadActiveCanvas();
+  return id;
+}
+
+export function addFlowNode(agentId: string, x?: number, y?: number): string {
   const id = `node-${flowSeq++}-${Date.now() % 100000}`;
   flowNodes.update((list) => {
-    const x = 80 + (list.length % 4) * 320;
-    const y = 80 + Math.floor(list.length / 4) * 220;
-    return [...list, { id, agentId, x, y }];
+    const px = x ?? 80 + (list.length % 4) * 320;
+    const py = y ?? 80 + Math.floor(list.length / 4) * 220;
+    return [...list, { id, agentId, x: Math.round(px), y: Math.round(py) }];
   });
+  return id;
 }
 
 export function addFlowEdge(source: string, target: string) {
@@ -539,6 +718,21 @@ export function addFlowEdge(source: string, target: string) {
 export function moveFlowNode(id: string, x: number, y: number) {
   flowNodes.update((list) =>
     list.map((n) => (n.id === id ? { ...n, x: Math.round(x), y: Math.round(y) } : n)),
+  );
+}
+
+/** Remove a node and every edge connected to it. */
+export function removeFlowNode(id: string) {
+  flowNodes.update((list) => list.filter((n) => n.id !== id));
+  flowEdges.update((list) =>
+    list.filter((e) => e.source !== id && e.target !== id),
+  );
+}
+
+/** Remove every edge connected to a node (the node itself stays). */
+export function disconnectFlowNode(id: string) {
+  flowEdges.update((list) =>
+    list.filter((e) => e.source !== id && e.target !== id),
   );
 }
 

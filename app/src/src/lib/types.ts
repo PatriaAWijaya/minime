@@ -103,7 +103,7 @@ export interface TaskFolder {
 }
 
 /** Kanban column id (mock task board). */
-export type KanbanCol = "queue" | "doing" | "done";
+export type KanbanCol = "queue" | "doing" | "approval" | "revision" | "done";
 
 /** A task card on the Kanban board (mock). */
 export interface KanbanCard {
@@ -112,8 +112,12 @@ export interface KanbanCard {
   title: string;
   agentId: string;
   col: KanbanCol;
+  /** Project this card belongs to (shared with the Connection view). */
+  projectId: string;
   /** Display date string, e.g. "18 Okt" */
   createdAt: string;
+  /** Creation timestamp (ms) used by the period filter. */
+  createdAtTs: number;
 }
 
 /** A node on the connection canvas (mock). */
@@ -129,4 +133,10 @@ export interface FlowEdge {
   id: string;
   source: string;
   target: string;
+}
+
+/** A named project owning its own connection-canvas content (mock). */
+export interface FlowProject {
+  id: string;
+  name: string;
 }
