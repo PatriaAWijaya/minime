@@ -756,3 +756,17 @@ Hasil 4 tahap (`docs/uji-pireel.md`):
 
 **Arsitektur:** Pireel = layanan cloud eksternal (pola Viralin/postiz — aman AGPL via API). Bridge MCP butuh tab studio terbuka. Orkestrasi agen gratis; yang berbiaya hanya `[CHARGES]` (transkrip, analisis visual, generasi media).
 **Promosi:** `skills/pireel/SKILL.md` v1.0.0 (status PERMANEN, SOP operasional + billing terverifikasi). Posisi pipeline: Veo/OpenCreator (generate) → Pireel (edit/rakit) → QC → Approval.
+
+## 18 Okt 2026 ~13:16 — Live test provider via daemon (backlog Gate 4) SELESAI
+
+Harness: `minime-daemon --live-test` (prompt "Balas persis dengan satu kata: OK").
+- ✅ **Gemini OK** — `gemini-3.8-flash`, reply "OK". End-to-end: Keychain → daemon → API → parse.
+- ⚠️ **Muse**: 402 "Billing verification failed" — key valid (auth lolos), akun Meta butuh verifikasi payment method.
+- ⚠️ **DeepSeek**: 402 "Insufficient Balance" — key valid, akun butuh top-up.
+- Plumbing daemon TERBUKTI untuk ketiganya (bukan masalah kode).
+
+Temuan & perbaikan (semua di-push):
+1. `keyring` fail-closed untuk binary ad-hoc (read → NoEntry, write → hilang diam-diam) → `secrets.rs` fallback ke `security` CLI di macOS (read + write + delete).
+2. `rustls-tls-manual-roots` = tanpa root certs → semua HTTPS gagal → TLS pakai OS trust store via `rustls-platform-verifier` (`provider::http_client()`).
+3. Konflik crypto provider (`ring` vs `aws_lc_rs` dari default features) → `rustls` no-default-features + `ring, std, tls12`.
+4. Google mempensiunkan `gemini-2.5-flash` & `2.0-flash` (404) → default kini `gemini-3.8-flash` (list_models + default + live-test).

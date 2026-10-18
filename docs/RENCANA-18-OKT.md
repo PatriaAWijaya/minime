@@ -29,7 +29,15 @@
 
 ### 3. Backlog Gate 4 — live test (paralel Fase 5)
 - [ ] Live test postiz via API nyata (butuh: postiz di `localhost:4007` + key)
-- [ ] Live test provider Gemini / Muse / DeepSeek
+- [x] Live test provider via daemon — **SELESAI 18 Okt ~13:16** (harness `daemon --live-test`):
+      - ✅ **Gemini OK** (`gemini-3.8-flash`, reply "OK" — end-to-end via Keychain)
+      - ⚠️ **Muse**: 402 Billing verification failed — key valid (auth lolos), akun Meta butuh verifikasi billing
+      - ⚠️ **DeepSeek**: 402 Insufficient Balance — key valid, akun butuh top-up
+      - Plumbing daemon TERBUKTI untuk ketiganya (auth + request + parse response).
+      - Temuan & perbaikan: (1) `keyring` fail-closed untuk binary ad-hoc → `secrets.rs` fallback ke `security` CLI;
+        (2) `rustls-tls-manual-roots` tanpa root certs → TLS pakai OS trust store (`rustls-platform-verifier`);
+        (3) konflik crypto provider ring vs aws_lc_rs → `rustls` no-default-features;
+        (4) model `gemini-2.5-flash` & `2.0-flash` dipensiunkan Google → default `gemini-3.8-flash`.
 - [ ] Uji 1 video OpenCreator via Gemini (butuh: instalasi OpenCreator + set provider Gemini di Settings → AI Services)
 - [ ] Live test Meta `accounts` (butuh: system user token — **diparkir**, fondasi sudah dibuat)
 
