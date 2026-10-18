@@ -68,9 +68,13 @@ npx skills add pireel/pireel-agent
 
 | Tahap | Hasil | Catatan |
 |-------|-------|---------|
-| 1 | ⬜ | |
-| 2 | ⬜ | |
-| 3 | ⬜ | |
-| 4 | ⬜ | |
+| 1 | ✅ LULUS | `pnpm dev` jalan (Vite :5173); klip 40 dtk ter-import, muncul di timeline + preview. Gotcha: `corepack enable` butuh `sudo` di MacBook |
+| 2 | ✅ LULUS | MCP cloud `pireel.com/api/studio/mcp` + OAuth akun FREE (tanpa kartu kredit); `get_state` → "no cloud project" (salah satu dari 3 respons = terhubung per connection guide). Studio lokal TIDAK punya endpoint MCP (frontend-only). |
+| 3 | ✅ LULUS | Cloud project `pmvdcus3m242w`; `get_transcript` → 13 segmen; `remove_words` buang false start "How." (segmen 6 → [REMOVED], terkonfirmasi); `set_captions` on + 12 terjemahan Indonesia (38 cues, preset yellowPop); `export` 1080p30 mp4 → `export-1080p-051536.mp4` (28MB, 1080×1920, 39.6 dtk — 0.3 dtk lebih pendek pasca-cut) |
+| 4 | ✅ LULUS | Billing pireel.com: plan **Free** aktif, terpakai **2 kredit** dari 20/hari (reset harian); $0 keluar. Tidak ada [CHARGES] di luar batas wajar. |
 
-**Vonis akhir:** ⬜ PERMANEN / ⬜ BERSYARAT / ⬜ DITOLAK — oleh Patria, tanggal: ____
+**Rekomendasi Mimi:** PERMANEN — **7/7 kriteria lolos** (18 Okt 2026, ~12:20 WIB).
+
+**Catatan arsitektur (penting):** Pireel beroperasi sebagai **layanan cloud eksternal** (pireel.com + OAuth), bukan lokal — pola sama seperti Viralin/postiz: aman AGPL via API, bukan vendor kode. MCP lokal tidak tersedia (Studio OSS = frontend-only). Free tier 20 kredit/hari cukup untuk uji + pemakaian ringan; produksi bervolume butuh Pro ($17–20/bln).
+
+**Vonis akhir oleh Patria:** ✅ PERMANEN — tanggal: 18 Okt 2026

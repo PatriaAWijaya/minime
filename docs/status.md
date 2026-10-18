@@ -743,3 +743,16 @@ Dipandu langkah-demi-langkah (langkah 32–55), terverifikasi live.
 - Solusi (keputusan Patria): OpenViking dikonfigurasi ulang TANPA model Ollama berat (config di atas)
 - Gotcha: ganti dimensi embedding (1024→512) membuat server gagal start (`EmbeddingRebuildRequiredError`) → hapus `~/.openviking/data` lama (kosong, aman), start ulang OK
 - Peringatan disk: xerj sempat log write-block (98%); doctor OpenViking baca 50.3 GB free — Patria cek `docker system df` sendiri (Viralin ~1,7 GB di Docker)
+
+## 18 Okt 2026 (~12:21 WIB) — Uji Pireel: 7/7, vonis PERMANEN ✅
+
+**Vonis Patria: PERMANEN — adopsi sebagai lapisan editing pipeline Minime.**
+
+Hasil 4 tahap (`docs/uji-pireel.md`):
+1. Instalasi + Studio lokal jalan (klip 40 dtk ter-import). Gotcha: `corepack enable` butuh `sudo` di MacBook.
+2. Koneksi MCP: **hanya via cloud** `pireel.com/api/studio/mcp` + OAuth — Studio lokal tidak punya endpoint MCP (frontend-only). Akun **FREE** ($0, tanpa kartu kredit, 20 kredit/hari) cukup; kondisi STOP (akun berbayar) tidak terpicu.
+3. Alur penuh via MCP: `get_transcript` (13 segmen) → `remove_words` buang false start "How." (terverifikasi `[REMOVED]`) → `set_captions` + 12 terjemahan Indonesia (38 cues) → `export` 1080p30 → `export-1080p-051536.mp4` (28MB, 1080×1920, 39.6 dtk).
+4. Billing: **2 kredit** dari 20/hari; $0 keluar.
+
+**Arsitektur:** Pireel = layanan cloud eksternal (pola Viralin/postiz — aman AGPL via API). Bridge MCP butuh tab studio terbuka. Orkestrasi agen gratis; yang berbiaya hanya `[CHARGES]` (transkrip, analisis visual, generasi media).
+**Promosi:** `skills/pireel/SKILL.md` v1.0.0 (status PERMANEN, SOP operasional + billing terverifikasi). Posisi pipeline: Veo/OpenCreator (generate) → Pireel (edit/rakit) → QC → Approval.

@@ -20,12 +20,12 @@
 - [x] FRED API key gratis → Keychain akun `fred`
 - [x] `pip install yfinance` v1.7.0
 
-### 2b. Uji coba Pireel (MacBook) — 30–60 menit
-- [ ] Tahap 1: install + Studio jalan (`docs/uji-pireel.md`)
-- [ ] Tahap 2: koneksi agen via MCP (STOP bila butuh akun berbayar → keputusan Patria)
-- [ ] Tahap 3: alur penuh (import → transcript cut → caption → export)
-- [ ] Tahap 4: billing check (nol `[CHARGES]`)
-- [ ] **Vonis: 7/7 PERMANEN, 5–6 BERSYARAT, ≤4 DITOLAK**
+### 2b. Uji coba Pireel (MacBook) — ✅ SELESAI, vonis PERMANEN (18 Okt ~12:21)
+- [x] Tahap 1: install + Studio jalan (`docs/uji-pireel.md`)
+- [x] Tahap 2: koneksi agen via MCP (akun FREE cukup — kondisi STOP tidak terpicu)
+- [x] Tahap 3: alur penuh (import → transcript cut → caption → export)
+- [x] Tahap 4: billing check (2 kredit dari 20/hari, $0)
+- [x] **Vonis: 7/7 PERMANEN** — skill dipromosikan permanen (`skills/pireel/SKILL.md` v1.0.0)
 
 ### 3. Backlog Gate 4 — live test (paralel Fase 5)
 - [ ] Live test postiz via API nyata (butuh: postiz di `localhost:4007` + key)
