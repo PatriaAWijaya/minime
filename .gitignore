@@ -31,3 +31,7 @@ arsip-v1/**/node_modules/
 arsip-v1/**/target/
 arsip-v1/**/dist/
 binary/**
+
+# Minime v2 app
+app/src/node_modules/
+app/src/dist/
