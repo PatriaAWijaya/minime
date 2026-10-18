@@ -46,8 +46,8 @@ impl ModelProvider for GeminiProvider {
                 usd_per_1m_out: 10.0,
             },
             ModelInfo {
-                id: "gemini-2.5-flash".to_string(),
-                label: "Gemini 2.5 Flash".to_string(),
+                id: "gemini-3.8-flash".to_string(),
+                label: "Gemini 3.8 Flash".to_string(),
                 context_window: 1_048_576,
                 usd_per_1m_in: 0.30,
                 usd_per_1m_out: 2.50,
@@ -79,7 +79,7 @@ async fn call_gemini(
     let key =
         secrets::api_key("gemini").ok_or_else(|| ProviderError::NoKey("gemini".to_string()))?;
     let model = if req.model.is_empty() {
-        "gemini-2.5-flash"
+        "gemini-3.8-flash"
     } else {
         req.model.as_str()
     };
