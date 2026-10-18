@@ -18,6 +18,6 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
-rustls = "0.23"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = "0.5"
 keyring = "3"
