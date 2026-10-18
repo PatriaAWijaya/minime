@@ -672,3 +672,32 @@ Keputusan Patria: siapkan `pireel/pireel` untuk diuji; bila lancar → permanen.
 - Billing: orkestrasi di subscription agen sendiri; tool `[CHARGES]` dilarang
   tanpa approval Patria.
 - Referensi clone: `~/workspace/referensi/pireel/`.
+
+---
+
+## 18 Okt 2026 — Verifikasi region Meta Model API: LOLOS
+
+Tes empiris dari MacBook Patria (Surabaya): `curl https://api.meta.ai/v1/models`
+→ HTTP **401** (reachable, tinggal butuh key). **TIDAK di-geo-block dari
+Indonesia**, berlawanan dengan dokumentasi public preview yang menyebut
+US-only. Pertanyaan terbuka di AGENTS.md ("verifikasi region Indonesia")
+TERJAWAB.
+
+---
+
+## 18 Okt 2026 — Sesi kunci API: 5/5 VALID ✅
+
+Key tersimpan di Keychain `com.minime.app` + terverifikasi live:
+- **Gemini** ✅ (models list OK) — membuka Veo + OpenCreator
+- **Muse** ✅ (models: muse-wonder-1.0, muse-spark-1.3, ...) — Meta Model API
+  TERBUKTI bisa diakses dari Indonesia (HTTP 401 = reachable, bukan geo-block;
+  dokumentasi US-only terbantahkan empiris)
+- **DeepSeek** ✅ (deepseek-flash / V4.1-Flash)
+- **Valyu** ✅ (`"success": true`, $10 kredit gratis)
+- **postiz** ✅ (integrations: PatriaBicara/facebook, Branding Marketing & AI/instagram)
+
+Koreksi bug tool `postiz` dari verifikasi live (commit ini):
+- Base path `/api/public/v1` (tanpa `/api` jatuh ke SPA → redirect /auth)
+- Auth = key mentah di header `Authorization` (tanpa "Bearer")
+- `/is-connected` tidak ada → readiness pakai `GET /integrations`
+- API key pribadi = hex 64 char tanpa prefix; `pos_` = token OAuth App
