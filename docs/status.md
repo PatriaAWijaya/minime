@@ -799,3 +799,10 @@ LaunchAgent `id.minime.daemon`:
 
 Tools status saat start: valyu ready, veo3 ready, postiz unreachable (Docker mati),
 meta not_configured (token diparkir).
+
+## 2026-10-18 14:22 WIB — CATATAN PATRIA: avatar agen tidak sesuai
+
+Patria: icon/avatar 5 agen di dashboard TIDAK sesuai yang ia mau.
+Belum ada detail spesifik — perlu ditindaklanjuti: tanya Patria maunya seperti apa
+(warna/bentuk/ekspresi tiap agen) sebelum revisi avatar.
+Status: sesi dihentikan sampai sini; lanjut lain waktu.
