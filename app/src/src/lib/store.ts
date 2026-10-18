@@ -148,6 +148,42 @@ export const agentInstructions = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-instructions", agentInstructions);
 
+/** Personalization: gender per agent (optional). */
+export const agentGender = writable<Record<string, "male" | "female">>(
+  loadRecord<"male" | "female">("minime.agent-gender"),
+);
+persistRecord("minime.agent-gender", agentGender);
+
+/** Personalization: age per agent in years (1–120, optional). */
+export const agentAge = writable<Record<string, number>>(
+  loadRecord<number>("minime.agent-age"),
+);
+persistRecord("minime.agent-age", agentAge);
+
+/** Personalization: position level per agent (optional). */
+export const agentPosition = writable<
+  Record<string, "clevel" | "senior" | "manager">
+>(loadRecord<"clevel" | "senior" | "manager">("minime.agent-position"));
+persistRecord("minime.agent-position", agentPosition);
+
+/** Personalization: hobbies free text per agent. */
+export const agentHobbies = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-hobbies"),
+);
+persistRecord("minime.agent-hobbies", agentHobbies);
+
+/** Personalization: allow agent voice per agent. */
+export const agentVoiceOn = writable<Record<string, boolean>>(
+  loadRecord<boolean>("minime.agent-voice-on"),
+);
+persistRecord("minime.agent-voice-on", agentVoiceOn);
+
+/** Personalization: chosen voice per agent (mock). */
+export const agentVoice = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-voice"),
+);
+persistRecord("minime.agent-voice", agentVoice);
+
 /** Mock facts shown in the Agents detail panel. */
 export const agentFacts: Record<
   string,

@@ -909,3 +909,15 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   bahasa (id/en/zh) paritas penuh, tanpa key mati.
 - Preview klik-tayang `preview-minime-v2` sedang direbuild mengikuti UI baru.
 - Gate: menunggu vonis visual Patria atas UI hasil redesign.
+
+---
+
+## 2026-10-18 ~23:52 WIB — Voice command (mock) di semua chat agen
+
+- Tombol mic di composer ChatPanel (dipakai view Tugas + chat area Agents):
+  klik → indikator merekam (dot merah + timer) + tombol Berhenti;
+  stop → teks contoh transkripsi masuk composer, siap dikirim/diedit.
+- Commit 3a3d611 ↔ remote 60fcf35, ter-push. Build sukses; i18n 262 key
+  × 3 bahasa paritas penuh.
+- Rencana STT nyata (Tahap 2/3): Groq Whisper free tier atau whisper.cpp
+  lokal — belum diimplementasi.

@@ -9,13 +9,19 @@
     addCustomAgent,
     addTaskFolder,
     agentFacts,
+    agentGender,
+    agentAge,
+    agentHobbies,
     agentInstructions,
     agentModel,
     agentNames,
     agentNotify,
+    agentPosition,
     agentReasoning,
     agentStatus,
     agentTitles,
+    agentVoice,
+    agentVoiceOn,
     customAgents,
     defaultModelFor,
     getModel,
@@ -40,6 +46,14 @@
   );
   const reasoning = $derived($agentReasoning[agent.id] ?? "mid");
   const notify = $derived($agentNotify[agent.id] ?? true);
+  const gender = $derived($agentGender[agent.id]);
+  const ageVal = $derived(
+    $agentAge[agent.id] !== undefined ? String($agentAge[agent.id]) : "",
+  );
+  const position = $derived($agentPosition[agent.id]);
+  const hobbies = $derived($agentHobbies[agent.id] ?? "");
+  const voiceOn = $derived($agentVoiceOn[agent.id] ?? false);
+  const voiceChoice = $derived($agentVoice[agent.id] ?? "v1");
   const displayName = $derived(
     $agentNames[agent.id] ?? (agent.nameKey ? $t(agent.nameKey) : agent.name),
   );
@@ -130,6 +144,55 @@
   }
   function setNotify(value: boolean) {
     agentNotify.update((m) => ({ ...m, [agent.id]: value }));
+  }
+
+  // Personalization setters (persisted per agent)
+  let ageError = $state(false);
+  $effect(() => {
+    // reset validation state when switching agents
+    void agent.id;
+    ageError = false;
+  });
+  function setGender(value: "male" | "female" | undefined) {
+    agentGender.update((m) => {
+      const c = { ...m };
+      if (value === undefined) delete c[agent.id];
+      else c[agent.id] = value;
+      return c;
+    });
+  }
+  function setAge(raw: string) {
+    const t = raw.trim();
+    if (t === "") {
+      agentAge.update((m) => {
+        const c = { ...m };
+        delete c[agent.id];
+        return c;
+      });
+      ageError = false;
+      return;
+    }
+    const n = parseInt(t, 10);
+    if (Number.isNaN(n) || n < 1 || n > 120) {
+      ageError = true;
+      return;
+    }
+    ageError = false;
+    agentAge.update((m) => ({ ...m, [agent.id]: n }));
+  }
+  function setPosition(value: string) {
+    agentPosition.update((m) => {
+      const c = { ...m };
+      if (!value) delete c[agent.id];
+      else c[agent.id] = value as "clevel" | "senior" | "manager";
+      return c;
+    });
+  }
+  function setVoiceOn(value: boolean) {
+    agentVoiceOn.update((m) => ({ ...m, [agent.id]: value }));
+  }
+  function setVoice(value: string) {
+    agentVoice.update((m) => ({ ...m, [agent.id]: value }));
   }
 
   // Single-d SVG icon paths (multi-subpath where needed)
@@ -677,6 +740,95 @@
           </div>
           {@render navRow(ICONS.sliders, $t("agents.advanced"), "")}
         </div>
+
+        <div class="section">
+          <h3>{$t("agents.personal")}</h3>
+
+          <div class="row">
+            <span class="label">{$t("agents.gender")}</span>
+            <span class="seg" role="group" aria-label={$t("agents.gender")}>
+              <button
+                class:active={gender === "male"}
+                onclick={() => setGender(gender === "male" ? undefined : "male")}
+              >{$t("agents.gender.male")}</button>
+              <button
+                class:active={gender === "female"}
+                onclick={() => setGender(gender === "female" ? undefined : "female")}
+              >{$t("agents.gender.female")}</button>
+            </span>
+          </div>
+
+          <div class="row">
+            <span class="label">{$t("agents.age")}</span>
+            <input
+              class="age-input"
+              type="number"
+              min="1"
+              max="120"
+              inputmode="numeric"
+              value={ageVal}
+              placeholder={$t("agents.age.placeholder")}
+              aria-label={$t("agents.age")}
+              onchange={(e) => setAge(e.currentTarget.value)}
+            />
+          </div>
+          {#if ageError}
+            <p class="err" role="alert">{$t("agents.age.invalid")}</p>
+          {/if}
+
+          <div class="row">
+            <span class="label">{$t("agents.position")}</span>
+            <select
+              value={position ?? ""}
+              onchange={(e) => setPosition(e.currentTarget.value)}
+              aria-label={$t("agents.position")}
+            >
+              <option value="">{$t("agents.position.unset")}</option>
+              <option value="clevel">{$t("agents.position.clevel")}</option>
+              <option value="senior">{$t("agents.position.senior")}</option>
+              <option value="manager">{$t("agents.position.manager")}</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="d-hobbies">{$t("agents.hobbies")}</label>
+            <input
+              id="d-hobbies"
+              value={hobbies}
+              placeholder={$t("agents.hobbies.placeholder")}
+              oninput={(e) =>
+                agentHobbies.update((m) => ({ ...m, [agent.id]: e.currentTarget.value }))}
+            />
+          </div>
+
+          <div class="row">
+            <span class="label">{$t("agents.voice.allow")}</span>
+            <label class="switch">
+              <input
+                type="checkbox"
+                checked={voiceOn}
+                onchange={(e) => setVoiceOn(e.currentTarget.checked)}
+                aria-label={$t("agents.voice.allow")}
+              />
+              <span class="track" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          <div class="row">
+            <span class="label">{$t("agents.voice.choose")}</span>
+            <select
+              value={voiceChoice}
+              disabled={!voiceOn}
+              onchange={(e) => setVoice(e.currentTarget.value)}
+              aria-label={$t("agents.voice.choose")}
+            >
+              <option value="v1">{$t("agents.voice.1")}</option>
+              <option value="v2">{$t("agents.voice.2")}</option>
+              <option value="v3">{$t("agents.voice.3")}</option>
+            </select>
+          </div>
+          <p class="note">{$t("agents.voice.note")}</p>
+        </div>
       </div>
     {/if}
   </div>
@@ -878,6 +1030,41 @@
     color: var(--accent);
     white-space: nowrap;
     flex: none;
+  }
+
+  /* Personalization fields */
+  .desc-col .row select {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .desc-col .row select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .age-input {
+    width: 120px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 15px;
+  }
+  .desc-col .note {
+    font-size: 13px;
+    color: var(--dim);
+    margin: 6px 0 0;
+  }
+  .desc-col .err {
+    font-size: 13px;
+    color: var(--danger);
+    margin: 4px 0 0;
   }
 
   /* Active agent identity in the top bar */
