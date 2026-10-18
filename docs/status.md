@@ -701,3 +701,15 @@ Koreksi bug tool `postiz` dari verifikasi live (commit ini):
 - Auth = key mentah di header `Authorization` (tanpa "Bearer")
 - `/is-connected` tidak ada → readiness pakai `GET /integrations`
 - API key pribadi = hex 64 char tanpa prefix; `pos_` = token OAuth App
+
+---
+
+## 18 Okt 2026 — Urutan koneksi data finansial: LENGKAP ✅
+
+Urutan gratis-dulu → Valyu fallback (keputusan Patria) kini didukung penuh:
+- **EDGAR** ✅ live (HTTP 200, tanpa key) — `marketdata` edgar_ticker/facts/filings
+- **FRED** ✅ key gratis valid (Keychain `fred`; tes DGS10 → 5.1% per 15 Okt)
+- **yfinance** ✅ v1.7.0 ter-install di MacBook (tes AAPL → 343.46)
+- **OpenBB** ✅ kode `quant` op `openbb_data` siap (default provider yfinance)
+- **Valyu** ✅ fallback premium, key valid, setiap query tercatat `cost`
+- Stooq tetap DINONAKTIFKAN (endpoint di balik verifikasi JS)
