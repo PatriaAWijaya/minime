@@ -25,3 +25,9 @@ tools/bin/
 
 # HyperFrames render artifacts (state lokal, bukan sumber)
 **/.hyperframes/
+
+# Arsip v1
+arsip-v1/**/node_modules/
+arsip-v1/**/target/
+arsip-v1/**/dist/
+binary/**

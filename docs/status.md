@@ -825,3 +825,27 @@ Sisa untuk sesi berikutnya:
 - Rewrite `src/src/App.svelte` ke layout 4 kolom
 - Pengaturan/Penggunaan/Peralatan dipindah (menu atau tab di main area)
 - Build + uji di MacBook
+
+## 2026-10-18 19:36 WIB — KEPUTUSAN PATRIA: Minime v1 diarsipkan, mulai Minime v2 dari nol
+
+Patria memutuskan bangun ulang total. Minime v1 (arsitektur Tauri + daemon Rust +
+LaunchAgent) DIARSIPKAN:
+- Repo GitHub PatriaAWijaya/minime: ARCHIVED (read-only) via API, 18 Okt 19:36 WIB
+- Kode lokal ~/workspace/minime: tetap sebagai arsip, tidak dihapus
+- LaunchAgent di MacBook: PERLU di-stop manual (langkah di bawah)
+
+Alasan: pendekatan berbeda untuk v2 (detail menyusul dari Patria).
+
+## 2026-10-18 20:45 WIB — Repo minime dipakai ulang untuk v2 (fresh start)
+
+Keputusan Patria: pakai repo awal minime (di-unarchive), hapus yang tidak perlu.
+- Kode v1 (daemon, src, src-tauri, agents, pipelines, tools, skills-warehouse)
+  → dipindah ke arsip-v1/ (bukan dihapus permanen; history git tetap ada)
+- Docs v1 → arsip-v1/docs/ (kecuali status.md yang dipertahankan)
+- Baru: AGENTS.md v2, README.md v2, docs/arsitektur.md, docs/workflow.md, docs/TODO.md
+- skills/ v1 tetap di root (akan diadaptasi di Tahap 2)
+- assets/ (avatar, app-icon) tetap (dipakai ulang v2)
+
+Catatan: repo GitHub minime-v2 yang sempat dibuat SUDAH tidak jadi dipakai
+(lokal dihapus; remote perlu dihapus manual oleh Patria — token tak punya izin delete).
+Pendekatan v2: clean-room, UI/UX tiru OpenBot, kode bangun dari nol.
