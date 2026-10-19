@@ -1260,6 +1260,10 @@ export async function sendChatViaRouter(
 ): Promise<ChatWireResult | null> {
   const tauri = await withTimeout(isTauri(), 10000, "deteksi backend");
   if (!tauri) return null;
+  // Pastikan daftar provider/model nyata sudah dimuat (untuk model dinamis).
+  if (get(realProviders) === null) {
+    await refreshProviders();
+  }
   const { invoke } = await import("@tauri-apps/api/core");
   return await withTimeout(
     invoke<ChatWireResult>("agent_chat", {
