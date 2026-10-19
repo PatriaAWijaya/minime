@@ -63,11 +63,6 @@ pub fn delete_api_key(account: &str) -> Result<(), String> {
     }
 }
 
-/// True when a key is configured for `account` (without revealing it).
-pub fn has_api_key(account: &str) -> bool {
-    api_key(account).is_some()
-}
-
 fn keyring_read(account: &str) -> Option<String> {
     let entry = keyring::Entry::new(SERVICE, account).ok()?;
     let pw = entry.get_password().ok()?;
