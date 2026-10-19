@@ -180,7 +180,13 @@ fn main() {
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
     let database = db::Db::open().expect("database (file/memory) harus bisa dibuka");
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    // WebDriver embedded untuk automated testing (hanya debug build).
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+    }
+    builder
         .manage(database)
         .invoke_handler(tauri::generate_handler![
             get_app_info,
