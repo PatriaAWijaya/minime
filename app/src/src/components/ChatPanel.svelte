@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
+  import { get } from "svelte/store";
   import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
   import {
     activeAgentId,
@@ -10,6 +11,7 @@
     getModel,
     loadChatHistory,
     messagesByAgent,
+    modelCatalog,
     newTaskSignal,
     pushMessage,
     sendChatViaRouter,
@@ -103,7 +105,10 @@
     try {
       // Tahap 2: coba model router nyata dulu; fallback ke mock lokal bila
       // backend belum tersedia (browser/preview) atau semua provider gagal.
-      const mid = $agentModel[id] ?? defaultModelFor(id);
+      let mid = $agentModel[id];
+      if (!mid || !get(modelCatalog).some((m) => m.id === mid)) {
+        mid = defaultModelFor(id);
+      }
       const mopt = getModel(mid);
       const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
       const systemPrompt = buildSystemPrompt(id, translate(agent.roleKey));
