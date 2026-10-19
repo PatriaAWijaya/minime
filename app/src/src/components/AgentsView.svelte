@@ -56,7 +56,14 @@
   );
   const facts = $derived(agentFacts[agent.id] ?? agentFacts.mimi);
   const modelId = $derived($agentModel[agent.id] ?? defaultModelFor(agent.id));
-  const model = $derived(getModel(modelId));
+  // $modelCatalog dibaca eksplisit di sini: getModel() memakai get() yang
+  // tidak reaktif, sehingga $derived(getModel(...)) tidak ikut refresh saat
+  // daftar model berubah (mis. setelah probe Ollama). Bug: pill model basi.
+  const model = $derived.by(() => {
+    const catalog = $modelCatalog;
+    const id = modelId === "claude" ? "muse" : modelId;
+    return catalog.find((m) => m.id === id) ?? catalog[0];
+  });
   const providerName = $derived(
     PROVIDERS.find((p) => p.id === model.providerId)?.name ?? model.providerId,
   );
