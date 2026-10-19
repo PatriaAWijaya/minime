@@ -173,11 +173,30 @@ fn agent_send_stub(agent_id: String, _message: String) -> String {
     format!("ack:{agent_id}")
 }
 
+/// Kirim notifikasi native (Tahap 3: approval gate).
+/// Dipakai saat tugas butuh approval atau selesai.
+#[tauri::command]
+fn send_notification(
+    app: tauri::AppHandle,
+    title: String,
+    body: String,
+) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|e| format!("Gagal kirim notifikasi: {}", e))
+}
+
 fn main() {
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
     let database = db::Db::open().expect("database (file/memory) harus bisa dibuka");
     let mut builder = tauri::Builder::default();
+    // Notifikasi native (Tahap 3: approval gate).
+    builder = builder.plugin(tauri_plugin_notification::init());
     // WebDriver embedded untuk automated testing (hanya debug build).
     #[cfg(debug_assertions)]
     {
@@ -196,6 +215,7 @@ fn main() {
             provider_disconnect,
             routerku_set_base_url,
             agent_send_stub,
+            send_notification,
             tools::list_tools,
             tools::get_tool_status,
             tools::set_tool_connected,

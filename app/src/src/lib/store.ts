@@ -742,9 +742,27 @@ export function addKanbanCard(
 }
 
 export function moveKanbanCard(id: number, col: KanbanCol) {
+  let cardTitle = "";
+  let agentId = "";
   kanbanCards.update((list) =>
-    list.map((c) => (c.id === id ? { ...c, col } : c)),
+    list.map((c) => {
+      if (c.id === id) {
+        cardTitle = c.title;
+        agentId = c.agentId;
+        return { ...c, col };
+      }
+      return c;
+    }),
   );
+  // Notifikasi native saat kartu butuh approval atau selesai (Tahap 3).
+  if (col === "approval" || col === "done") {
+    const agentName = agentId === "mimi" ? "Mimi" : agentId;
+    const title = col === "approval" ? "Butuh approval" : "Tugas selesai";
+    const body = col === "approval"
+      ? `"${cardTitle}" menunggu persetujuanmu`
+      : `"${cardTitle}" (${agentName}) selesai`;
+    sendNotification(title, body);
+  }
 }
 
 /** Kanban filter state (persisted). "all" = no filter. */
@@ -1450,5 +1468,18 @@ export async function agentCanUseTool(agentId: string, toolId: string): Promise<
     return ok ?? false;
   } catch {
     return false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifikasi native — Tahap 3 (approval gate)                         */
+/* ------------------------------------------------------------------ */
+
+/** Kirim notifikasi native via backend Rust. */
+export async function sendNotification(title: string, body: string): Promise<void> {
+  try {
+    await tauriInvoke("send_notification", { title, body });
+  } catch {
+    /* abaikan — bukan di Tauri */
   }
 }
