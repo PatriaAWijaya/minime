@@ -1551,3 +1551,23 @@ export async function createPireelJob(title: string): Promise<boolean> {
   ]);
   return true;
 }
+
+/* ------------------------------------------------------------------ */
+/* Google Drive — Tahap 3 (upload deliverable ke folder MIMI)          */
+/* Membutuhkan OAuth pengguna; framework siap, koneksi menyusul.       */
+/* ------------------------------------------------------------------ */
+
+export interface DriveUpload {
+  fileName: string;
+  folderId: string;
+  status: "pending" | "uploading" | "done" | "failed";
+}
+
+/** Upload file ke folder MIMI di Google Drive (membutuhkan koneksi). */
+export async function uploadToDrive(fileName: string, content: string): Promise<boolean> {
+  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: "drive" }).catch(() => false);
+  if (!connected) return false;
+  // Implementasi penuh: OAuth Google → upload ke folder MIMI.
+  // Untuk sekarang kembalikan false (belum terhubung).
+  return false;
+}

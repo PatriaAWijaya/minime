@@ -33,9 +33,10 @@
 - [ ] Gate: review + vonis Patria
 
 ## Tahap 3 — Tools & distribusi
-- [ ] Meta (draft-only), Postiz/Viralin (draft-only), Pireel
-- [ ] Approval gate + notifikasi native
-- [ ] Upload deliverable → folder MIMI (Google Drive)
+- [x] Tools gateway: registry Rust + status koneksi + allowlist per agen
+- [x] Meta (draft-only), Postiz/Viralin (draft-only), Pireel (framework)
+- [x] Approval gate + notifikasi native
+- [x] Upload deliverable → folder MIMI (framework; koneksi OAuth menyusul)
 - [ ] Gate: 1 pipeline end-to-end + vonis Patria
 
 ## Tahap 4 — Rilis macOS + Windows
