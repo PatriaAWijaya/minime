@@ -438,6 +438,7 @@ export const PROVIDERS: ProviderInfo[] = [
   { id: "gpt", name: "GPT", kind: "paid" },
   { id: "claude", name: "Claude", kind: "paid" },
   { id: "deepseek", name: "DeepSeek", kind: "paid" },
+  { id: "routerku", name: "RouterKu", kind: "paid", tagKey: "providers.routerKuTag" },
 ];
 
 /** Per-provider mock state: connected + active toggle. */
@@ -458,6 +459,51 @@ export function toggleProvider(id: string, active: boolean) {
     ...s,
     [id]: { connected: s[id]?.connected ?? false, active },
   }));
+}
+
+/* ---------- RouterKu gateway (mock, local only) ----------
+   Real connection = Phase 2. The key never leaves this device. */
+export const routerkuKey = writable<string>(loadString("minime.routerku.key", ""));
+export const routerkuBaseUrl = writable<string>(loadString("minime.routerku.baseurl", ""));
+routerkuKey.subscribe((v) => {
+  try { localStorage.setItem("minime.routerku.key", v); } catch { /* ignore */ }
+});
+routerkuBaseUrl.subscribe((v) => {
+  try { localStorage.setItem("minime.routerku.baseurl", v); } catch { /* ignore */ }
+});
+/** Save RouterKu credentials; mark connected only when a key is present. */
+export function saveRouterku(key: string, baseUrl: string) {
+  routerkuKey.set(key);
+  routerkuBaseUrl.set(baseUrl);
+  const ok = key.trim().length > 0;
+  providerState.update((s) => ({
+    ...s,
+    routerku: { connected: ok, active: s["routerku"]?.active ?? true },
+  }));
+}
+
+/* ---------- RuangAPI gateway (mock, local only) ----------
+   Real connection = Phase 3. The key never leaves this device. */
+export const ruangapiKey = writable<string>(loadString("minime.ruangapi.key", ""));
+export const ruangapiMcpUrl = writable<string>(
+  loadString("minime.ruangapi.mcp-url", "https://mcp.ruangapi.id/mcp"),
+);
+export const ruangapiConnected = writable<boolean>(
+  loadString("minime.ruangapi.connected", "false") === "true",
+);
+ruangapiKey.subscribe((v) => {
+  try { localStorage.setItem("minime.ruangapi.key", v); } catch { /* ignore */ }
+});
+ruangapiMcpUrl.subscribe((v) => {
+  try { localStorage.setItem("minime.ruangapi.mcp-url", v); } catch { /* ignore */ }
+});
+ruangapiConnected.subscribe((v) => {
+  try { localStorage.setItem("minime.ruangapi.connected", String(v)); } catch { /* ignore */ }
+});
+/** Mock-connect RuangAPI; mark connected only when a key is present. */
+export function connectRuangapi(key: string) {
+  ruangapiKey.set(key);
+  ruangapiConnected.set(key.trim().length > 0);
 }
 
 function loadString(key: string, fallback: string): string {

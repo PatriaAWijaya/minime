@@ -8,6 +8,9 @@
     customProviders,
     defaultProviderId,
     providerState,
+    routerkuBaseUrl,
+    routerkuKey,
+    saveRouterku,
     theme,
     toggleCustomProvider,
     toggleProvider,
@@ -31,6 +34,23 @@
   let scanning = $state(false);
   let showProvDialog = $state(false);
   let provName = $state("");
+
+  // RouterKu credentials (mock, local only — real connection in Phase 2)
+  let rkKey = $state("");
+  let rkUrl = $state("");
+  let rkInit = $state(false);
+  let rkSaved = $state(false);
+  $effect(() => {
+    if (!rkInit) {
+      rkKey = $routerkuKey;
+      rkUrl = $routerkuBaseUrl;
+      rkInit = true;
+    }
+  });
+  function saveRouterkuForm() {
+    saveRouterku(rkKey, rkUrl);
+    rkSaved = true;
+  }
   let provEndpoint = $state("");
 
   const APP_VERSION = "0.1.0";
@@ -114,7 +134,7 @@
                 : $t("providers.notConnected")}
           </span>
         </label>
-        {#if !p.local && !st.connected}
+        {#if !p.local && !st.connected && p.id !== "routerku"}
           <button class="btn-ghost sm" onclick={() => connectProvider(p.id)}>
             {$t("providers.connect")}
           </button>
@@ -129,6 +149,39 @@
           <span class="track" aria-hidden="true"></span>
         </label>
       </div>
+      {#if p.id === "routerku"}
+        <div class="prov-detail">
+          <div class="field">
+            <label for="routerku-key">{$t("providers.routerku.key")}</label>
+            <input
+              id="routerku-key"
+              type="password"
+              bind:value={rkKey}
+              placeholder={$t("providers.routerku.keyPlaceholder")}
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label for="routerku-baseurl">{$t("providers.routerku.baseUrl")}</label>
+            <input
+              id="routerku-baseurl"
+              type="text"
+              bind:value={rkUrl}
+              placeholder={$t("providers.routerku.baseUrlPlaceholder")}
+              inputmode="url"
+            />
+          </div>
+          <p class="note">{$t("providers.routerku.note")}</p>
+          <div class="row-end">
+            <button class="btn-primary" onclick={saveRouterkuForm}>
+              {$t("providers.routerku.save")}
+            </button>
+            {#if rkSaved}
+              <span class="ok-note" role="status">{$t("providers.routerku.saved")}</span>
+            {/if}
+          </div>
+        </div>
+      {/if}
     {/each}
 
     <div class="prov-row">
@@ -309,4 +362,26 @@
   }
   .scan-btn { margin-top: 12px; }
   .dialog .lede { margin-bottom: 16px; }
+  .prov-detail {
+    padding: 4px 4px 12px 34px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .prov-detail .note {
+    font-size: 13px;
+    color: var(--dim);
+    margin: 0;
+  }
+  .row-end {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .row-end .btn-primary { min-height: 44px; }
+  .ok-note {
+    font-size: 13px;
+    color: var(--accent);
+  }
 </style>
