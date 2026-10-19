@@ -682,17 +682,14 @@ impl Router {
     ) -> Result<ChatResult, String> {
         let mut last_err = String::new();
         for link in self.chain_for(model_id, tier) {
-            eprintln!("[router] coba provider: {}", link.id());
             match link.chat(model_id, &messages).await {
                 Ok(res) => return Ok(res),
                 Err(ProviderError::NoKey(_)) | Err(ProviderError::NotReachable(_)) => {
                     last_err = format!("{} dilewati (belum terkonfigurasi)", link.id());
-                    eprintln!("[router] {last_err}");
                     continue;
                 }
                 Err(e) => {
                     last_err = e.to_string();
-                    eprintln!("[router] {} gagal: {last_err}", link.id());
                     continue;
                 }
             }
