@@ -887,9 +887,12 @@ function resolveProjectId(): string {
 }
 
 function loadActiveCanvas(): void {
-  const d = flowMap[resolveProjectId()] ?? { nodes: [], edges: [] };
-  flowNodes.set(d.nodes);
-  flowEdges.set(d.edges);
+  const d = flowMap[resolveProjectId()];
+  // Defensive: old/corrupt localStorage may hold {} without nodes/edges.
+  const nodes = Array.isArray(d?.nodes) ? d.nodes : [];
+  const edges = Array.isArray(d?.edges) ? d.edges : [];
+  flowNodes.set(nodes);
+  flowEdges.set(edges);
 }
 
 function saveActiveCanvas(): void {
