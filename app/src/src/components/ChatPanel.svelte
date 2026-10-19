@@ -49,6 +49,9 @@
     }
   });
   onMount(() => {
+    // Pulihkan status yang nyangkut "working" (mis. timer mock terhapus
+    // saat HMR/reload sebelum sempat mengembalikan idle).
+    agentStatus.update((st) => ({ ...st, [agent.id]: "idle" }));
     if (agent.id) loadChatHistory(agent.id);
   });
   onDestroy(() => {
