@@ -32,7 +32,35 @@
     "targets": "all",
     "resources": [
       "../../skills"
-    ]
+    ],
+    "publisher": "Patria A. Wijaya",
+    "homepage": "https://github.com/PatriaAWijaya/minime",
+    "category": "Productivity",
+    "shortDescription": "Tim kerja AI di komputermu — Mimi + 5 agen spesialis",
+    "copyright": "© 2026 Patria A. Wijaya",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        }
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
   },
   "identifier": "id.minime.app",
   "productName": "Minime",
