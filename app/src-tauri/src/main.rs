@@ -77,7 +77,7 @@ async fn agent_chat(
     }
     wire.extend(messages.iter().cloned());
 
-    eprintln!("[agent_chat] masuk: agent={agent_id} model={model_id} tier={tier} n_msg={}", messages.len());
+    eprintln!("[agent_chat] masuk: agent={agent_id} model={model_id} tier={tier:?} n_msg={}", messages.len());
     // Simpan pesan user dulu (riwayat tetap ada walau provider gagal).
     if let Some(last) = messages.last() {
         let _ = db.save_message(&agent_id, &last.role, &last.content, None);
