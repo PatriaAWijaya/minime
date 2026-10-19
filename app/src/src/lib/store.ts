@@ -162,6 +162,12 @@ export function removeCustomModel(section: ModelSection, name: string): void {
   }));
 }
 
+/** Status provider dari backend Rust; null = belum dicek / browser.
+    Didefinisikan di sini (bukan di bawah) karena modelCatalog memakainya. */
+export const realProviders = writable<RealProviderStatus[] | null>(null);
+/** True bila aplikasi berjalan di Tauri dengan backend Tahap 2. */
+export const usingRealBackend = writable<boolean>(false);
+
 /** Full catalog = built-in models + user-added custom models.
     Bila backend Tahap 2 tersedia dan Ollama terhubung, daftar model Ollama
     diganti dengan model yang benar-benar terinstal (dari /api/tags). */
@@ -1042,11 +1048,6 @@ async function tauriInvoke<T>(
   const { invoke } = await import("@tauri-apps/api/core");
   return await invoke<T>(cmd, args ?? {});
 }
-
-/** Status provider dari backend Rust; null = belum dicek / browser. */
-export const realProviders = writable<RealProviderStatus[] | null>(null);
-/** True bila aplikasi berjalan di Tauri dengan backend Tahap 2. */
-export const usingRealBackend = writable<boolean>(false);
 
 function mirrorToMock(list: RealProviderStatus[]) {
   providerState.update((s) => {
