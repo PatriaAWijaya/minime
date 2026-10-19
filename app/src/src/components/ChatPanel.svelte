@@ -97,17 +97,17 @@
     draft = "";
     agentStatus.update((s) => ({ ...s, [id]: "working" }));
 
-    // Tahap 2: coba model router nyata dulu; fallback ke mock lokal bila
-    // backend belum tersedia (browser/preview) atau semua provider gagal.
-    const mid = $agentModel[id] ?? defaultModelFor(id);
-    const mopt = getModel(mid);
-    const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
-    const systemPrompt = buildSystemPrompt(id, translate(agent.roleKey));
-    const history = ($messagesByAgent[id] ?? []).map((m) => ({
-      role: m.role === "agent" ? "assistant" : "user",
-      content: m.text,
-    }));
     try {
+      // Tahap 2: coba model router nyata dulu; fallback ke mock lokal bila
+      // backend belum tersedia (browser/preview) atau semua provider gagal.
+      const mid = $agentModel[id] ?? defaultModelFor(id);
+      const mopt = getModel(mid);
+      const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
+      const systemPrompt = buildSystemPrompt(id, translate(agent.roleKey));
+      const history = ($messagesByAgent[id] ?? []).map((m) => ({
+        role: m.role === "agent" ? "assistant" : "user",
+        content: m.text,
+      }));
       const res = await sendChatViaRouter(id, mid, tier, systemPrompt, history);
       if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
@@ -120,12 +120,18 @@
         return;
       }
     } catch (e) {
-      // Di Tauri tapi router gagal: tampilkan alasan aslinya agar jelas
+      // Router gagal / timeout: tampilkan alasan aslinya agar jelas
       // apa yang kurang (mis. belum ada provider terhubung).
-      const msg = typeof e === "string" && e.trim() ? e.trim() : translate("chat.routerFailed");
+      const msg =
+        typeof e === "string" && e.trim()
+          ? e.trim()
+          : e instanceof Error && e.message
+            ? e.message
+            : translate("chat.routerFailed");
       pushMessage(id, "agent", msg);
+    } finally {
+      agentStatus.update((s) => ({ ...s, [id]: "idle" }));
     }
-    agentStatus.update((s) => ({ ...s, [id]: "idle" }));
   }
 
   function onKey(e: KeyboardEvent) {

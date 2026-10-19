@@ -1219,9 +1219,19 @@ export interface RealUsageRow {
   output_tokens: number;
 }
 
+/** Race janji melawan timeout — menjamin tidak ada hang diam-diam. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(`${label}: timeout setelah ${Math.round(ms / 1000)} detik`), ms),
+    ),
+  ]);
+}
+
 /** Kirim chat lewat model router (dengan fallback otomatis).
     - Return null → bukan di Tauri (browser/preview), pakai mock.
-    - Throw string → di Tauri tapi router gagal (pesan error Indonesia). */
+    - Throw string → di Tauri tapi router gagal / timeout (pesan Indonesia). */
 export async function sendChatViaRouter(
   agentId: string,
   modelId: string,
@@ -1229,15 +1239,20 @@ export async function sendChatViaRouter(
   systemPrompt: string,
   messages: ChatWireMessage[],
 ): Promise<ChatWireResult | null> {
-  if (!(await isTauri())) return null;
+  const tauri = await withTimeout(isTauri(), 10000, "deteksi backend");
+  if (!tauri) return null;
   const { invoke } = await import("@tauri-apps/api/core");
-  return await invoke<ChatWireResult>("agent_chat", {
-    agentId,
-    modelId,
-    tier,
-    systemPrompt,
-    messages,
-  });
+  return await withTimeout(
+    invoke<ChatWireResult>("agent_chat", {
+      agentId,
+      modelId,
+      tier,
+      systemPrompt,
+      messages,
+    }),
+    180000,
+    "model router",
+  );
 }
 
 const historyLoadedFor = new Set<string>();
