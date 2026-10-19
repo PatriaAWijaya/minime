@@ -972,3 +972,170 @@ export function addCustomAgent() {
     },
   ]);
 }
+
+/* ---------- Tauri bridge — model router nyata (Tahap 2) ----------
+   Di aplikasi desktop, status provider & chat memakai Tauri commands
+   (Rust). Di browser (preview), invoke() tidak ada → fallback ke mock
+   lokal agar UI tetap bisa diklik-tayang. */
+
+export interface RealModelInfo {
+  id: string;
+  label: string;
+}
+
+export interface RealProviderStatus {
+  id: string;
+  label: string;
+  kind: "free" | "paid";
+  /** "connected" | "no_key" | "unreachable" | "unknown" */
+  state: string;
+  detail: string;
+  models: RealModelInfo[];
+}
+
+export interface ChatWireMessage {
+  role: string;
+  content: string;
+}
+
+export interface ChatWireResult {
+  text: string;
+  served_by: string;
+}
+
+async function tauriInvoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T | null> {
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<T>(cmd, args ?? {});
+  } catch {
+    return null; // bukan di Tauri (browser/preview) → pakai mock
+  }
+}
+
+/** Status provider dari backend Rust; null = belum dicek / browser. */
+export const realProviders = writable<RealProviderStatus[] | null>(null);
+/** True bila aplikasi berjalan di Tauri dengan backend Tahap 2. */
+export const usingRealBackend = writable<boolean>(false);
+
+function mirrorToMock(list: RealProviderStatus[]) {
+  providerState.update((s) => {
+    const next = { ...s };
+    for (const p of list) {
+      next[p.id] = {
+        connected: p.state === "connected",
+        active: next[p.id]?.active ?? true,
+      };
+    }
+    return next;
+  });
+}
+
+/** Pindai ulang semua provider via backend. Dipanggil saat layar
+    Penyedia Model dibuka dan setelah connect/disconnect. */
+export async function refreshProviders(): Promise<void> {
+  const res = await tauriInvoke<RealProviderStatus[]>("provider_probe");
+  if (res) {
+    usingRealBackend.set(true);
+    realProviders.set(res);
+    mirrorToMock(res);
+    await migrateRouterkuKey();
+  }
+}
+
+/** Simpan API key provider berbayar ke OS Keychain (atau mock di browser). */
+export async function connectProviderKey(
+  id: string,
+  apiKey: string,
+): Promise<boolean> {
+  const key = apiKey.trim();
+  if (!key) return false;
+  const saved = await tauriInvoke<void>("provider_connect", {
+    providerId: id,
+    apiKey: key,
+  });
+  if (saved !== null) {
+    await refreshProviders();
+    return true;
+  }
+  connectProvider(id); // fallback browser: mock
+  return true;
+}
+
+/** Hapus API key provider dari OS Keychain. */
+export async function disconnectProviderKey(id: string): Promise<void> {
+  await tauriInvoke<void>("provider_disconnect", { providerId: id });
+  providerState.update((s) => ({
+    ...s,
+    [id]: { connected: false, active: s[id]?.active ?? true },
+  }));
+  await refreshProviders();
+}
+
+/** Kirim chat lewat model router (dengan fallback otomatis).
+    Return null bila backend tidak tersedia → panggil mock. */
+export async function sendChatViaRouter(
+  modelId: string,
+  tier: "gratis" | "berbayar",
+  messages: ChatWireMessage[],
+): Promise<ChatWireResult | null> {
+  return tauriInvoke<ChatWireResult>("agent_chat", {
+    modelId,
+    tier,
+    messages,
+  });
+}
+
+/** Migrasi sekali: pindahkan API key RouterKu yang dulu tersimpan di
+    localStorage (mock Tahap 1) ke OS Keychain, lalu hapus dari sana. */
+let routerkuMigrated = false;
+async function migrateRouterkuKey(): Promise<void> {
+  if (routerkuMigrated) return;
+  routerkuMigrated = true;
+  let raw = "";
+  try {
+    raw = localStorage.getItem("minime.routerku.key") ?? "";
+  } catch {
+    return;
+  }
+  if (!raw.trim()) return;
+  const saved = await tauriInvoke<void>("provider_connect", {
+    providerId: "routerku",
+    apiKey: raw.trim(),
+  });
+  if (saved !== null) {
+    try {
+      localStorage.removeItem("minime.routerku.key");
+    } catch {
+      /* ignore */
+    }
+    routerkuKey.set("");
+  }
+}
+
+/** Simpan kredensial RouterKu: key → Keychain, base URL → settings.
+/// Tidak lagi menyimpan raw key di localStorage. */
+export async function saveRouterkuSecure(
+  key: string,
+  baseUrl: string,
+): Promise<boolean> {
+  const k = key.trim();
+  const u = baseUrl.trim();
+  if (u) {
+    await tauriInvoke<void>("routerku_set_base_url", { baseUrl: u });
+    routerkuBaseUrl.set(u);
+  }
+  if (!k) return false;
+  const saved = await tauriInvoke<void>("provider_connect", {
+    providerId: "routerku",
+    apiKey: k,
+  });
+  if (saved !== null) {
+    await refreshProviders();
+    return true;
+  }
+  saveRouterku(k, u); // fallback browser: mock lama
+  return true;
+}

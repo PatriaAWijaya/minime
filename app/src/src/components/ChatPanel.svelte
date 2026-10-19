@@ -4,10 +4,14 @@
   import type { Agent } from "../lib/agents";
   import {
     activeAgentId,
+    agentModel,
     agentStatus,
+    defaultModelFor,
+    getModel,
     messagesByAgent,
     newTaskSignal,
     pushMessage,
+    sendChatViaRouter,
   } from "../lib/store";
   import { t } from "../lib/i18n";
 
@@ -69,7 +73,7 @@
     return `${m}:${sec}`;
   }
 
-  function send() {
+  async function send() {
     const text = draft.trim();
     if (!text || status === "working") return;
     if (recording) stopRecordingSilent();
@@ -78,6 +82,26 @@
     pushMessage(id, "user", text);
     draft = "";
     agentStatus.update((s) => ({ ...s, [id]: "working" }));
+
+    // Tahap 2: coba model router nyata dulu; fallback ke mock lokal bila
+    // backend belum tersedia (browser/preview) atau semua provider gagal.
+    const mid = $agentModel[id] ?? defaultModelFor(id);
+    const mopt = getModel(mid);
+    const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
+    const history = ($messagesByAgent[id] ?? []).map((m) => ({
+      role: m.role === "agent" ? "assistant" : "user",
+      content: m.text,
+    }));
+    try {
+      const res = await sendChatViaRouter(mid, tier, history);
+      if (res && res.text.trim()) {
+        pushMessage(id, "agent", res.text);
+        agentStatus.update((s) => ({ ...s, [id]: "idle" }));
+        return;
+      }
+    } catch {
+      /* jatuh ke mock di bawah */
+    }
     timer = setTimeout(() => {
       pushMessage(id, "agent", translate("chat.mockReply", { name: agent.name }));
       agentStatus.update((s) => ({ ...s, [id]: "idle" }));

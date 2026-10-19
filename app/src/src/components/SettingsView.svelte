@@ -5,17 +5,22 @@
     addCustomProvider,
     autoScan,
     connectProvider,
+    connectProviderKey,
     customProviders,
     defaultProviderId,
+    disconnectProviderKey,
     providerState,
+    realProviders,
+    refreshProviders,
     routerkuBaseUrl,
-    routerkuKey,
-    saveRouterku,
+    saveRouterkuSecure,
     theme,
     toggleCustomProvider,
     toggleProvider,
+    usingRealBackend,
   } from "../lib/store";
   import type { Theme } from "../lib/store";
+  import { onMount } from "svelte";
 
   const themes: { id: Theme; labelKey: string }[] = [
     { id: "system", labelKey: "settings.theme.system" },
@@ -35,22 +40,65 @@
   let showProvDialog = $state(false);
   let provName = $state("");
 
-  // RouterKu credentials (mock, local only — real connection in Phase 2)
+  // RouterKu credentials — key goes to OS Keychain (Tahap 2), never localStorage
   let rkKey = $state("");
   let rkUrl = $state("");
   let rkInit = $state(false);
   let rkSaved = $state(false);
+  let rkBusy = $state(false);
   $effect(() => {
     if (!rkInit) {
-      rkKey = $routerkuKey;
       rkUrl = $routerkuBaseUrl;
       rkInit = true;
     }
   });
-  function saveRouterkuForm() {
-    saveRouterku(rkKey, rkUrl);
-    rkSaved = true;
+  async function saveRouterkuForm() {
+    rkBusy = true;
+    try {
+      const ok = await saveRouterkuSecure(rkKey, rkUrl);
+      rkSaved = ok;
+      if (ok) rkKey = "";
+    } finally {
+      rkBusy = false;
+    }
   }
+
+  // Per-provider API key form (paid providers)
+  let keyFormFor = $state<string | null>(null);
+  let keyInput = $state("");
+  let keyBusy = $state(false);
+  let keySavedFor = $state<string | null>(null);
+  function openKeyForm(id: string) {
+    keyFormFor = id;
+    keyInput = "";
+    keySavedFor = null;
+  }
+  async function submitKeyForm(id: string) {
+    keyBusy = true;
+    try {
+      const ok = await connectProviderKey(id, keyInput);
+      if (ok) {
+        keySavedFor = id;
+        keyFormFor = null;
+        keyInput = "";
+      }
+    } finally {
+      keyBusy = false;
+    }
+  }
+  async function disconnectKey(id: string) {
+    await disconnectProviderKey(id);
+    keySavedFor = null;
+  }
+
+  /** Status nyata dari backend Rust bila tersedia, fallback ke mock lokal. */
+  function realStatus(id: string) {
+    return $realProviders?.find((p) => p.id === id) ?? null;
+  }
+
+  onMount(() => {
+    refreshProviders();
+  });
   let provEndpoint = $state("");
 
   const APP_VERSION = "0.1.0";
@@ -102,11 +150,18 @@
   </div>
 
   <div class="section">
-    <h3>{$t("providers.title")}</h3>
+    <div class="row-between">
+      <h3>{$t("providers.title")}</h3>
+      <button class="btn-ghost sm" onclick={() => refreshProviders()}>
+        {$t("providers.recheck")}
+      </button>
+    </div>
 
     <span class="group-label">{$t("providers.default")}</span>
     {#each PROVIDERS as p}
       {@const st = $providerState[p.id] ?? { connected: false, active: true }}
+      {@const rs = realStatus(p.id)}
+      {@const isPaid = p.kind === "paid"}
       <div class="prov-row">
         <input
           type="radio"
@@ -126,15 +181,35 @@
               <span class="chip dim">{$t(p.tagKey)}</span>
             {/if}
           </span>
-          <span class="prov-status">
-            {p.local
-              ? $t("providers.availableLocal")
-              : st.connected
-                ? $t("providers.connected")
-                : $t("providers.notConnected")}
+          <span class="prov-status" title={rs?.detail ?? ""}>
+            {#if rs}
+              {#if rs.state === "connected"}
+                {$t("providers.connected")}{rs.detail ? ` · ${rs.detail}` : ""}
+              {:else if rs.state === "no_key"}
+                {$t("providers.state.noKey")}
+              {:else if rs.state === "unreachable"}
+                {$t("providers.state.unreachable")}{rs.detail ? ` · ${rs.detail}` : ""}
+              {:else}
+                {$t("providers.notConnected")}
+              {/if}
+            {:else if p.local}
+              {$t("providers.availableLocal")}
+            {:else}
+              {st.connected ? $t("providers.connected") : $t("providers.notConnected")}
+            {/if}
           </span>
         </label>
-        {#if !p.local && !st.connected && p.id !== "routerku"}
+        {#if isPaid && p.id !== "routerku"}
+          {#if st.connected}
+            <button class="btn-ghost sm" onclick={() => disconnectKey(p.id)}>
+              {$t("providers.disconnect")}
+            </button>
+          {:else if keyFormFor !== p.id}
+            <button class="btn-ghost sm" onclick={() => openKeyForm(p.id)}>
+              {$t("providers.connect")}
+            </button>
+          {/if}
+        {:else if !p.local && !st.connected && p.id !== "routerku"}
           <button class="btn-ghost sm" onclick={() => connectProvider(p.id)}>
             {$t("providers.connect")}
           </button>
@@ -149,6 +224,36 @@
           <span class="track" aria-hidden="true"></span>
         </label>
       </div>
+      {#if isPaid && p.id !== "routerku" && keyFormFor === p.id}
+        <div class="prov-detail">
+          <div class="field">
+            <label for="key-{p.id}">{$t("providers.keyLabel")} — {p.name}</label>
+            <input
+              id="key-{p.id}"
+              type="password"
+              bind:value={keyInput}
+              placeholder={$t("providers.keyPlaceholder")}
+              autocomplete="off"
+            />
+          </div>
+          <p class="note">{$t("providers.keySaved")}</p>
+          <div class="row-end">
+            <button
+              class="btn-primary"
+              disabled={keyBusy || !keyInput.trim()}
+              onclick={() => submitKeyForm(p.id)}
+            >
+              {$t("providers.routerku.save")}
+            </button>
+            <button class="btn-ghost sm" onclick={() => (keyFormFor = null)}>
+              {$t("providers.cancel")}
+            </button>
+          </div>
+        </div>
+      {/if}
+      {#if keySavedFor === p.id}
+        <p class="ok-note" role="status">{$t("providers.keySaved")}</p>
+      {/if}
       {#if p.id === "routerku"}
         <div class="prov-detail">
           <div class="field">
@@ -173,7 +278,7 @@
           </div>
           <p class="note">{$t("providers.routerku.note")}</p>
           <div class="row-end">
-            <button class="btn-primary" onclick={saveRouterkuForm}>
+            <button class="btn-primary" disabled={rkBusy} onclick={saveRouterkuForm}>
               {$t("providers.routerku.save")}
             </button>
             {#if rkSaved}
@@ -380,6 +485,13 @@
     gap: 12px;
   }
   .row-end .btn-primary { min-height: 44px; }
+  .row-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .row-between h3 { margin: 0; }
   .ok-note {
     font-size: 13px;
     color: var(--accent);

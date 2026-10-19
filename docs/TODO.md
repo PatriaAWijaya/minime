@@ -2,7 +2,7 @@
 
 > Diperbarui 18 Okt 2026 malam. Gate tiap tahap = review + vonis Patria.
 
-## Tahap 1 — UI/UX ✅ (scaffold selesai, gate vonis terbuka)
+## Tahap 1 — UI/UX ✅ (gate LOLOS — vonis Patria 19 Okt ~10:12)
 - [x] Verdict stack: Tauri 2 + Svelte 5
 - [x] Scaffold proyek fresh (`app/`)
 - [x] Layout 4 kolom ala OpenBot (sidebar | agen | chat+delivery | monitor)
@@ -11,14 +11,23 @@
 - [x] Navigasi: Pengaturan, Penggunaan, Peralatan
 - [x] Prinsip compact-but-powerful, pemula-friendly
 - [x] Dokumen: arsitektur, framework agen, workflow
-- [ ] Gate: vonis Patria atas tampilan Tahap 1
+- [x] Topbar mobile ≤860px: 2 baris rapi
+- [x] Badge Tools: tetap warna brand (vonis Patria)
+- [ ] Avatar animasi: dibuat ulang oleh Patria sendiri (tidak blocking)
 
-## Tahap 2 — Fitur + skills agen
+## Tahap 2 — Model router nyata (gate Tahap 1 lolos 19 Okt; berjalan)
+- [x] Fondasi Rust: trait provider + registry + error routing (adaptasi pola v1)
+- [x] Secrets: OS Keychain (`keyring` + fallback `security` CLI di macOS)
+- [x] Ollama: deteksi `localhost:11434`, list models, chat (default GRATIS)
+- [x] OpenCode: CLI free tier via shell-out (fallback GRATIS)
+- [x] HTTP OpenAI-compatible: Muse (`api.meta.ai`), Gemini, DeepSeek, RouterKu (base URL konfigurabel; RouterKu blocked: gateway unknown + saldo 0)
+- [x] Router per-agen: Gratis Ollama→OpenCode; Berbayar Muse→Gemini→DeepSeek; fallback otomatis
+- [x] Tauri commands: `provider_probe`, `agent_chat`, `provider_connect/disconnect`, `routerku_set_base_url`
+- [x] Frontend: Penyedia Model → status koneksi nyata + form API key (Keychain); chat agen → router nyata (fallback mock di browser)
+- [ ] Verifikasi `cargo check` di MacBook (Rust tidak bisa dicek di VM)
+- [ ] Wiring SQLite: riwayat chat + usage metering
 - [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output
 - [ ] Skills + quality bar per agen (adaptasi playbook v1 di `skills/`)
-- [ ] Model router: Gemini 3.8 default + lokal gratis + custom;
-      routing per-agen + fallback + metering + budget cap
-- [ ] Wiring SQLite (riwayat, tugas, usage)
 - [ ] Gate: review + vonis Patria
 
 ## Tahap 3 — Tools & distribusi
