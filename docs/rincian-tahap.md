@@ -121,6 +121,10 @@ pengguna.
 **Tujuan:** installer yang bisa dipasang pengguna pemula tanpa bantuan.
 
 ### 4.1 Build
+- **Avatar & animasi avatar (oleh Patria, sebelum kompilasi):**
+  Patria mengupdate desain avatar + animasi status agen (siap/bekerja/
+  butuh perhatian) sebelum build final — menggantikan badge inisial
+  placeholder saat ini
 - macOS: `.dmg` (Tauri bundler, target aarch64 + x86_64 bila memungkinkan)
 - Windows: `.exe` (NSIS/WiX via Tauri)
 - Verifikasi kompilasi Rust penuh di MacBook (VM tidak bisa: tanpa

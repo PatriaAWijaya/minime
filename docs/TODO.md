@@ -39,6 +39,7 @@
 - [ ] Gate: 1 pipeline end-to-end + vonis Patria
 
 ## Tahap 4 — Rilis macOS + Windows
+- [ ] **Avatar & animasi avatar oleh Patria** (sebelum kompilasi final)
 - [ ] Build dmg + exe; installer mudah & intuitif
 - [ ] Security audit + Impeccable audit
 - [ ] **Scoring kinerja pasca-kompilasi:** benchmark suite internal
