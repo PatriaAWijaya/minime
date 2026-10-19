@@ -119,31 +119,6 @@ const FREE_TIER: Array<[string, string]> = [
   ["space-bunny", "Space Bunny Free"],
 ];
 
-/** Built-in model catalog (mock). */
-const BASE_MODELS: ModelOption[] = [
-  ...FREE_TIER.map(
-    ([slug, label]): ModelOption => ({
-      id: `ollama:${slug}`,
-      providerId: "ollama",
-      label,
-      kind: "free",
-    }),
-  ),
-  ...FREE_TIER.map(
-    ([slug, label]): ModelOption => ({
-      id: `opencode:${slug}`,
-      providerId: "opencode",
-      label,
-      kind: "free",
-    }),
-  ),
-  { id: "claude", providerId: "muse", label: "Muse", kind: "paid" },
-  { id: "gemini", providerId: "gemini", label: "Gemini", kind: "paid" },
-  { id: "gpt", providerId: "gpt", label: "GPT", kind: "paid" },
-  { id: "claude", providerId: "claude", label: "Claude", kind: "paid" },
-  { id: "deepseek", providerId: "deepseek", label: "DeepSeek", kind: "paid" },
-];
-
 /** Section id for the model dropdown groups. */
 export type ModelSection = "opencode" | "ollama" | "paid";
 
@@ -187,11 +162,46 @@ export function removeCustomModel(section: ModelSection, name: string): void {
   }));
 }
 
-/** Full catalog = built-in models + user-added custom models. */
+/** Full catalog = built-in models + user-added custom models.
+    Bila backend Tahap 2 tersedia dan Ollama terhubung, daftar model Ollama
+    diganti dengan model yang benar-benar terinstal (dari /api/tags). */
 export const modelCatalog: Readable<ModelOption[]> = derived(
-  customModels,
-  ($custom): ModelOption[] => [
-    ...BASE_MODELS,
+  [customModels, realProviders],
+  ([$custom, $real]): ModelOption[] => {
+    const ollamaReal = $real?.find((p) => p.id === "ollama");
+    const ollamaModels: ModelOption[] =
+      ollamaReal && ollamaReal.state === "connected" && ollamaReal.models.length > 0
+        ? ollamaReal.models.map(
+            (m): ModelOption => ({
+              id: m.id,
+              providerId: "ollama",
+              label: m.label,
+              kind: "free",
+            }),
+          )
+        : FREE_TIER.map(
+            ([slug, label]): ModelOption => ({
+              id: `ollama:${slug}`,
+              providerId: "ollama",
+              label,
+              kind: "free",
+            }),
+          );
+    return [
+      ...ollamaModels,
+      ...FREE_TIER.map(
+        ([slug, label]): ModelOption => ({
+          id: `opencode:${slug}`,
+          providerId: "opencode",
+          label,
+          kind: "free",
+        }),
+      ),
+      { id: "claude", providerId: "muse", label: "Muse", kind: "paid" },
+      { id: "gemini", providerId: "gemini", label: "Gemini", kind: "paid" },
+      { id: "gpt", providerId: "gpt", label: "GPT", kind: "paid" },
+      { id: "claude", providerId: "claude", label: "Claude", kind: "paid" },
+      { id: "deepseek", providerId: "deepseek", label: "DeepSeek", kind: "paid" },
     ...$custom.ollama.map(
       (label): ModelOption => ({
         id: `custom:ollama:${slugify(label)}`,
@@ -219,7 +229,8 @@ export const modelCatalog: Readable<ModelOption[]> = derived(
         custom: true,
       }),
     ),
-  ],
+    ];
+  },
 );
 
 export function getModel(id: string): ModelOption {
@@ -231,7 +242,15 @@ export function getModel(id: string): ModelOption {
 }
 
 export function defaultModelFor(agentId: string): string {
-  return agentId === "mimi" ? "muse" : "ollama:glm-5.3-flash";
+  if (agentId === "mimi") return "muse";
+  // Bila Ollama terhubung, pakai model chat asli pertama (bukan embedding).
+  const ollama = get(realProviders)?.find((p) => p.id === "ollama");
+  if (ollama && ollama.state === "connected") {
+    const chat = ollama.models.find((m) => !/embed/i.test(m.label));
+    if (chat) return chat.id;
+    if (ollama.models.length > 0) return ollama.models[0].id;
+  }
+  return "ollama:glm-5.3-flash";
 }
 
 /** Reasoning effort per agent (mock, persisted). */
