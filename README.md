@@ -1,26 +1,31 @@
-# Minime v2
+# Minime
 
-Aplikasi desktop local-first untuk agen AI — membantu membuat agen tambahan
-yang membuat model AI pengguna lebih efektif dan efisien.
+Aplikasi desktop local-first untuk AI teammates yang persisten — tim agen AI
+senior yang bekerja untukmu, di komputermu, dengan persetujuanmu.
 
-**Orkestrator:** Mimi (CIO — Chief Intelligent Officer), model Muse.
+Definisi lengkap: [`DEFINISI.md`](DEFINISI.md)
+
+**Orkestrator:** Mimi (CIO — Chief Intelligent Officer)
 
 **5 agen utama:** Kreatif · Riset · Finance · Bisnis Strategis · Code Builder
 
-**Model:** pilihan pengguna — Patria memakai Gemini 3.8 (berbayar) + model lokal gratis.
+**Model:** default Muse; model lain (Gemini, DeepSeek, Ollama lokal, custom)
+untuk fallback atau agen tambahan.
 
 ## Status
 
-Fase 1: UI/UX (klik-tayang). Lihat `docs/workflow.md`.
+Tahap 1 (UI/UX klik-tayang): lolos gate ✅ — Tahap 2 (model router + runtime agen): berjalan 🔄.
+Lihat `docs/workflow.md` dan `docs/status.md`.
 
 ## Aturan keras
 
 - Tidak ada auto-posting Meta (draft-only)
-- Kredensial di OS keychain, tidak di git
-- Deliverable → Google Drive folder MIMI
-- UI Bahasa Indonesia
+- Kredensial di OS keychain masing-masing pengguna, tidak di git
+- Deliverable → Google Drive masing-masing pengguna
+- UI Bahasa Indonesia (default)
+- Dilarang order trading live otomatis
 
 ## Riwayat
 
-Kode v1 (Tauri + Rust daemon) diarsipkan di `arsip-v1/`. Repo ini dibangun ulang
-dari nol sebagai Minime v2 (keputusan Patria, 18 Okt 2026).
+Kode v1 (Tauri + Rust daemon, 16–18 Okt 2026) diarsipkan di `arsip-v1/`.
+Dibangun ulang dari nol dengan pendekatan berbeda (keputusan Patria, 18 Okt 2026).
