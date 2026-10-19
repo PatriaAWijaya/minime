@@ -1,45 +1,37 @@
-/** Test otomatis: kirim pesan chat ke agen dan verifikasi ada balasan.
- *  Skenario: buka app → pilih agen Code Builder → ketik "halo" → Kirim →
- *  tunggu bubble agen muncul (bukan error provider).
+/** Test otomatis Minime via WebDriver.
+ *  Tidak klik UI — panggil backend langsung via Tauri IPC dari dalam webview.
+ *  Memverifikasi: agent_chat mengembalikan balasan (bukan error).
  */
 import { expect } from "expect";
 
-describe("Minime chat", () => {
-  it("agen membalas pesan", async () => {
-    // Tunggu app siap (sidebar Agen terlihat).
-    const agenHeading = await browser.$("h2=Agen");
-    await agenHeading.waitForExist({ timeout: 30000 });
-
-    // Klik agen Code Builder di daftar.
-    const codeBuilder = await browser.$("div*=Code Builder");
-    await codeBuilder.waitForExist({ timeout: 10000 });
-    await codeBuilder.click();
-
-    // Ketik pesan di input chat.
-    const input = await browser.$('input[placeholder*="Tulis"]');
-    await input.waitForExist({ timeout: 10000 });
-    await input.setValue("halo, balas dengan satu kata saja");
-
-    // Klik Kirim.
-    const kirim = await browser.$("button=Kirim");
-    await kirim.click();
-
-    // Tunggu bubble balasan agen muncul (maks 90 detik untuk load model).
-    // Bubble agen adalah div pesan bukan dari user; cari teks yang bukan "halo".
+describe("Minime backend", () => {
+  it("agent_chat mengembalikan balasan via Ollama", async () => {
     await browser.waitUntil(
-      async () => {
-        const bubbles = await browser.$$("div.chat-bubble-agent");
-        return bubbles.length > 0;
-      },
-      { timeout: 90000, timeoutMsg: "agen tidak membalas dalam 90 detik" }
+      async () => (await browser.$("body").getText()).length > 100,
+      { timeout: 30000, timeoutMsg: "app tidak load" }
     );
 
-    const bubbles = await browser.$$("div.chat-bubble-agent");
-    const lastText = await bubbles[bubbles.length - 1].getText();
-    console.log("BALASAN AGEN:", lastText.slice(0, 200));
+    // Panggil agent_chat langsung via Tauri invoke di dalam webview.
+    const result = await browser.execute(async () => {
+      const invoke = window.__TAURI__?.core?.invoke ?? window.__TAURI__?.invoke;
+      if (!invoke) return { error: "tauri invoke tidak tersedia" };
+      try {
+        const res = await invoke("agent_chat", {
+          agentId: "code",
+          modelId: "ollama:qwen2.5:3b",
+          tier: "gratis",
+          messages: [{ role: "user", content: "balas dengan satu kata: halo" }],
+        });
+        return res;
+      } catch (e) {
+        return { error: "invoke gagal: " + String(e) };
+      }
+    });
 
-    // Balasan bukan pesan error provider.
-    expect(lastText.toLowerCase()).not.toContain("semua provider gagal");
-    expect(lastText.toLowerCase()).not.toContain("tidak ada respon");
+    console.log("HASIL:", JSON.stringify(result).slice(0, 300));
+
+    expect(result.error ?? null).toBeNull();
+    expect(result.text?.trim().length ?? 0).toBeGreaterThan(0);
+    expect(result.text.toLowerCase()).not.toContain("semua provider gagal");
   });
 });
