@@ -5,24 +5,46 @@
     ruangapiConnected,
     ruangapiKey,
     ruangapiMcpUrl,
+    realTools,
+    refreshTools,
+    setToolConnected,
+    isTauri,
   } from "../lib/store";
   import { t } from "../lib/i18n";
+  import { onMount } from "svelte";
 
-  // Apps stay disabled until Phase 3; the note under each card says so.
-  // Exception: RuangAPI has a mock key/MCP-URL form (Patria 19 Okt).
-  const apps: { nameKey: string; descKey: string; badge: string; color: string; custom?: string }[] = [
-    { nameKey: "tools.meta", descKey: "tools.metaDesc", badge: "M", color: "#2563eb" },
-    { nameKey: "tools.postiz", descKey: "tools.postizDesc", badge: "P", color: "#7c3aed" },
-    { nameKey: "tools.pireel", descKey: "tools.pireelDesc", badge: "P", color: "#e11d48" },
-    { nameKey: "tools.drive", descKey: "tools.driveDesc", badge: "D", color: "#059669" },
-    { nameKey: "tools.slack", descKey: "tools.slackDesc", badge: "S", color: "#d97706" },
-    { nameKey: "tools.discord", descKey: "tools.discordDesc", badge: "D", color: "#5865F2" },
-    { nameKey: "tools.telegram", descKey: "tools.telegramDesc", badge: "T", color: "#0891b2" },
-    { nameKey: "tools.github", descKey: "tools.githubDesc", badge: "G", color: "#6b7280" },
-    { nameKey: "tools.notion", descKey: "tools.notionDesc", badge: "N", color: "#a3a3a3" },
-    { nameKey: "tools.canva", descKey: "tools.canvaDesc", badge: "C", color: "#0ea5e9" },
-    { nameKey: "tools.ruangapi", descKey: "tools.ruangapiDesc", badge: "R", color: "#0ea5e9", custom: "ruangapi" },
+  // Apps stay disabled until connected; RuangAPI has a key/MCP-URL form.
+  // Status koneksi kini dari backend Rust (Tahap 3), bukan mock.
+  const apps: { nameKey: string; descKey: string; badge: string; color: string; toolId: string; custom?: string }[] = [
+    { nameKey: "tools.meta", descKey: "tools.metaDesc", badge: "M", color: "#2563eb", toolId: "meta" },
+    { nameKey: "tools.postiz", descKey: "tools.postizDesc", badge: "P", color: "#7c3aed", toolId: "postiz" },
+    { nameKey: "tools.pireel", descKey: "tools.pireelDesc", badge: "P", color: "#e11d48", toolId: "pireel" },
+    { nameKey: "tools.drive", descKey: "tools.driveDesc", badge: "D", color: "#059669", toolId: "drive" },
+    { nameKey: "tools.slack", descKey: "tools.slackDesc", badge: "S", color: "#d97706", toolId: "slack" },
+    { nameKey: "tools.discord", descKey: "tools.discordDesc", badge: "D", color: "#5865F2", toolId: "discord" },
+    { nameKey: "tools.telegram", descKey: "tools.telegramDesc", badge: "T", color: "#0891b2", toolId: "telegram" },
+    { nameKey: "tools.github", descKey: "tools.githubDesc", badge: "G", color: "#6b7280", toolId: "github" },
+    { nameKey: "tools.notion", descKey: "tools.notionDesc", badge: "N", color: "#a3a3a3", toolId: "notion" },
+    { nameKey: "tools.canva", descKey: "tools.canvaDesc", badge: "C", color: "#0ea5e9", toolId: "canva" },
+    { nameKey: "tools.ruangapi", descKey: "tools.ruangapiDesc", badge: "R", color: "#0ea5e9", toolId: "ruangapi", custom: "ruangapi" },
   ];
+
+  onMount(async () => {
+    if (await isTauri()) {
+      await refreshTools();
+    }
+  });
+
+  function toolConnected(toolId: string): boolean {
+    const tools = $realTools;
+    if (!tools) return toolId === "ruangapi" ? $ruangapiConnected : false;
+    return tools.find((t) => t.id === toolId)?.connected ?? false;
+  }
+
+  async function toggleConnect(toolId: string) {
+    const connected = toolConnected(toolId);
+    await setToolConnected(toolId, !connected);
+  }
 
   // RuangAPI credentials (mock, local only — real connection in Phase 3)
   let raKey = $state("");

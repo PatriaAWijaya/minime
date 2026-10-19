@@ -1390,3 +1390,65 @@ export async function refreshUsage(): Promise<void> {
     /* abaikan */
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Tools gateway — Tahap 3 (keputusan Patria 19 Okt)                   */
+/* ------------------------------------------------------------------ */
+
+export interface ToolInfo {
+  id: string;
+  name: string;
+  category: string;
+  connected: boolean;
+  requires_auth: boolean;
+  draft_only: boolean;
+}
+
+/** Daftar tool dari backend; null = belum dimuat / browser. */
+export const realTools = writable<ToolInfo[] | null>(null);
+
+export async function refreshTools(): Promise<void> {
+  try {
+    const tools = await tauriInvoke<ToolInfo[]>("list_tools");
+    if (tools) realTools.set(tools);
+  } catch {
+    /* abaikan */
+  }
+}
+
+export async function setToolConnected(toolId: string, connected: boolean): Promise<void> {
+  try {
+    await tauriInvoke("set_tool_connected", { toolId, connected });
+    await refreshTools();
+  } catch {
+    /* abaikan */
+  }
+}
+
+/** Allowlist tool per agen dari backend. */
+export async function getAgentTools(agentId: string): Promise<string[]> {
+  try {
+    const tools = await tauriInvoke<string[]>("get_agent_tools", { agentId });
+    return tools ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function setAgentTools(agentId: string, toolIds: string[]): Promise<void> {
+  try {
+    await tauriInvoke("set_agent_tools", { agentId, toolIds });
+  } catch {
+    /* abaikan */
+  }
+}
+
+/** Cek apakah agen boleh memakai tool (gate sebelum eksekusi). */
+export async function agentCanUseTool(agentId: string, toolId: string): Promise<boolean> {
+  try {
+    const ok = await tauriInvoke<boolean>("agent_can_use_tool", { agentId, toolId });
+    return ok ?? false;
+  } catch {
+    return false;
+  }
+}
