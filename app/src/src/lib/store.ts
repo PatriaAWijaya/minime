@@ -628,6 +628,47 @@ const CUSTOM_AGENT_COLORS = ["#F4A7C3", "#A8D8FF", "#B5E8C0", "#FFD6A5", "#D3BFF
 /** Agents created in-app via the "+" menu (mock). */
 export const customAgents = writable<Agent[]>([]);
 
+/** Per-agent avatar overrides chosen by the user (Patria: bisa diganti kapan saja).
+ *  Key = agent id, value = avatar path / data URL, "" = back to initial badge.
+ *  Seed agents keep their defaults in agents.ts; this only stores deviations. */
+function loadAvatarOverrides(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem("minime.avatarOverrides");
+    if (raw) return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    /* fall through */
+  }
+  return {};
+}
+export const agentAvatarOverrides = writable<Record<string, string>>(
+  loadAvatarOverrides(),
+);
+agentAvatarOverrides.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.avatarOverrides", JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+});
+
+/** Effective avatar for an agent: user override → agent default → "" (badge). */
+export function avatarOf(a: { id: string; avatar?: string }, overrides: Record<string, string>): string {
+  if (a.id in overrides) return overrides[a.id];
+  return a.avatar ?? "";
+}
+
+/** Set (or reset with "") an agent's avatar. Works for seed + custom agents. */
+export function setAgentAvatar(agentId: string, avatar: string) {
+  const isCustom = agentId.startsWith("custom-");
+  if (isCustom) {
+    customAgents.update((list) =>
+      list.map((a) => (a.id === agentId ? { ...a, avatar } : a)),
+    );
+  } else {
+    agentAvatarOverrides.update((m) => ({ ...m, [agentId]: avatar }));
+  }
+}
+
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
 export type TasksViewKind = "kanban" | "flow";
 

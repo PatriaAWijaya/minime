@@ -16,6 +16,8 @@ export interface Agent {
   badge: string;
   /** Solid badge background color (flat, no gradients) */
   color: string;
+  /** Avatar image path (e.g. "avatars/fox.png"). Empty = initial-letter badge. */
+  avatar?: string;
 }
 
 export interface Message {
