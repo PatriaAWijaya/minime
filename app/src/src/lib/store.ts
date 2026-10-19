@@ -668,7 +668,7 @@ export const customAgents = writable<Agent[]>([]);
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
 export type TasksViewKind = "kanban" | "flow";
 
-export const tasksView = writable<TasksViewKind>("kanban");
+export const tasksView = writable<TasksViewKind>("flow");
 
 /** Small helper: load/persist a JSON list in localStorage. */
 function loadList<T>(key: string, seed: () => T[]): T[] {
