@@ -805,7 +805,29 @@ function loadFlowMap(): Record<string, FlowProjectCanvas> {
     const raw = localStorage.getItem("minime.flow-data");
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, FlowProjectCanvas>;
-      if (parsed && typeof parsed === "object") return parsed;
+      if (parsed && typeof parsed === "object") {
+        // Self-heal: drop corrupt project entries (nodes/edges must be arrays).
+        let healed = false;
+        for (const [pid, canvas] of Object.entries(parsed)) {
+          if (
+            !canvas ||
+            typeof canvas !== "object" ||
+            !Array.isArray((canvas as FlowProjectCanvas).nodes) ||
+            !Array.isArray((canvas as FlowProjectCanvas).edges)
+          ) {
+            delete parsed[pid];
+            healed = true;
+          }
+        }
+        if (healed) {
+          try {
+            localStorage.setItem("minime.flow-data", JSON.stringify(parsed));
+          } catch {
+            /* ignore */
+          }
+        }
+        return parsed;
+      }
     }
   } catch {
     /* fall through to seed */
