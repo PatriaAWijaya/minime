@@ -48,12 +48,7 @@
 
   // Muat riwayat chat dari SQLite saat panel dibuka / agen berganti.
   let lastHistoryAgent = $state("");
-  let renderCount = 0;
   $effect(() => {
-    renderCount++;
-    if (renderCount <= 5 || renderCount % 50 === 0) {
-      console.log(`[DEBUG] ChatPanel effect #${renderCount}, agent.id=${agent.id}`);
-    }
     const aid = agent.id;
     if (aid && aid !== lastHistoryAgent) {
       lastHistoryAgent = aid;
