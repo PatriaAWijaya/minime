@@ -28,7 +28,7 @@
 - [x] Wiring SQLite: riwayat chat + usage metering
 - [x] System prompt per agen + skills engine (playbook disuntik otomatis)
 - [x] Frontend: riwayat dari SQLite; tab Cost pakai data usage nyata
-- [ ] Verifikasi `cargo check` putaran 2 di MacBook (butuh Patria)
+- [x] Verifikasi `cargo check` putaran 2 di MacBook — LOLOS 19 Okt ~11:05 (nol error, nol warning)
 - [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
 - [ ] Gate: review + vonis Patria
 
