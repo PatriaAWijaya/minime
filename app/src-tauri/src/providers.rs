@@ -487,6 +487,16 @@ impl OpenCodeProvider {
                 }
             }
         }
+        // 3. Lokasi instalasi standar opencode (lihat README anomalyco/opencode
+        //    "Installation Directory"): $HOME/bin lalu $HOME/.opencode/bin.
+        if let Ok(home) = std::env::var("HOME") {
+            for sub in ["bin/opencode", ".opencode/bin/opencode"] {
+                let p = std::path::PathBuf::from(&home).join(sub);
+                if p.is_file() {
+                    return Some(p);
+                }
+            }
+        }
         None
     }
 
