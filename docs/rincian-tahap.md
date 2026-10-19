@@ -140,6 +140,16 @@ pengguna.
 - Pasang di mesin baru (Mac & Windows): buka → hubungkan model →
   buat tugas → hasil keluar
 
+### 4.5 Scoring kinerja (catatan Patria 19 Okt sore)
+Setelah kompilasi berhasil, aplikasi dinilai kinerjanya sebelum rilis:
+- **Internal (benchmark suite):** startup time (`hyperfine`), RAM/CPU idle
+  & aktif, ukuran bundle, latensi IPC, waktu respons chat (Ollama lokal)
+- **Otomatis:** Lighthouse CI sebagai gate tiap rilis
+- **Pihak ketiga kompeten:** satu kali audit independen oleh konsultan
+  performance sebelum rilis publik (hasil jadi vonis tambahan selain
+  vonis Patria)
+- Target selaras prinsip #7: ringan untuk pemula, bertenaga untuk Patria
+
 ### Deliverable
 - File `Minime-v2.dmg` + `Minime-v2.exe` + catatan rilis
 - **Gate:** instalasi bersih lolos + vonis rilis Patria

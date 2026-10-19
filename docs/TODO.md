@@ -41,7 +41,10 @@
 ## Tahap 4 — Rilis macOS + Windows
 - [ ] Build dmg + exe; installer mudah & intuitif
 - [ ] Security audit + Impeccable audit
-- [ ] Gate: instalasi bersih + vonis rilis Patria
+- [ ] **Scoring kinerja pasca-kompilasi:** benchmark suite internal
+      (startup, RAM/CPU, bundle, latensi) + Lighthouse CI + audit
+      konsultan independen (pihak ketiga kompeten)
+- [ ] Gate: instalasi bersih + skor kinerja lolos + vonis rilis Patria
 
 ## Catatan
 - Repo `PatriaAWijaya/minime-v2` (kosong): hapus manual via GitHub settings
