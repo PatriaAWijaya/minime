@@ -6,8 +6,8 @@
 ## Apa itu Minime
 
 Minime mengubah satu aplikasi desktop menjadi sebuah tim kerja AI: dipimpin
-seorang orkestrator (Muse, CIO), didukung lima agen spesialis senior. Kamu
-memberi tugas dalam bahasa sehari-hari; Muse memecahnya, mendelegasikan ke
+seorang orkestrator (Mimi, CIO), didukung lima agen spesialis senior. Kamu
+memberi tugas dalam bahasa sehari-hari; Mimi memecahnya, mendelegasikan ke
 agen yang tepat, menggabungkan hasilnya, dan memintakan persetujuanmu sebelum
 sesuatu yang penting terjadi.
 
@@ -18,7 +18,7 @@ tersimpan di komputermu sendiri, bukan di server orang lain.
 
 | Agen | Peran |
 |---|---|
-| **Muse** (CIO) | Orkestrator: terima permintaan → delegasikan → gabungkan → minta approval |
+| **Mimi** (CIO) | Orkestrator: terima permintaan → delegasikan → gabungkan → minta approval |
 | **Kreatif** | Konten, copywriting, storytelling, produksi & editing video |
 | **Riset** | Riset mendalam, data, analisis |
 | **Finance** | Keuangan bisnis, analisis & backtest (dilarang order live otomatis) |
@@ -41,7 +41,7 @@ dicatat per agen; opsional budget cap harian.
 1. **Approval manusia wajib** — setiap aksi eksternal (kirim, publish,
    transaksi) berhenti di kartu persetujuan. Tidak ada yang jalan diam-diam.
 2. **Meta draft-only** — Instagram, Facebook, Threads: agen hanya membuat
-   *draft*. Auto posting menunggu persetujuan
+   *draft*. Tidak pernah auto-posting dalam kondisi apa pun.
 3. **Kredensial milik pengguna** — API key & token disimpan di OS keychain
    masing-masing pengguna, tidak pernah di git, tidak pernah dibundel ke
    aplikasi. Bila Minime dipakai publik, setiap user menghubungkan akunnya

@@ -29,24 +29,19 @@
 - [x] System prompt per agen + skills engine (playbook disuntik otomatis)
 - [x] Frontend: riwayat dari SQLite; tab Cost pakai data usage nyata
 - [x] Verifikasi `cargo check` putaran 2 di MacBook — LOLOS 19 Okt ~11:05 (nol error, nol warning)
-- [x] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen via [DELEGATE:agenId] + 3 skenario project template)
+- [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
 - [ ] Gate: review + vonis Patria
 
 ## Tahap 3 — Tools & distribusi
-- [x] Tools gateway: registry Rust + status koneksi + allowlist per agen
-- [x] Meta (draft-only), Postiz/Viralin (draft-only), Pireel (framework)
-- [x] Approval gate + notifikasi native
-- [x] Upload deliverable → folder MIMI (framework; koneksi OAuth menyusul)
+- [ ] Meta (draft-only), Postiz/Viralin (draft-only), Pireel
+- [ ] Approval gate + notifikasi native
+- [ ] Upload deliverable → folder MIMI (Google Drive)
 - [ ] Gate: 1 pipeline end-to-end + vonis Patria
 
 ## Tahap 4 — Rilis macOS + Windows
-- [ ] **Avatar & animasi avatar oleh Patria** (sebelum kompilasi final)
 - [ ] Build dmg + exe; installer mudah & intuitif
 - [ ] Security audit + Impeccable audit
-- [ ] **Scoring kinerja pasca-kompilasi:** benchmark suite internal
-      (startup, RAM/CPU, bundle, latensi) + Lighthouse CI + audit
-      konsultan independen (pihak ketiga kompeten)
-- [ ] Gate: instalasi bersih + skor kinerja lolos + vonis rilis Patria
+- [ ] Gate: instalasi bersih + vonis rilis Patria
 
 ## Catatan
 - Repo `PatriaAWijaya/minime-v2` (kosong): hapus manual via GitHub settings

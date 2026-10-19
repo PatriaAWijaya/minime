@@ -371,9 +371,14 @@ export const activeTaskByAgent: Record<string, { titleKey: string; progress: num
   kreatif: { titleKey: "tasks.demo2", progress: 80 },
 };
 
-/** Scheduled / recurring tasks — mulai kosong (keputusan Patria 19 Okt). */
-let scheduleSeq = 1;
-export const scheduleItems = writable<ScheduledItem[]>([]);
+/** Scheduled / recurring tasks (mock). */
+let scheduleSeq = 5;
+export const scheduleItems = writable<ScheduledItem[]>([
+  { id: 1, nameKey: "schedule.mock2.name", whenKey: "schedule.mock2.when", range: "day", active: true },
+  { id: 2, nameKey: "schedule.mock1.name", whenKey: "schedule.mock1.when", range: "week", active: true },
+  { id: 3, nameKey: "schedule.mock4.name", whenKey: "schedule.mock4.when", range: "week", active: false },
+  { id: 4, nameKey: "schedule.mock3.name", whenKey: "schedule.mock3.when", range: "month", active: true },
+]);
 
 export function addScheduleItem() {
   scheduleItems.update((items) => [
@@ -388,18 +393,50 @@ export function addScheduleItem() {
   ]);
 }
 
-/** Library outputs — mulai kosong (keputusan Patria 19 Okt: hapus data dummy). */
-export const libraryItems: LibraryItem[] = [];
+/** Library outputs (mock). */
+export const libraryItems: LibraryItem[] = [
+  { id: 1, titleKey: "library.mock1.title", dateKey: "library.mock1.date", daysAgo: 1, type: "doc", agentId: "kreatif", taskKey: "schedule.mock1.name" },
+  { id: 2, titleKey: "library.mock2.title", dateKey: "library.mock2.date", daysAgo: 2, type: "image", agentId: "kreatif", taskKey: "library.task.once" },
+  { id: 3, titleKey: "library.mock3.title", dateKey: "library.mock3.date", daysAgo: 4, type: "table", agentId: "riset", taskKey: "schedule.mock4.name" },
+  { id: 4, titleKey: "library.mock4.title", dateKey: "library.mock4.date", daysAgo: 7, type: "deck", agentId: "strategis", taskKey: "library.task.once" },
+  { id: 5, titleKey: "library.mock5.title", dateKey: "library.mock5.date", daysAgo: 9, type: "video", agentId: "kreatif", taskKey: "schedule.mock3.name" },
+  { id: 6, titleKey: "library.mock6.title", dateKey: "library.mock6.date", daysAgo: 14, type: "doc", agentId: "finance", taskKey: "library.task.once" },
+  { id: 7, titleKey: "library.mock7.title", dateKey: "library.mock7.date", daysAgo: 21, type: "app", agentId: "code", taskKey: "library.task.once" },
+  { id: 8, titleKey: "library.mock8.title", dateKey: "library.mock8.date", daysAgo: 17, type: "table", agentId: "finance", taskKey: "schedule.mock2.name" },
+];
 
-/** Cost rows — mulai kosong, diisi dari usage nyata (keputusan Patria 19 Okt). */
-export const costRows: CostRow[] = [];
+/** Cost rows (mock). */
+export const costRows: CostRow[] = [
+  { id: 1, agentId: "kreatif", tokens: 48200, costUsd: 0.38, dateKey: "cost.date.1", daysAgo: 1 },
+  { id: 2, agentId: "riset", tokens: 96500, costUsd: 0.77, dateKey: "cost.date.1", daysAgo: 1 },
+  { id: 3, agentId: "mimi", tokens: 12400, costUsd: 0.31, dateKey: "cost.date.2", daysAgo: 4 },
+  { id: 4, agentId: "finance", tokens: 31200, costUsd: 0.25, dateKey: "cost.date.3", daysAgo: 9 },
+  { id: 5, agentId: "strategis", tokens: 27800, costUsd: 0.22, dateKey: "cost.date.3", daysAgo: 9 },
+  { id: 6, agentId: "code", tokens: 61400, costUsd: 0.49, dateKey: "cost.date.4", daysAgo: 17 },
+  { id: 7, agentId: "riset", tokens: 44100, costUsd: 0.35, dateKey: "cost.date.5", daysAgo: 29 },
+  { id: 8, agentId: "kreatif", tokens: 22900, costUsd: 0.18, dateKey: "cost.date.5", daysAgo: 29 },
+];
 
-/** Agent templates — mulai kosong (keputusan Patria 19 Okt). */
-export const templates = writable<AgentTemplate[]>([]);
+/** Agent templates (mock). */
+export const templates = writable<AgentTemplate[]>([
+  { id: 1, nameKey: "tools.tpl1.name", descKey: "tools.tpl1.desc", enabled: true },
+  { id: 2, nameKey: "tools.tpl2.name", descKey: "tools.tpl2.desc", enabled: true },
+  { id: 3, nameKey: "tools.tpl3.name", descKey: "tools.tpl3.desc", enabled: false },
+  { id: 4, nameKey: "tools.tpl4.name", descKey: "tools.tpl4.desc", enabled: false },
+  { id: 5, nameKey: "tools.tpl5.name", descKey: "tools.tpl5.desc", enabled: false },
+  { id: 6, nameKey: "tools.tpl6.name", descKey: "tools.tpl6.desc", enabled: false },
+]);
 
-/** Skills — mulai kosong (keputusan Patria 19 Okt). */
-let skillSeq = 1;
-export const skills = writable<Skill[]>([]);
+/** Skills (mock). */
+let skillSeq = 7;
+export const skills = writable<Skill[]>([
+  { id: 1, nameKey: "tools.skill1.name", descKey: "tools.skill1.desc", installed: true },
+  { id: 2, nameKey: "tools.skill2.name", descKey: "tools.skill2.desc", installed: true },
+  { id: 3, nameKey: "tools.skill3.name", descKey: "tools.skill3.desc", installed: false },
+  { id: 4, nameKey: "tools.skill4.name", descKey: "tools.skill4.desc", installed: false },
+  { id: 5, nameKey: "tools.skill5.name", descKey: "tools.skill5.desc", installed: false },
+  { id: 6, nameKey: "tools.skill6.name", descKey: "tools.skill6.desc", installed: false },
+]);
 
 export function addSkill(name: string) {
   const trimmed = name.trim();
@@ -628,47 +665,6 @@ const CUSTOM_AGENT_COLORS = ["#F4A7C3", "#A8D8FF", "#B5E8C0", "#FFD6A5", "#D3BFF
 /** Agents created in-app via the "+" menu (mock). */
 export const customAgents = writable<Agent[]>([]);
 
-/** Per-agent avatar overrides chosen by the user (Patria: bisa diganti kapan saja).
- *  Key = agent id, value = avatar path / data URL, "" = back to initial badge.
- *  Seed agents keep their defaults in agents.ts; this only stores deviations. */
-function loadAvatarOverrides(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem("minime.avatarOverrides");
-    if (raw) return JSON.parse(raw) as Record<string, string>;
-  } catch {
-    /* fall through */
-  }
-  return {};
-}
-export const agentAvatarOverrides = writable<Record<string, string>>(
-  loadAvatarOverrides(),
-);
-agentAvatarOverrides.subscribe((v) => {
-  try {
-    localStorage.setItem("minime.avatarOverrides", JSON.stringify(v));
-  } catch {
-    /* ignore */
-  }
-});
-
-/** Effective avatar for an agent: user override → agent default → "" (badge). */
-export function avatarOf(a: { id: string; avatar?: string }, overrides: Record<string, string>): string {
-  if (a.id in overrides) return overrides[a.id];
-  return a.avatar ?? "";
-}
-
-/** Set (or reset with "") an agent's avatar. Works for seed + custom agents. */
-export function setAgentAvatar(agentId: string, avatar: string) {
-  const isCustom = agentId.startsWith("custom-");
-  if (isCustom) {
-    customAgents.update((list) =>
-      list.map((a) => (a.id === agentId ? { ...a, avatar } : a)),
-    );
-  } else {
-    agentAvatarOverrides.update((m) => ({ ...m, [agentId]: avatar }));
-  }
-}
-
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
 export type TasksViewKind = "kanban" | "flow";
 
@@ -698,8 +694,19 @@ function persistList<T>(key: string, store: Writable<T[]>) {
 let kanbanSeq = 1;
 
 function seedKanban(): KanbanCard[] {
-  // Mulai kosong — keputusan Patria 19 Okt: hapus data dummy.
-  return [];
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const seed: KanbanCard[] = [
+    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", projectId: "proj-a", createdAt: "18 Okt", createdAtTs: now - 1 * day },
+    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
+    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", projectId: "proj-a", createdAt: "9 Okt", createdAtTs: now - 10 * day },
+    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", projectId: "proj-b", createdAt: "18 Okt", createdAtTs: now - 1 * day },
+    { id: kanbanSeq++, title: "Materi kampanye Ramadhan", agentId: "kreatif", col: "approval", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
+    { id: kanbanSeq++, title: "Perbaiki headline brosur", agentId: "strategis", col: "revision", projectId: "proj-b", createdAt: "8 Sep", createdAtTs: now - 40 * day },
+    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", projectId: "proj-a", createdAt: "15 Okt", createdAtTs: now - 4 * day },
+    { id: kanbanSeq++, title: "Evaluasi vendor cetak tahunan", agentId: "finance", col: "done", projectId: "proj-a", createdAt: "10 Jun", createdAtTs: now - 130 * day },
+  ];
+  return seed;
 }
 
 /** Backfill new card fields for cards persisted before they existed. */
@@ -707,17 +714,14 @@ function normalizeKanban(list: KanbanCard[]): KanbanCard[] {
   const now = Date.now();
   return list.map((c) => ({
     ...c,
-    projectId: c.projectId ?? "",
+    projectId: c.projectId ?? "proj-a",
     createdAtTs: c.createdAtTs ?? now,
   }));
 }
 
 /** Kanban cards (mock, persisted). */
 export const kanbanCards = writable<KanbanCard[]>(
-  // Bersihkan kartu dummy lama (projectId proj-a/proj-b).
-  normalizeKanban(loadList("minime.kanban", seedKanban)).filter(
-    (c) => c.projectId !== "proj-a" && c.projectId !== "proj-b",
-  ),
+  normalizeKanban(loadList("minime.kanban", seedKanban)),
 );
 persistList("minime.kanban", kanbanCards);
 // Continue the id sequence past any persisted cards.
@@ -746,27 +750,9 @@ export function addKanbanCard(
 }
 
 export function moveKanbanCard(id: number, col: KanbanCol) {
-  let cardTitle = "";
-  let agentId = "";
   kanbanCards.update((list) =>
-    list.map((c) => {
-      if (c.id === id) {
-        cardTitle = c.title;
-        agentId = c.agentId;
-        return { ...c, col };
-      }
-      return c;
-    }),
+    list.map((c) => (c.id === id ? { ...c, col } : c)),
   );
-  // Notifikasi native saat kartu butuh approval atau selesai (Tahap 3).
-  if (col === "approval" || col === "done") {
-    const agentName = agentId === "mimi" ? "Mimi" : agentId;
-    const title = col === "approval" ? "Butuh approval" : "Tugas selesai";
-    const body = col === "approval"
-      ? `"${cardTitle}" menunggu persetujuanmu`
-      : `"${cardTitle}" (${agentName}) selesai`;
-    sendNotification(title, body);
-  }
 }
 
 /** Kanban filter state (persisted). "all" = no filter. */
@@ -833,19 +819,22 @@ function saveFlowMap(): void {
   }
 }
 
-/** All projects, shared by the Connection canvas and the Kanban filter.
-    Mulai kosong — pengguna membuat project sendiri (keputusan Patria
-    19 Okt: hapus project dummy agar tampilan lebih bersih). */
+function seedProject(id: string, name: string): FlowProject {
+  return { id, name };
+}
+
+/** All projects, shared by the Connection canvas and the Kanban filter. */
 export const projects = writable<FlowProject[]>(
-  loadList("minime.projects", () => []).filter(
-    (p) => p.id !== "proj-a" && p.id !== "proj-b",
-  ),
+  loadList("minime.projects", () => [
+    seedProject("proj-a", "Project A"),
+    seedProject("proj-b", "Project B"),
+  ]),
 );
 persistList("minime.projects", projects);
 
 /** Active project on the Connection canvas. */
 export const activeFlowProjectId = writable<string>(
-  loadString("minime.flow-project-active", ""),
+  loadString("minime.flow-project-active", "proj-a"),
 );
 activeFlowProjectId.subscribe((v) => {
   try {
@@ -856,10 +845,29 @@ activeFlowProjectId.subscribe((v) => {
 });
 
 function seedFlowMap(): void {
-  // Tidak ada seed dummy — pengguna membuat project sendiri.
-  // Bersihkan sisa flowMap lama yang merujuk project dummy.
-  delete flowMap["proj-a"];
-  delete flowMap["proj-b"];
+  if (Object.keys(flowMap).length > 0) return;
+  // Migrate the old flat keys (pre-project) into Project A when present.
+  let aNodes: FlowNode[] | null = null;
+  let aEdges: FlowEdge[] | null = null;
+  try {
+    const n = localStorage.getItem("minime.flow-nodes");
+    const e = localStorage.getItem("minime.flow-edges");
+    if (n) aNodes = JSON.parse(n) as FlowNode[];
+    if (e) aEdges = JSON.parse(e) as FlowEdge[];
+  } catch {
+    /* ignore */
+  }
+  flowMap["proj-a"] = {
+    nodes: aNodes ?? [
+      { id: "node-1", agentId: "mimi", x: 80, y: 120 },
+      { id: "node-2", agentId: "kreatif", x: 400, y: 120 },
+    ],
+    edges: aEdges ?? [{ id: "edge-1", source: "node-1", target: "node-2" }],
+  };
+  flowMap["proj-b"] = {
+    nodes: [{ id: "node-b1", agentId: "mimi", x: 80, y: 120 }],
+    edges: [],
+  };
   saveFlowMap();
 }
 seedFlowMap();
@@ -875,7 +883,7 @@ function resolveProjectId(): string {
   const list = get(projects);
   const id = get(activeFlowProjectId);
   if (list.some((p) => p.id === id)) return id;
-  return list[0]?.id ?? "";
+  return list[0]?.id ?? "proj-a";
 }
 
 function loadActiveCanvas(): void {
@@ -901,94 +909,6 @@ export function switchFlowProject(id: string): void {
   if (id === resolveProjectId()) return;
   activeFlowProjectId.set(id);
   loadActiveCanvas();
-}
-
-
-/** Template skenario project multi-agen (keputusan Patria 19 Okt).
-    Setiap skenario mendemonstrasikan orkestrasi Mimi: memecah permintaan
-    kompleks menjadi tugas per agen yang berurutan. */
-export interface ProjectScenario {
-  id: string;
-  /** Nama tampilan (tidak diterjemahkan, nama project). */
-  name: string;
-  /** Deskripsi singkat untuk kartu skenario. */
-  descKey: string;
-  /** Urutan agen yang terlibat. */
-  agents: string[];
-  /** Tugas per agen: [agentId, judulTugas]. */
-  tasks: Array<[string, string]>;
-}
-
-export const PROJECT_SCENARIOS: ProjectScenario[] = [
-  {
-    id: "kopi-susu",
-    name: "Launching Kopi Susu",
-    descKey: "scenario.kopiSusu.desc",
-    agents: ["riset", "strategis", "kreatif"],
-    tasks: [
-      ["riset", "Riset kompetitor kopi susu Surabaya"],
-      ["riset", "Survei harga & preferensi target pasar"],
-      ["strategis", "Susun strategi positioning & pricing"],
-      ["kreatif", "Desain kemasan & materi launching"],
-      ["kreatif", "Draf kalender konten sebulan"],
-    ],
-  },
-  {
-    id: "audit-umkm",
-    name: "Audit Keuangan UMKM",
-    descKey: "scenario.auditUmkm.desc",
-    agents: ["finance", "riset", "strategis"],
-    tasks: [
-      ["finance", "Kumpulkan laporan arus kas 6 bulan"],
-      ["finance", "Identifikasi pos biaya bocor"],
-      ["riset", "Benchmark rasio keuangan sejenis"],
-      ["strategis", "Rekomendasi efisiensi & proyeksi"],
-    ],
-  },
-  {
-    id: "landing-page",
-    name: "Landing Page Produk",
-    descKey: "scenario.landingPage.desc",
-    agents: ["code", "kreatif", "riset"],
-    tasks: [
-      ["riset", "Riset kata kunci & kompetitor landing page"],
-      ["kreatif", "Tulis copywriting headline & CTA"],
-      ["code", "Bangun struktur landing page"],
-      ["kreatif", "Review UX & optimasi konversi"],
-    ],
-  },
-];
-
-/** Buat project dari skenario: project + kartu Kanban + node koneksi.
-    Mengembalikan id project baru. */
-export function createProjectFromScenario(scenarioId: string): string {
-  const sc = PROJECT_SCENARIOS.find((x) => x.id === scenarioId);
-  if (!sc) return "";
-  const pid = addFlowProject(sc.name);
-  // Kartu Kanban per tugas (kolom Antrian).
-  for (const [agentId, title] of sc.tasks) {
-    addKanbanCard(title, agentId, "queue", pid);
-  }
-  // Node koneksi: Mimi sebagai orkestrator + agen yang terlibat.
-  const nodeIds: string[] = [];
-  const mkNode = (agentId: string, x: number, y: number): string => {
-    const nid = `node-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    flowMap[pid].nodes.push({ id: nid, agentId, x, y });
-    nodeIds.push(nid);
-    return nid;
-  };
-  const mimiId = mkNode("mimi", 80, 200);
-  sc.agents.forEach((agentId, i) => {
-    const nid = mkNode(agentId, 400 + i * 220, 120 + (i % 2) * 160);
-    flowMap[pid].edges.push({
-      id: `edge-${Date.now()}-${i}`,
-      source: mimiId,
-      target: nid,
-    });
-  });
-  saveFlowMap();
-  loadActiveCanvas();
-  return pid;
 }
 
 /** Create a project (empty canvas) and switch to it. Returns the new id. */
@@ -1279,11 +1199,6 @@ export function buildSystemPrompt(agentId: string, roleLabel: string): string {
       "Kamu adalah CIO (Chief Intelligent Officer) dan orkestrator tim: " +
         "koordinasikan 5 agen senior (Kreatif, Riset, Finance, Bisnis Strategis, Code Builder), " +
         "pecah permintaan kompleks menjadi tugas yang jelas, dan rangkum hasilnya untuk pengguna.",
-      "DELEGASI: Bila permintaan butuh beberapa agen, pecah menjadi subtugas dan tulis tiap " +
-        "delegasi dalam format: [DELEGATE:agenId] Judul tugas — contoh: [DELEGATE:riset] Riset " +
-        "kompetitor kopi susu. agenId yang valid: kreatif, riset, finance, strategis, code. " +
-        "Tugas ini otomatis dibuatkan kartu Kanban dan dikerjakan agen terkait. " +
-        "Setelah mendelegasikan, rangkum rencana kerjanya untuk pengguna.",
     );
   }
   if (gender || age || position || hobbies) {
@@ -1297,9 +1212,6 @@ export function buildSystemPrompt(agentId: string, roleLabel: string): string {
   lines.push(
     "Jawab dalam Bahasa Indonesia yang ringkas dan jelas, kecuali pengguna memakai bahasa lain.",
     "Jangan mengarang fakta; bila tidak tahu, katakan terus terang.",
-    "ATURAN POSTING: Semua konten untuk Meta/Postiz/FB/IG/Threads SELALU dibuat sebagai draft " +
-      "dulu (tidak pernah auto-post). Pengecualian HANYA bila pengguna memberi perintah eksplisit " +
-      '"langsung post" / "posting langsung" — kamu tidak boleh memutuskan sendiri untuk posting langsung.',
   );
   if (instructions) {
     lines.push(`Instruksi khusus dari pengguna:\n${instructions}`);
@@ -1414,190 +1326,4 @@ export async function refreshUsage(): Promise<void> {
   } catch {
     /* abaikan */
   }
-}
-
-/* ------------------------------------------------------------------ */
-/* Tools gateway — Tahap 3 (keputusan Patria 19 Okt)                   */
-/* ------------------------------------------------------------------ */
-
-export interface ToolInfo {
-  id: string;
-  name: string;
-  category: string;
-  connected: boolean;
-  requires_auth: boolean;
-  draft_only: boolean;
-}
-
-/** Daftar tool dari backend; null = belum dimuat / browser. */
-export const realTools = writable<ToolInfo[] | null>(null);
-
-export async function refreshTools(): Promise<void> {
-  try {
-    const tools = await tauriInvoke<ToolInfo[]>("list_tools");
-    if (tools) realTools.set(tools);
-  } catch {
-    /* abaikan */
-  }
-}
-
-export async function setToolConnected(toolId: string, connected: boolean): Promise<void> {
-  try {
-    await tauriInvoke("set_tool_connected", { toolId, connected });
-    await refreshTools();
-  } catch {
-    /* abaikan */
-  }
-}
-
-/** Allowlist tool per agen dari backend. */
-export async function getAgentTools(agentId: string): Promise<string[]> {
-  try {
-    const tools = await tauriInvoke<string[]>("get_agent_tools", { agentId });
-    return tools ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export async function setAgentTools(agentId: string, toolIds: string[]): Promise<void> {
-  try {
-    await tauriInvoke("set_agent_tools", { agentId, toolIds });
-  } catch {
-    /* abaikan */
-  }
-}
-
-/** Cek apakah agen boleh memakai tool (gate sebelum eksekusi). */
-export async function agentCanUseTool(agentId: string, toolId: string): Promise<boolean> {
-  try {
-    const ok = await tauriInvoke<boolean>("agent_can_use_tool", { agentId, toolId });
-    return ok ?? false;
-  } catch {
-    return false;
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Notifikasi native — Tahap 3 (approval gate)                         */
-/* ------------------------------------------------------------------ */
-
-/** Kirim notifikasi native via backend Rust. */
-export async function sendNotification(title: string, body: string): Promise<void> {
-  try {
-    await tauriInvoke("send_notification", { title, body });
-  } catch {
-    /* abaikan — bukan di Tauri */
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Draft-only Meta/Postiz — Tahap 3 (aturan Patria: tidak auto-post)   */
-/* ------------------------------------------------------------------ */
-
-/** Buat draft konten untuk platform sosial. Selalu masuk kolom approval. */
-export function createSocialDraft(
-  title: string,
-  content: string,
-  platform: "meta" | "postiz",
-  agentId: string,
-  projectId: string,
-): void {
-  const now = new Date();
-  kanbanCards.update((list) => [
-    ...list,
-    {
-      id: kanbanSeq++,
-      title,
-      agentId,
-      col: "approval",
-      projectId,
-      createdAt: now.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
-      createdAtTs: now.getTime(),
-      draftContent: content,
-      draftPlatform: platform,
-    },
-  ]);
-  sendNotification(
-    "Draft siap direview",
-    `"${title}" menunggu approval sebelum diposting ke ${platform === "meta" ? "Meta" : "Postiz"}`,
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Pireel — Tahap 3 (lapisan editing video untuk agen Kreatif)         */
-/* Cloud-only via MCP + OAuth; kredit tercatat di Penggunaan.          */
-/* ------------------------------------------------------------------ */
-
-export interface PireelJob {
-  id: string;
-  title: string;
-  status: "queued" | "processing" | "done" | "failed";
-  creditsUsed: number;
-  createdAt: number;
-}
-
-/** Daftar job Pireel (mock — koneksi MCP nyata di implementasi penuh). */
-export const pireelJobs = writable<PireelJob[]>([]);
-
-/** Buat job editing Pireel baru (hanya bila tool terhubung). */
-export async function createPireelJob(title: string): Promise<boolean> {
-  const canUse = await agentCanUseTool("kreatif", "pireel");
-  if (!canUse) return false;
-  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: "pireel" }).catch(() => false);
-  if (!connected) return false;
-  pireelJobs.update((list) => [
-    ...list,
-    {
-      id: `pireel-${Date.now()}`,
-      title,
-      status: "queued",
-      creditsUsed: 0,
-      createdAt: Date.now(),
-    },
-  ]);
-  return true;
-}
-
-/* ------------------------------------------------------------------ */
-/* Google Drive — Tahap 3 (upload deliverable ke folder MIMI)          */
-/* Membutuhkan OAuth pengguna; framework siap, koneksi menyusul.       */
-/* ------------------------------------------------------------------ */
-
-export interface DriveUpload {
-  fileName: string;
-  folderId: string;
-  status: "pending" | "uploading" | "done" | "failed";
-}
-
-/** Upload file ke folder MIMI di Google Drive (membutuhkan koneksi). */
-export async function uploadToDrive(fileName: string, content: string): Promise<boolean> {
-  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: "drive" }).catch(() => false);
-  if (!connected) return false;
-  // Implementasi penuh: OAuth Google → upload ke folder MIMI.
-  // Untuk sekarang kembalikan false (belum terhubung).
-  return false;
-}
-
-/* ------------------------------------------------------------------ */
-/* Direct post — pengecualian draft-only (keputusan Patria 19 Okt)     */
-/* Draft-only BERLAKU sampai user memberi perintah eksplisit           */
-/* "langsung post". Agen TIDAK boleh memutuskan sendiri.               */
-/* ------------------------------------------------------------------ */
-
-/** Post langsung draft yang sudah ada — hanya dipanggil atas perintah
-    eksplisit user (tombol "Post langsung" di kartu draft). */
-export async function postSocialDraftDirect(cardId: number): Promise<boolean> {
-  const card = get(kanbanCards).find((c) => c.id === cardId);
-  if (!card || !card.draftPlatform) return false;
-  const platform = card.draftPlatform;
-  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: platform }).catch(() => false);
-  if (!connected) return false;
-  // Pindahkan ke selesai — pengiriman aktual via API platform (menyusul).
-  moveKanbanCard(cardId, "done");
-  sendNotification(
-    "Diposting langsung",
-    `"${card.title}" diposting ke ${platform === "meta" ? "Meta" : "Postiz"} atas perintahmu`,
-  );
-  return true;
 }

@@ -5,7 +5,7 @@ senior yang bekerja untukmu, di komputermu, dengan persetujuanmu.
 
 Definisi lengkap: [`DEFINISI.md`](DEFINISI.md)
 
-**Orkestrator:** Muse (CIO — Chief Intelligent Officer)
+**Orkestrator:** Mimi (CIO — Chief Intelligent Officer)
 
 **5 agen utama:** Kreatif · Riset · Finance · Bisnis Strategis · Code Builder
 
@@ -19,7 +19,7 @@ Lihat `docs/workflow.md` dan `docs/status.md`.
 
 ## Aturan keras
 
-- Tidak ada auto-posting Meta (draft-only) kecuali dengan persetujuan
+- Tidak ada auto-posting Meta (draft-only)
 - Kredensial di OS keychain masing-masing pengguna, tidak di git
 - Deliverable → Google Drive masing-masing pengguna
 - UI Bahasa Indonesia (default)

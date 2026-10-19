@@ -5,7 +5,6 @@ mod db;
 mod providers;
 mod secrets;
 mod skills;
-mod tools;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
@@ -78,17 +77,21 @@ async fn agent_chat(
     }
     wire.extend(messages.iter().cloned());
 
+    eprintln!("[agent_chat] masuk: agent={agent_id} model={model_id} tier={tier:?} n_msg={}", messages.len());
     // Simpan pesan user dulu (riwayat tetap ada walau provider gagal).
     if let Some(last) = messages.last() {
         let _ = db.save_message(&agent_id, &last.role, &last.content, None);
     }
+    eprintln!("[agent_chat] pesan tersimpan, panggil router...");
 
     let router = Router::new(routerku_base_url());
     let mut res = match router.chat(&model_id, tier, wire).await {
         Ok(r) => {
+            eprintln!("[agent_chat] router OK via {}", r.served_by);
             r
         }
         Err(e) => {
+            eprintln!("[agent_chat] router GAGAL: {e}");
             // Kembalikan sebagai field error (Ok) — invoke rejection terbukti
             // tidak selalu sampai ke webview.
             return Ok(providers::ChatResult {
@@ -173,30 +176,11 @@ fn agent_send_stub(agent_id: String, _message: String) -> String {
     format!("ack:{agent_id}")
 }
 
-/// Kirim notifikasi native (Tahap 3: approval gate).
-/// Dipakai saat tugas butuh approval atau selesai.
-#[tauri::command]
-fn send_notification(
-    app: tauri::AppHandle,
-    title: String,
-    body: String,
-) -> Result<(), String> {
-    use tauri_plugin_notification::NotificationExt;
-    app.notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show()
-        .map_err(|e| format!("Gagal kirim notifikasi: {}", e))
-}
-
 fn main() {
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
     let database = db::Db::open().expect("database (file/memory) harus bisa dibuka");
     let mut builder = tauri::Builder::default();
-    // Notifikasi native (Tahap 3: approval gate).
-    builder = builder.plugin(tauri_plugin_notification::init());
     // WebDriver embedded untuk automated testing (hanya debug build).
     #[cfg(debug_assertions)]
     {
@@ -204,7 +188,6 @@ fn main() {
     }
     builder
         .manage(database)
-        .manage(tools::ToolRegistry::new())
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
@@ -215,13 +198,6 @@ fn main() {
             provider_disconnect,
             routerku_set_base_url,
             agent_send_stub,
-            send_notification,
-            tools::list_tools,
-            tools::get_tool_status,
-            tools::set_tool_connected,
-            tools::get_agent_tools,
-            tools::set_agent_tools,
-            tools::agent_can_use_tool,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

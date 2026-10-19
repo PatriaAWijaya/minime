@@ -32,14 +32,6 @@ diisi ulang oleh pengguna.
 5. **Local-first.** Data pengguna di mesin sendiri (SQLite lokal).
 6. **Human-in-the-loop.** Approval pengguna wajib sebelum aksi eksternal
    apa pun. **Tidak ada auto-posting** (aturan berdiri sejak 28 Sep 2026).
-7. **Ringan tapi berperforma (catatan utama Patria 19 Okt sore).**
-   Aplikasi harus **compact, ringan, intuitif** — mudah diaplikasikan
-   bahkan oleh pemula yang tidak bisa coding sekalipun. Namun di balik
-   kesederhanaan itu, **performa kinerja harus tetap baik** untuk kebutuhan
-   Patria (pekerjaan berat: riset, analisis, konten, coding). Prinsipnya:
-   *UI sederhana, mesin bertenaga.* Setiap fitur baru diuji terhadap
-   kedua sisi ini — bila memberatkan aplikasi atau membingungkan pemula,
-   desainnya ditolak.
 
 ## 3. Stack teknologi
 

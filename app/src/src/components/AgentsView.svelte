@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agents, AVATAR_PRESETS } from "../lib/agents";
+  import { agents } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
   import {
     PROVIDERS,
@@ -10,7 +10,6 @@
     addAgentFile,
     addKanbanCard,
     addTaskFolder,
-    agentAvatarOverrides,
     agentBrowserOn,
     agentFacts,
     agentFiles,
@@ -29,18 +28,12 @@
     agentVoiceOn,
     customAgents,
     defaultModelFor,
-    getAgentTools,
     getModel,
     modelCatalog,
     projects,
-    realTools,
-    refreshTools,
     removeAgentFile,
     removeCustomModel,
     serverLayout,
-    setAgentAvatar,
-    avatarOf,
-    setAgentTools,
     taskFolders,
     toggleFolder,
   } from "../lib/store";
@@ -56,14 +49,7 @@
   );
   const facts = $derived(agentFacts[agent.id] ?? agentFacts.mimi);
   const modelId = $derived($agentModel[agent.id] ?? defaultModelFor(agent.id));
-  // $modelCatalog dibaca eksplisit di sini: getModel() memakai get() yang
-  // tidak reaktif, sehingga $derived(getModel(...)) tidak ikut refresh saat
-  // daftar model berubah (mis. setelah probe Ollama). Bug: pill model basi.
-  const model = $derived.by(() => {
-    const catalog = $modelCatalog;
-    const id = modelId === "claude" ? "muse" : modelId;
-    return catalog.find((m) => m.id === id) ?? catalog[0];
-  });
+  const model = $derived(getModel(modelId));
   const providerName = $derived(
     PROVIDERS.find((p) => p.id === model.providerId)?.name ?? model.providerId,
   );
@@ -89,50 +75,6 @@
   let addOpen = $state(false);
   let layoutOpen = $state(false);
   let detailOpen = $state(true);
-
-  // Tools allowlist per agen (Tahap 3).
-  const availableTools = [
-    { id: "meta", toolId: "meta", nameKey: "tools.meta", badge: "M", color: "#2563eb" },
-    { id: "postiz", toolId: "postiz", nameKey: "tools.postiz", badge: "P", color: "#7c3aed" },
-    { id: "pireel", toolId: "pireel", nameKey: "tools.pireel", badge: "P", color: "#e11d48" },
-    { id: "drive", toolId: "drive", nameKey: "tools.drive", badge: "D", color: "#059669" },
-    { id: "slack", toolId: "slack", nameKey: "tools.slack", badge: "S", color: "#d97706" },
-    { id: "discord", toolId: "discord", nameKey: "tools.discord", badge: "D", color: "#5865F2" },
-    { id: "telegram", toolId: "telegram", nameKey: "tools.telegram", badge: "T", color: "#0891b2" },
-    { id: "github", toolId: "github", nameKey: "tools.github", badge: "G", color: "#6b7280" },
-    { id: "notion", toolId: "notion", nameKey: "tools.notion", badge: "N", color: "#a3a3a3" },
-    { id: "canva", toolId: "canva", nameKey: "tools.canva", badge: "C", color: "#0ea5e9" },
-    { id: "ruangapi", toolId: "ruangapi", nameKey: "tools.ruangapi", badge: "R", color: "#0ea5e9" },
-    { id: "browser", toolId: "browser", nameKey: "tools.browser", badge: "B", color: "#6b7280" },
-  ];
-  let agentTools = $state<string[]>([]);
-  let toolsLoadedFor = $state("");
-
-  async function loadAgentTools(agentId: string) {
-    if (toolsLoadedFor === agentId) return;
-    agentTools = await getAgentTools(agentId);
-    toolsLoadedFor = agentId;
-  }
-
-  async function toggleAgentTool(toolId: string) {
-    const next = agentTools.includes(toolId)
-      ? agentTools.filter((t) => t !== toolId)
-      : [...agentTools, toolId];
-    agentTools = next;
-    await setAgentTools(agent.id, next);
-  }
-
-  function toolConnected(toolId: string): boolean {
-    const tools = $realTools;
-    if (!tools) return false;
-    return tools.find((t) => t.id === toolId)?.connected ?? false;
-  }
-
-  // Muat allowlist saat agen berubah.
-  $effect(() => {
-    toolsLoadedFor = "";
-    loadAgentTools(agent.id);
-  });
   let query = $state("");
   let agentSearch = $state("");
   // Agent extras menu (+) + dialogs
@@ -188,7 +130,7 @@
   function submitTask() {
     const title = taskTitle.trim();
     if (!title) return;
-    const pid = taskProject || $projects[0]?.id || "";
+    const pid = taskProject || $projects[0]?.id || "proj-a";
     addKanbanCard(title, agent.id, "queue", pid);
     taskTitle = "";
     taskAdded = true;
@@ -351,112 +293,7 @@
     shield: "M12 3l7 2.8v5.4c0 4.8-3.4 7.6-7 9.3-3.6-1.7-7-4.5-7-9.3V5.8z",
     sliders: "M4 7h16 M4 17h16 M9 4.5v5 M15 14.5v5",
   } as const;
-
-  let avatarPickerFor = $state<string | null>(null);
-
-  function avatarSrc(av: string): string {
-    if (!av) return "";
-    if (av.startsWith("data:") || av.startsWith("http") || av.startsWith("/")) return av;
-    return "/" + av;
-  }
-
-  function handleAvatarUpload(e: Event, agentId: string) {
-    const input = e.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const size = 256;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        const s = Math.min(img.width, img.height);
-        const sx = (img.width - s) / 2;
-        const sy = (img.height - s) / 2;
-        ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
-        setAgentAvatar(agentId, canvas.toDataURL("image/png"));
-        avatarPickerFor = null;
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-    input.value = "";
-  }
 </script>
-
-{#snippet avatarDisplay(a: Agent, status: string, sizeCls: string)}
-  {@const av = avatarOf(a, $agentAvatarOverrides)}
-  {#if av}
-    <img
-      src={avatarSrc(av)}
-      alt=""
-      draggable="false"
-      class="avatar-img {sizeCls} {status}"
-    />
-  {:else}
-    <span class="badge {sizeCls}" style:background={a.color}>{a.badge}</span>
-  {/if}
-{/snippet}
-
-{#snippet avatarPicker(a: Agent)}
-  {@const current = avatarOf(a, $agentAvatarOverrides)}
-  <div class="avatar-picker" role="dialog" aria-label={$t("agents.editAvatar")}>
-    <p class="avatar-picker-title">{$t("agents.avatar.pick")}</p>
-    <div class="avatar-grid">
-      {#each AVATAR_PRESETS as preset}
-        <button
-          class="avatar-opt"
-          class:sel={current === preset || current === "/" + preset}
-          onclick={() => {
-            setAgentAvatar(a.id, preset);
-            avatarPickerFor = null;
-          }}
-        >
-          <img src={avatarSrc(preset)} alt="" draggable="false" />
-        </button>
-      {/each}
-      <button
-        class="avatar-opt upload"
-        onclick={() =>
-          document.getElementById("avatar-upload-" + a.id)?.click()}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <path d="M12 16V4 M7 9l5-5 5 5 M4 20h16" />
-        </svg>
-        <span>{$t("agents.avatar.upload")}</span>
-      </button>
-      <button
-        class="avatar-opt initial"
-        class:sel={current === ""}
-        style:background={a.color}
-        onclick={() => {
-          setAgentAvatar(a.id, "");
-          avatarPickerFor = null;
-        }}
-      >
-        {a.badge}
-      </button>
-    </div>
-    <input
-      id={"avatar-upload-" + a.id}
-      type="file"
-      accept="image/*"
-      hidden
-      onchange={(e) => handleAvatarUpload(e, a.id)}
-    />
-  </div>
-{/snippet}
 
 {#snippet agentRow(a: Agent)}
   {@const status = $agentStatus[a.id] ?? "idle"}
@@ -467,7 +304,7 @@
     class:active={$activeAgentId === a.id}
     onclick={() => activeAgentId.set(a.id)}
   >
-    {@render avatarDisplay(a, status, "")}
+    <span class="badge" style:background={a.color}>{a.badge}</span>
     <span class="meta">
       <span class="name">{rowName}</span>
       <span class="role">{$t(a.roleKey)}</span>
@@ -606,7 +443,7 @@
 
       <!-- Active agent identity -->
       <div class="tb-agent">
-        {@render avatarDisplay(agent, $agentStatus[agent.id] ?? "idle", "sm")}
+        <span class="badge sm" style:background={agent.color}>{agent.badge}</span>
         <span class="tb-agent-meta">
           <span class="tb-agent-name">{displayName}</span>
           <span class="tb-agent-role">{$t(agent.roleKey)}</span>
@@ -1015,11 +852,14 @@
     {#if detailOpen}
       <div class="desc-col">
         <div class="avatar-wrap">
-          {@render avatarDisplay(agent, $agentStatus[agent.id] ?? "idle", "avatar-big")}
+          <span
+            class="badge avatar-big"
+            style:background={agent.color}
+          >{agent.badge}</span>
           <button
             class="avatar-edit"
             aria-label={$t("agents.editAvatar")}
-            onclick={() => (avatarPickerFor = agent.id)}
+            onclick={closeAll}
           >
             <svg
               viewBox="0 0 24 24"
@@ -1034,10 +874,6 @@
             </svg>
           </button>
         </div>
-
-        {#if avatarPickerFor === agent.id}
-          {@render avatarPicker(agent)}
-        {/if}
 
         <div class="field">
           <label for="d-name">{$t("agents.name")}</label>
@@ -1125,29 +961,6 @@
           {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }))}
           {@render navRow(ICONS.files, $t("agents.files"), facts.files)}
           {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }))}
-        </div>
-
-        <div class="section">
-          <h3>{$t("agents.tools")}</h3>
-          <p class="section-desc">{$t("agents.tools.desc")}</p>
-          <div class="tool-list">
-            {#each availableTools as tool}
-              <label class="tool-item">
-                <input
-                  type="checkbox"
-                  checked={agentTools.includes(tool.id)}
-                  onchange={() => toggleAgentTool(tool.id)}
-                />
-                <span class="tool-badge" style:background={tool.color}>{tool.badge}</span>
-                <span class="tool-name">{$t(tool.nameKey)}</span>
-                {#if toolConnected(tool.toolId)}
-                  <span class="tool-status connected">●</span>
-                {:else}
-                  <span class="tool-status">○</span>
-                {/if}
-              </label>
-            {/each}
-          </div>
         </div>
 
         <div class="section">
@@ -1496,96 +1309,6 @@
     height: 96px;
     font-size: 44px;
     border-radius: 24px;
-  }
-  /* Agent avatar images — ganti badge inisial (desain Patria, 19 Okt 2026) */
-  .avatar-img {
-    border-radius: 50%;
-    object-fit: cover;
-    display: block;
-    flex: none;
-    width: 40px;
-    height: 40px;
-  }
-  .avatar-img.sm {
-    width: 32px;
-    height: 32px;
-  }
-  .avatar-img.avatar-big {
-    width: 96px;
-    height: 96px;
-    border-radius: 24px;
-  }
-  /* Animasi status agen: siap=diam, bekerja=naik-turun, perhatian=goyang */
-  .avatar-img.working {
-    animation: avatar-bob 1.6s ease-in-out infinite;
-  }
-  .avatar-img.attention {
-    animation: avatar-shake 0.9s ease-in-out infinite;
-    box-shadow: 0 0 0 2px #ef4444;
-  }
-  @keyframes avatar-bob {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
-  @keyframes avatar-shake {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-6deg); }
-    75% { transform: rotate(6deg); }
-  }
-  /* Panel pilih avatar */
-  .avatar-picker {
-    margin-top: 12px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--panel-2);
-  }
-  .avatar-picker-title {
-    font-size: 13px;
-    font-weight: 700;
-    margin: 0 0 8px;
-  }
-  .avatar-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  .avatar-opt {
-    aspect-ratio: 1;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 2px solid transparent;
-    padding: 0;
-    cursor: pointer;
-    background: var(--panel);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .avatar-opt img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .avatar-opt.sel {
-    border-color: var(--accent);
-  }
-  .avatar-opt.upload {
-    flex-direction: column;
-    gap: 4px;
-    color: var(--dim);
-  }
-  .avatar-opt.upload svg {
-    width: 20px;
-    height: 20px;
-  }
-  .avatar-opt.upload span {
-    font-size: 10px;
-  }
-  .avatar-opt.initial {
-    font-size: 24px;
-    font-weight: 800;
-    color: #0a1f33;
   }
   .avatar-edit {
     position: absolute;
@@ -2157,51 +1880,5 @@
     .tb-agent-name {
       max-width: 110px;
     }
-  }
-  .section-desc {
-    font-size: 11px;
-    opacity: 0.6;
-    margin: 0 0 8px;
-  }
-  .tool-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .tool-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border: 1px solid var(--border, #2a2e36);
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .tool-item:hover {
-    border-color: var(--accent, #4FA6F0);
-  }
-  .tool-badge {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-  }
-  .tool-name {
-    flex: 1;
-  }
-  .tool-status {
-    font-size: 10px;
-    opacity: 0.4;
-  }
-  .tool-status.connected {
-    color: #22c55e;
-    opacity: 1;
   }
 </style>

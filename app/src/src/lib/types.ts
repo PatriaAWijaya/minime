@@ -16,8 +16,6 @@ export interface Agent {
   badge: string;
   /** Solid badge background color (flat, no gradients) */
   color: string;
-  /** Avatar image path (e.g. "avatars/fox.png"). Empty = initial-letter badge. */
-  avatar?: string;
 }
 
 export interface Message {
@@ -125,10 +123,6 @@ export interface KanbanCard {
   createdAt: string;
   /** Creation timestamp (ms) used by the period filter. */
   createdAtTs: number;
-  /** Draft konten untuk Meta/Postiz (Tahap 3: draft-only, tidak auto-post). */
-  draftContent?: string;
-  /** Target platform draft: "meta" | "postiz" | null. */
-  draftPlatform?: string;
 }
 
 /** A node on the connection canvas (mock). */

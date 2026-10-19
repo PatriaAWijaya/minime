@@ -4,7 +4,6 @@
   import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
   import {
     activeAgentId,
-    addKanbanCard,
     agentModel,
     agentStatus,
     buildSystemPrompt,
@@ -14,7 +13,6 @@
     messagesByAgent,
     modelCatalog,
     newTaskSignal,
-    projects,
     realProviders,
     refreshProviders,
     isTauri,
@@ -134,8 +132,6 @@
         pushMessage(id, "agent", clean.trim());
       } else if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
-        // Orkestrasi: bila Mimi mendelegasikan, buat kartu Kanban otomatis.
-        if (id === "mimi") processDelegations(res.text);
       } else if (res === null) {
         // Bukan di Tauri (browser/preview): pakai mock lokal.
         timer = setTimeout(() => {
@@ -163,26 +159,6 @@
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send();
-    }
-  }
-
-  /** Parse delegasi Mimi dari format [DELEGATE:agenId] dan buat kartu Kanban. */
-  function processDelegations(text: string) {
-    const re = /\[DELEGATE:([a-z]+)\]\s*([^\n\[]+)/gi;
-    const validAgents = ["kreatif", "riset", "finance", "strategis", "code"];
-    let m: RegExpExecArray | null;
-    let count = 0;
-    const pid = $projects[0]?.id || "";
-    while ((m = re.exec(text)) !== null) {
-      const agentId = m[1].toLowerCase();
-      const title = m[2].trim();
-      if (validAgents.includes(agentId) && title) {
-        addKanbanCard(title, agentId, "queue", pid);
-        count++;
-      }
-    }
-    if (count > 0) {
-      newTaskSignal.update((n) => n + 1);
     }
   }
 </script>

@@ -30,12 +30,9 @@
     flowEdges,
     addKanbanCard,
     moveKanbanCard,
-    postSocialDraftDirect,
     addFlowNode,
     addFlowEdge,
     moveFlowNode,
-    PROJECT_SCENARIOS,
-    createProjectFromScenario,
     removeFlowNode,
     disconnectFlowNode,
     type TasksViewKind,
@@ -283,22 +280,6 @@
     projDialogOpen = false;
   }
 
-  /** Post langsung draft — hanya atas perintah eksplisit user (tombol). */
-  async function directPost(cardId: number) {
-    const ok = await postSocialDraftDirect(cardId);
-    if (!ok) {
-      // Tool belum terhubung — user perlu hubungkan dulu di tab Tools.
-    }
-  }
-
-  function useScenario(scenarioId: string) {
-    createProjectFromScenario(scenarioId);
-    reloadFlow();
-    projDialogOpen = false;
-    // Pindah ke view Kanban agar kartu tugas terlihat.
-    flowView = "kanban";
-  }
-
   // ---------- Flow: delete project (with confirmation) ----------
   let delProjId = $state<string | null>(null);
 
@@ -421,18 +402,6 @@
                   <span class="name">{a.name}</span>
                   <span class="dot {st}" aria-hidden="true"></span>
                 </div>
-                {#if card.draftPlatform}
-                  <span class="draft-tag">Draft → {card.draftPlatform === "meta" ? "Meta" : "Postiz"}</span>
-                  {#if col === "approval"}
-                    <button
-                      class="btn-direct-post"
-                      onclick={(e) => { e.stopPropagation(); directPost(card.id); }}
-                      title={$t("tasks.directPostHint")}
-                    >
-                      {$t("tasks.directPost")}
-                    </button>
-                  {/if}
-                {/if}
                 <span class="card-date">{card.createdAt}</span>
               </article>
             {/each}
@@ -557,24 +526,6 @@
             <button class="btn-ghost" onclick={() => (projDialogOpen = false)}>
               {$t("tasks.cancel")}
             </button>
-          </div>
-          <div class="scenario-sep"></div>
-          <div class="scenario-head">
-            <span class="scenario-title">{$t("scenario.title")}</span>
-            <span class="scenario-desc">{$t("scenario.desc")}</span>
-          </div>
-          <div class="scenario-list">
-            {#each PROJECT_SCENARIOS as sc}
-              <div class="scenario-card">
-                <div class="scenario-info">
-                  <span class="scenario-name">{sc.name}</span>
-                  <span class="scenario-text">{$t(sc.descKey)}</span>
-                </div>
-                <button class="btn-ghost scenario-use" onclick={() => useScenario(sc.id)}>
-                  {$t("scenario.use")}
-                </button>
-              </div>
-            {/each}
           </div>
         </div>
       {/if}
@@ -822,29 +773,6 @@
     font-size: 12px;
     color: var(--muted, #9aa0aa);
   }
-  .draft-tag {
-    display: inline-block;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: var(--accent-dim, #1e3a5f);
-    color: var(--accent, #4FA6F0);
-    margin-top: 4px;
-  }
-  .btn-direct-post {
-    margin-top: 6px;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--accent, #4FA6F0);
-    background: transparent;
-    color: var(--accent, #4FA6F0);
-    cursor: pointer;
-  }
-  .btn-direct-post:hover {
-    background: var(--accent, #4FA6F0);
-    color: #fff;
-  }
   .add-btn { align-self: stretch; }
   .add-form {
     display: flex;
@@ -1031,9 +959,7 @@
     top: calc(100% + 8px);
     left: 0;
     z-index: 30;
-    width: 320px;
-    max-height: 70vh;
-    overflow-y: auto;
+    width: 280px;
     background: var(--card, #16181d);
     border: 1px solid var(--border, #2a2e36);
     border-radius: 12px;
@@ -1042,58 +968,6 @@
     flex-direction: column;
     gap: 10px;
     box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
-  }
-  .scenario-sep {
-    height: 1px;
-    background: var(--border, #2a2e36);
-    margin: 2px 0;
-  }
-  .scenario-head {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .scenario-title {
-    font-size: 13px;
-    font-weight: 700;
-  }
-  .scenario-desc {
-    font-size: 11px;
-    opacity: 0.6;
-  }
-  .scenario-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .scenario-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--border, #2a2e36);
-    border-radius: 8px;
-  }
-  .scenario-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .scenario-name {
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .scenario-text {
-    font-size: 11px;
-    opacity: 0.6;
-    line-height: 1.35;
-  }
-  .scenario-use {
-    flex-shrink: 0;
-    font-size: 11px;
-    padding: 6px 10px;
   }
   .proj-dialog label {
     display: flex;
