@@ -856,8 +856,14 @@ function seedFlowMap(): void {
   try {
     const n = localStorage.getItem("minime.flow-nodes");
     const e = localStorage.getItem("minime.flow-edges");
-    if (n) aNodes = JSON.parse(n) as FlowNode[];
-    if (e) aEdges = JSON.parse(e) as FlowEdge[];
+    if (n) {
+      const pn = JSON.parse(n);
+      if (Array.isArray(pn)) aNodes = pn as FlowNode[];
+    }
+    if (e) {
+      const pe = JSON.parse(e);
+      if (Array.isArray(pe)) aEdges = pe as FlowEdge[];
+    }
   } catch {
     /* ignore */
   }
