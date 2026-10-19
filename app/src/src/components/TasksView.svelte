@@ -766,9 +766,9 @@
     border-radius: 50%;
     flex: none;
   }
-  .dot.idle { background: #22c55e; }
-  .dot.working { background: #eab308; }
-  .dot.attention { background: #ef4444; }
+  .dot.idle { background: var(--ok); }
+  .dot.working { background: var(--warn); }
+  .dot.attention { background: var(--danger); }
   .card-date {
     font-size: 12px;
     color: var(--muted, #9aa0aa);
@@ -872,7 +872,7 @@
     padding: 0;
   }
   .proj-del:hover {
-    color: #f87171;
+    color: var(--danger);
     background: rgb(248 113 113 / 0.12);
   }
   .proj-del svg {
@@ -1018,7 +1018,7 @@
     background: var(--border, #262a32);
   }
   .ctx-menu button.danger {
-    color: #f87171;
+    color: var(--danger);
   }
   .flow-wrap {
     position: relative;
@@ -1027,10 +1027,10 @@
     border: 1px solid var(--border, #262a32);
     border-radius: 14px;
     overflow: hidden;
-    background: #0b0d10;
+    background: var(--canvas);
   }
   .flow-wrap :global(.svelte-flow) {
-    background: #0b0d10;
+    background: var(--canvas);
   }
   .flow-wrap :global(.svelte-flow__controls) {
     border: 1px solid var(--border, #2a2e36);

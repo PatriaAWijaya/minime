@@ -1212,8 +1212,8 @@
     cursor: pointer;
   }
   .mini-btn.danger:hover {
-    color: #f87171;
-    border-color: #f87171;
+    color: var(--danger);
+    border-color: var(--danger);
   }
   .dlg-actions {
     display: flex;
@@ -1491,7 +1491,7 @@
     flex: none;
   }
   .server-dot.local { background: var(--ok); }
-  .server-dot.cloud { background: #60a5fa; }
+  .server-dot.cloud { background: var(--accent); }
 
   .icon-btn.bordered {
     border: 1px solid var(--border);
@@ -1754,8 +1754,8 @@
   }
   .model-item .chip { align-self: center; }
   .chip.paid {
-    border-color: var(--yellow);
-    color: var(--yellow);
+    border-color: var(--warn);
+    color: var(--warn);
   }
   .panel-effort {
     border-top: 1px solid var(--border);

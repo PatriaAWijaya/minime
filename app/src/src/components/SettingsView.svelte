@@ -8,9 +8,17 @@
     customProviders,
     defaultProviderId,
     providerState,
+    theme,
     toggleCustomProvider,
     toggleProvider,
   } from "../lib/store";
+  import type { Theme } from "../lib/store";
+
+  const themes: { id: Theme; labelKey: string }[] = [
+    { id: "system", labelKey: "settings.theme.system" },
+    { id: "dark", labelKey: "settings.theme.dark" },
+    { id: "light", labelKey: "settings.theme.light" },
+  ];
 
   const langs: { id: Lang; label: string }[] = [
     { id: "id", label: "Indonesia" },
@@ -56,6 +64,20 @@
           >{l.label}</button>
         {/each}
       </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="group-label" id="theme-label">{$t("settings.theme")}</span>
+    <div class="seg" role="radiogroup" aria-labelledby="theme-label">
+      {#each themes as th}
+        <button
+          role="radio"
+          aria-checked={$theme === th.id}
+          class:active={$theme === th.id}
+          onclick={() => theme.set(th.id)}
+        >{$t(th.labelKey)}</button>
+      {/each}
     </div>
   </div>
 

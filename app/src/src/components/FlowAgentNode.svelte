@@ -139,7 +139,7 @@
   }
   .flow-node.selected {
     border-color: var(--accent, #4FA6F0);
-    box-shadow: 0 0 0 2px rgb(16 185 129 / 0.35);
+    box-shadow: 0 0 0 2px rgb(79 166 240 / 0.35);
   }
   /* Per-card actions: visible on hover, or always when selected / touch. */
   .node-actions {
@@ -187,8 +187,8 @@
     border-color: var(--accent, #4FA6F0);
   }
   .node-act.danger:hover {
-    color: #f87171;
-    border-color: #f87171;
+    color: var(--danger);
+    border-color: var(--danger);
   }
   .node-act svg {
     width: 18px;
@@ -232,9 +232,9 @@
     border-radius: 50%;
     flex: none;
   }
-  .dot.idle { background: #22c55e; }
-  .dot.working { background: #eab308; }
-  .dot.attention { background: #ef4444; }
+  .dot.idle { background: var(--ok); }
+  .dot.working { background: var(--warn); }
+  .dot.attention { background: var(--danger); }
   .task-count {
     flex: none;
     min-width: 24px;

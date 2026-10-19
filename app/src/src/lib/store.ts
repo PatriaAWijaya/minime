@@ -552,7 +552,21 @@ serverLayout.subscribe((v) => {
   }
 });
 
-/* ---------- Task folders + custom agents (mock, in-memory) ---------- */
+/* ---------- Theme (keputusan Patria 19 Okt): system = follow OS,
+   or force dark/light. Applied as data-theme on <html> by App.svelte. ---------- */
+
+export type Theme = "system" | "dark" | "light";
+
+export const theme = writable<Theme>(
+  loadString("minime.theme", "system") as Theme,
+);
+theme.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.theme", v);
+  } catch {
+    /* ignore */
+  }
+});
 
 let folderSeq = 3;
 

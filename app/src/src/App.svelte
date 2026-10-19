@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import IconSidebar from "./components/IconSidebar.svelte";
   import AgentsView from "./components/AgentsView.svelte";
   import TasksView from "./components/TasksView.svelte";
@@ -7,7 +8,29 @@
   import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
   import SettingsView from "./components/SettingsView.svelte";
-  import { activeView } from "./lib/store";
+  import { activeView, theme, type Theme } from "./lib/store";
+
+  /** Apply the effective theme to <html> as data-theme="dark"|"light". */
+  function applyTheme(t: Theme) {
+    const dark =
+      t === "dark" ||
+      (t === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }
+
+  // Re-apply whenever the theme setting changes.
+  $effect(() => applyTheme($theme));
+
+  onMount(() => {
+    // Live response when the OS theme changes and setting = "system".
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      if ($theme === "system") applyTheme("system");
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  });
 </script>
 
 <div class="layout">
