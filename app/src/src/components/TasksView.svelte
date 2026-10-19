@@ -30,6 +30,7 @@
     flowEdges,
     addKanbanCard,
     moveKanbanCard,
+    postSocialDraftDirect,
     addFlowNode,
     addFlowEdge,
     moveFlowNode,
@@ -282,6 +283,14 @@
     projDialogOpen = false;
   }
 
+  /** Post langsung draft — hanya atas perintah eksplisit user (tombol). */
+  async function directPost(cardId: number) {
+    const ok = await postSocialDraftDirect(cardId);
+    if (!ok) {
+      // Tool belum terhubung — user perlu hubungkan dulu di tab Tools.
+    }
+  }
+
   function useScenario(scenarioId: string) {
     createProjectFromScenario(scenarioId);
     reloadFlow();
@@ -412,6 +421,18 @@
                   <span class="name">{a.name}</span>
                   <span class="dot {st}" aria-hidden="true"></span>
                 </div>
+                {#if card.draftPlatform}
+                  <span class="draft-tag">Draft → {card.draftPlatform === "meta" ? "Meta" : "Postiz"}</span>
+                  {#if col === "approval"}
+                    <button
+                      class="btn-direct-post"
+                      onclick={(e) => { e.stopPropagation(); directPost(card.id); }}
+                      title={$t("tasks.directPostHint")}
+                    >
+                      {$t("tasks.directPost")}
+                    </button>
+                  {/if}
+                {/if}
                 <span class="card-date">{card.createdAt}</span>
               </article>
             {/each}
@@ -800,6 +821,29 @@
   .card-date {
     font-size: 12px;
     color: var(--muted, #9aa0aa);
+  }
+  .draft-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent-dim, #1e3a5f);
+    color: var(--accent, #4FA6F0);
+    margin-top: 4px;
+  }
+  .btn-direct-post {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--accent, #4FA6F0);
+    background: transparent;
+    color: var(--accent, #4FA6F0);
+    cursor: pointer;
+  }
+  .btn-direct-post:hover {
+    background: var(--accent, #4FA6F0);
+    color: #fff;
   }
   .add-btn { align-self: stretch; }
   .add-form {

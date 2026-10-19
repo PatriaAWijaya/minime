@@ -371,14 +371,9 @@ export const activeTaskByAgent: Record<string, { titleKey: string; progress: num
   kreatif: { titleKey: "tasks.demo2", progress: 80 },
 };
 
-/** Scheduled / recurring tasks (mock). */
-let scheduleSeq = 5;
-export const scheduleItems = writable<ScheduledItem[]>([
-  { id: 1, nameKey: "schedule.mock2.name", whenKey: "schedule.mock2.when", range: "day", active: true },
-  { id: 2, nameKey: "schedule.mock1.name", whenKey: "schedule.mock1.when", range: "week", active: true },
-  { id: 3, nameKey: "schedule.mock4.name", whenKey: "schedule.mock4.when", range: "week", active: false },
-  { id: 4, nameKey: "schedule.mock3.name", whenKey: "schedule.mock3.when", range: "month", active: true },
-]);
+/** Scheduled / recurring tasks — mulai kosong (keputusan Patria 19 Okt). */
+let scheduleSeq = 1;
+export const scheduleItems = writable<ScheduledItem[]>([]);
 
 export function addScheduleItem() {
   scheduleItems.update((items) => [
@@ -393,50 +388,18 @@ export function addScheduleItem() {
   ]);
 }
 
-/** Library outputs (mock). */
-export const libraryItems: LibraryItem[] = [
-  { id: 1, titleKey: "library.mock1.title", dateKey: "library.mock1.date", daysAgo: 1, type: "doc", agentId: "kreatif", taskKey: "schedule.mock1.name" },
-  { id: 2, titleKey: "library.mock2.title", dateKey: "library.mock2.date", daysAgo: 2, type: "image", agentId: "kreatif", taskKey: "library.task.once" },
-  { id: 3, titleKey: "library.mock3.title", dateKey: "library.mock3.date", daysAgo: 4, type: "table", agentId: "riset", taskKey: "schedule.mock4.name" },
-  { id: 4, titleKey: "library.mock4.title", dateKey: "library.mock4.date", daysAgo: 7, type: "deck", agentId: "strategis", taskKey: "library.task.once" },
-  { id: 5, titleKey: "library.mock5.title", dateKey: "library.mock5.date", daysAgo: 9, type: "video", agentId: "kreatif", taskKey: "schedule.mock3.name" },
-  { id: 6, titleKey: "library.mock6.title", dateKey: "library.mock6.date", daysAgo: 14, type: "doc", agentId: "finance", taskKey: "library.task.once" },
-  { id: 7, titleKey: "library.mock7.title", dateKey: "library.mock7.date", daysAgo: 21, type: "app", agentId: "code", taskKey: "library.task.once" },
-  { id: 8, titleKey: "library.mock8.title", dateKey: "library.mock8.date", daysAgo: 17, type: "table", agentId: "finance", taskKey: "schedule.mock2.name" },
-];
+/** Library outputs — mulai kosong (keputusan Patria 19 Okt: hapus data dummy). */
+export const libraryItems: LibraryItem[] = [];
 
-/** Cost rows (mock). */
-export const costRows: CostRow[] = [
-  { id: 1, agentId: "kreatif", tokens: 48200, costUsd: 0.38, dateKey: "cost.date.1", daysAgo: 1 },
-  { id: 2, agentId: "riset", tokens: 96500, costUsd: 0.77, dateKey: "cost.date.1", daysAgo: 1 },
-  { id: 3, agentId: "mimi", tokens: 12400, costUsd: 0.31, dateKey: "cost.date.2", daysAgo: 4 },
-  { id: 4, agentId: "finance", tokens: 31200, costUsd: 0.25, dateKey: "cost.date.3", daysAgo: 9 },
-  { id: 5, agentId: "strategis", tokens: 27800, costUsd: 0.22, dateKey: "cost.date.3", daysAgo: 9 },
-  { id: 6, agentId: "code", tokens: 61400, costUsd: 0.49, dateKey: "cost.date.4", daysAgo: 17 },
-  { id: 7, agentId: "riset", tokens: 44100, costUsd: 0.35, dateKey: "cost.date.5", daysAgo: 29 },
-  { id: 8, agentId: "kreatif", tokens: 22900, costUsd: 0.18, dateKey: "cost.date.5", daysAgo: 29 },
-];
+/** Cost rows — mulai kosong, diisi dari usage nyata (keputusan Patria 19 Okt). */
+export const costRows: CostRow[] = [];
 
-/** Agent templates (mock). */
-export const templates = writable<AgentTemplate[]>([
-  { id: 1, nameKey: "tools.tpl1.name", descKey: "tools.tpl1.desc", enabled: true },
-  { id: 2, nameKey: "tools.tpl2.name", descKey: "tools.tpl2.desc", enabled: true },
-  { id: 3, nameKey: "tools.tpl3.name", descKey: "tools.tpl3.desc", enabled: false },
-  { id: 4, nameKey: "tools.tpl4.name", descKey: "tools.tpl4.desc", enabled: false },
-  { id: 5, nameKey: "tools.tpl5.name", descKey: "tools.tpl5.desc", enabled: false },
-  { id: 6, nameKey: "tools.tpl6.name", descKey: "tools.tpl6.desc", enabled: false },
-]);
+/** Agent templates — mulai kosong (keputusan Patria 19 Okt). */
+export const templates = writable<AgentTemplate[]>([]);
 
-/** Skills (mock). */
-let skillSeq = 7;
-export const skills = writable<Skill[]>([
-  { id: 1, nameKey: "tools.skill1.name", descKey: "tools.skill1.desc", installed: true },
-  { id: 2, nameKey: "tools.skill2.name", descKey: "tools.skill2.desc", installed: true },
-  { id: 3, nameKey: "tools.skill3.name", descKey: "tools.skill3.desc", installed: false },
-  { id: 4, nameKey: "tools.skill4.name", descKey: "tools.skill4.desc", installed: false },
-  { id: 5, nameKey: "tools.skill5.name", descKey: "tools.skill5.desc", installed: false },
-  { id: 6, nameKey: "tools.skill6.name", descKey: "tools.skill6.desc", installed: false },
-]);
+/** Skills — mulai kosong (keputusan Patria 19 Okt). */
+let skillSeq = 1;
+export const skills = writable<Skill[]>([]);
 
 export function addSkill(name: string) {
   const trimmed = name.trim();
@@ -1293,6 +1256,9 @@ export function buildSystemPrompt(agentId: string, roleLabel: string): string {
   lines.push(
     "Jawab dalam Bahasa Indonesia yang ringkas dan jelas, kecuali pengguna memakai bahasa lain.",
     "Jangan mengarang fakta; bila tidak tahu, katakan terus terang.",
+    "ATURAN POSTING: Semua konten untuk Meta/Postiz/FB/IG/Threads SELALU dibuat sebagai draft " +
+      "dulu (tidak pernah auto-post). Pengecualian HANYA bila pengguna memberi perintah eksplisit " +
+      '"langsung post" / "posting langsung" — kamu tidak boleh memutuskan sendiri untuk posting langsung.',
   );
   if (instructions) {
     lines.push(`Instruksi khusus dari pengguna:\n${instructions}`);
@@ -1570,4 +1536,27 @@ export async function uploadToDrive(fileName: string, content: string): Promise<
   // Implementasi penuh: OAuth Google → upload ke folder MIMI.
   // Untuk sekarang kembalikan false (belum terhubung).
   return false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Direct post — pengecualian draft-only (keputusan Patria 19 Okt)     */
+/* Draft-only BERLAKU sampai user memberi perintah eksplisit           */
+/* "langsung post". Agen TIDAK boleh memutuskan sendiri.               */
+/* ------------------------------------------------------------------ */
+
+/** Post langsung draft yang sudah ada — hanya dipanggil atas perintah
+    eksplisit user (tombol "Post langsung" di kartu draft). */
+export async function postSocialDraftDirect(cardId: number): Promise<boolean> {
+  const card = get(kanbanCards).find((c) => c.id === cardId);
+  if (!card || !card.draftPlatform) return false;
+  const platform = card.draftPlatform;
+  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: platform }).catch(() => false);
+  if (!connected) return false;
+  // Pindahkan ke selesai — pengiriman aktual via API platform (menyusul).
+  moveKanbanCard(cardId, "done");
+  sendNotification(
+    "Diposting langsung",
+    `"${card.title}" diposting ke ${platform === "meta" ? "Meta" : "Postiz"} atas perintahmu`,
+  );
+  return true;
 }
