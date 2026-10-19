@@ -1841,6 +1841,31 @@
     }
   }
   @media (max-width: 860px) {
+    .topbar {
+      flex-wrap: wrap;
+      row-gap: 8px;
+    }
+    .tb-left {
+      flex: 1 1 auto;
+    }
+    .tb-right {
+      margin-left: auto;
+    }
+    .tb-center {
+      order: 3;
+      flex: 1 1 100%;
+      margin-inline: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .tb-center .pill {
+      max-width: 100%;
+    }
+    .tb-center .pill span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .tb-agent-role,
     .settings-btn span {
       display: none;
