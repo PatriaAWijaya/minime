@@ -697,6 +697,25 @@ export function addFlowProject(name: string): string {
   return id;
 }
 
+/**
+ * Delete a project and its whole connection canvas. At least one project
+ * must remain (callers hide/disable the delete affordance when only one is
+ * left). If the deleted project was active, switch to the first remaining.
+ */
+export function removeFlowProject(id: string): void {
+  const list = get(projects);
+  if (list.length <= 1) return;
+  const rest = list.filter((p) => p.id !== id);
+  if (rest.length === list.length) return;
+  projects.set(rest);
+  delete flowMap[id];
+  saveFlowMap();
+  if (get(activeFlowProjectId) === id) {
+    activeFlowProjectId.set(rest[0].id);
+    loadActiveCanvas();
+  }
+}
+
 export function addFlowNode(agentId: string, x?: number, y?: number): string {
   const id = `node-${flowSeq++}-${Date.now() % 100000}`;
   flowNodes.update((list) => {

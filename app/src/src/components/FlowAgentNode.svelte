@@ -9,6 +9,8 @@
       agentId: string;
       nodeId: string;
       onAddChild: (nodeId: string, agentId: string) => void;
+      onDisconnect: (nodeId: string) => void;
+      onDelete: (nodeId: string) => void;
     };
     selected?: boolean;
   }
@@ -41,6 +43,38 @@
 
 <div class="flow-node" class:selected aria-label={agent.name}>
   <Handle type="target" position={Position.Left} aria-label={$t("tasks.flow.connectIn")} />
+  <div class="node-actions nodrag" role="toolbar" aria-label={$t("tasks.flow.nodeActions")}>
+    <button
+      class="node-act"
+      onclick={(e) => {
+        e.stopPropagation();
+        data.onDisconnect(data.nodeId);
+      }}
+      aria-label={$t("tasks.flow.disconnect")}
+      title={$t("tasks.flow.disconnect")}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M9 15 4 20l-1-1 5-5" />
+        <path d="M15 9l5-5 1 1-5 5" />
+        <path d="M8.5 8.5l7 7" />
+      </svg>
+    </button>
+    <button
+      class="node-act danger"
+      onclick={(e) => {
+        e.stopPropagation();
+        data.onDelete(data.nodeId);
+      }}
+      aria-label={$t("tasks.flow.deleteNode")}
+      title={$t("tasks.flow.deleteNode")}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h16" />
+        <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+        <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+      </svg>
+    </button>
+  </div>
   <span class="badge" style:background={agent.color}>{agent.badge}</span>
   <span class="meta">
     <span class="name">{agent.name}</span>
@@ -90,6 +124,59 @@
   .flow-node.selected {
     border-color: var(--accent, #10b981);
     box-shadow: 0 0 0 2px rgb(16 185 129 / 0.35);
+  }
+  /* Per-card actions: visible on hover, or always when selected / touch. */
+  .node-actions {
+    position: absolute;
+    top: -20px;
+    right: -8px;
+    z-index: 15;
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--card, #16181d);
+    border: 1px solid var(--border, #2a2e36);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .flow-node:hover .node-actions,
+  .flow-node.selected .node-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  @media (hover: none) {
+    .flow-node .node-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+  .node-act {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border, #2a2e36);
+    border-radius: 8px;
+    background: var(--bg, #0b0d10);
+    color: var(--muted, #9aa0aa);
+    cursor: pointer;
+    padding: 0;
+  }
+  .node-act:hover {
+    color: var(--text, #e8eaed);
+    border-color: var(--accent, #10b981);
+  }
+  .node-act.danger:hover {
+    color: #f87171;
+    border-color: #f87171;
+  }
+  .node-act svg {
+    width: 18px;
+    height: 18px;
   }
   .badge {
     width: 36px;

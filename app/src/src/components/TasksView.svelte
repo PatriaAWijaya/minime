@@ -1,5 +1,6 @@
 <script lang="ts">
   import { writable, get } from "svelte/store";
+  import { onDestroy } from "svelte";
   import {
     SvelteFlow,
     Background,
@@ -24,6 +25,7 @@
     activeFlowProjectId,
     switchFlowProject,
     addFlowProject,
+    removeFlowProject,
     flowNodes,
     flowEdges,
     addKanbanCard,
@@ -99,6 +101,58 @@
     if (!Number.isNaN(id)) moveKanbanCard(id, col);
   }
 
+  // ---------- Flow: run / stop (mock) ----------
+  let flowRunning = $state(false);
+  let runTimers: ReturnType<typeof setTimeout>[] = [];
+  let prevStatuses: Record<string, "idle" | "working" | "attention"> | null =
+    $state(null);
+
+  function clearRunTimers() {
+    for (const id of runTimers) clearTimeout(id);
+    runTimers = [];
+  }
+
+  function restoreStatuses() {
+    if (prevStatuses) agentStatus.set(prevStatuses);
+    prevStatuses = null;
+  }
+
+  /** Mock run: edges animate, nodes turn "working" one by one, then idle. */
+  function runProject() {
+    const nodes = get(flowNodes);
+    if (flowRunning || nodes.length === 0) return;
+    flowRunning = true;
+    prevStatuses = { ...get(agentStatus) };
+    sfEdges.update((list) => list.map((e) => ({ ...e, animated: true })));
+    const step = 900;
+    nodes.forEach((n, i) => {
+      runTimers.push(
+        setTimeout(() => {
+          agentStatus.update((s) => {
+            const next = { ...s };
+            for (const m of nodes) next[agentOf(m.agentId).id] = "idle";
+            next[agentOf(n.agentId).id] = "working";
+            return next;
+          });
+        }, i * step),
+      );
+    });
+    runTimers.push(
+      setTimeout(() => stopRun(), nodes.length * step + 700),
+    );
+  }
+
+  function stopRun() {
+    clearRunTimers();
+    flowRunning = false;
+    sfEdges.update((list) => list.map((e) => ({ ...e, animated: false })));
+    restoreStatuses();
+  }
+
+  onDestroy(() => {
+    clearRunTimers();
+  });
+
   // ---------- Flow canvas ----------
   const nodeTypes = { agent: FlowAgentNode };
 
@@ -114,19 +168,41 @@
       id: n.id,
       type: "agent",
       position: { x: n.x, y: n.y },
-      data: { agentId: n.agentId, nodeId: n.id, onAddChild: handleAddChild },
+      data: {
+        agentId: n.agentId,
+        nodeId: n.id,
+        onAddChild: handleAddChild,
+        onDisconnect: (id: string) => {
+          disconnectFlowNode(id);
+          reloadFlow();
+        },
+        onDelete: (id: string) => {
+          removeFlowNode(id);
+          reloadFlow();
+        },
+      },
     };
   }
 
   const sfNodes = writable<Node[]>(get(flowNodes).map(toSfNode));
   const sfEdges = writable<Edge[]>(
-    get(flowEdges).map((e) => ({ id: e.id, source: e.source, target: e.target })),
+    get(flowEdges).map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      animated: flowRunning,
+    })),
   );
 
   function reloadFlow() {
     sfNodes.set(get(flowNodes).map(toSfNode));
     sfEdges.set(
-      get(flowEdges).map((e) => ({ id: e.id, source: e.source, target: e.target })),
+      get(flowEdges).map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        animated: flowRunning,
+      })),
     );
   }
 
@@ -137,7 +213,15 @@
     sfEdges.update((list) =>
       list.some((e) => e.source === conn.source && e.target === conn.target)
         ? list
-        : [...list, { id, source: conn.source as string, target: conn.target as string }],
+        : [
+            ...list,
+            {
+              id,
+              source: conn.source as string,
+              target: conn.target as string,
+              animated: flowRunning,
+            },
+          ],
     );
   }
 
@@ -190,6 +274,7 @@
   let projName = $state("");
 
   function doSwitchProject(id: string) {
+    stopRun();
     switchFlowProject(id);
     reloadFlow();
   }
@@ -201,6 +286,35 @@
     reloadFlow();
     projName = "";
     projDialogOpen = false;
+  }
+
+  // ---------- Flow: delete project (with confirmation) ----------
+  let delProjId = $state<string | null>(null);
+
+  function confirmDeleteProject() {
+    if (!delProjId) return;
+    stopRun();
+    // Kanban filter pointing at the deleted project falls back to "all".
+    if (get(kanbanFilterProject) === delProjId) kanbanFilterProject.set("all");
+    removeFlowProject(delProjId);
+    delProjId = null;
+    reloadFlow();
+  }
+
+  // ---------- Flow: explicit save + toast ----------
+  let saveToast = $state(false);
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function saveProject() {
+    // Flush latest node positions into the store (auto-persist writes them
+    // to the per-project map in localStorage via subscription).
+    persistNodePositions();
+    saveToast = true;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveToast = false;
+      saveTimer = null;
+    }, 2200);
   }
 </script>
 
@@ -348,17 +462,58 @@
     <div class="flow-bar">
       <div class="proj-tabs" role="tablist" aria-label={$t("tasks.flow.projects")}>
         {#each $projects as p (p.id)}
-          <button
-            role="tab"
-            aria-selected={$activeFlowProjectId === p.id}
-            class:active={$activeFlowProjectId === p.id}
-            onclick={() => doSwitchProject(p.id)}
-          >
-            {p.name}
-          </button>
+          <div class="proj-tab" class:active={$activeFlowProjectId === p.id}>
+            <button
+              role="tab"
+              aria-selected={$activeFlowProjectId === p.id}
+              class="proj-name"
+              onclick={() => doSwitchProject(p.id)}
+            >
+              {p.name}
+            </button>
+            {#if $projects.length > 1}
+              <button
+                class="proj-del"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  delProjId = p.id;
+                }}
+                aria-label={$t("tasks.flow.deleteProject")}
+                title={$t("tasks.flow.deleteProject")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            {/if}
+          </div>
         {/each}
         <button class="btn-ghost add-proj" onclick={() => (projDialogOpen = true)}>
           {$t("tasks.flow.addProject")}
+        </button>
+      </div>
+      <div class="flow-controls" role="group" aria-label={$t("tasks.flow.projects")}>
+        <button
+          class="btn-primary run-btn"
+          onclick={runProject}
+          disabled={flowRunning || $flowNodes.length === 0}
+          aria-label={flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />
+          </svg>
+          {flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
+        </button>
+        <button
+          class="btn-ghost"
+          onclick={() => stopRun()}
+          disabled={!flowRunning}
+          aria-label={$t("tasks.flow.stop")}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none" />
+          </svg>
+          {$t("tasks.flow.stop")}
         </button>
       </div>
       {#if projDialogOpen}
@@ -382,6 +537,32 @@
           </div>
         </div>
       {/if}
+      {#if delProjId}
+        <div
+          class="modal-backdrop"
+          onclick={() => (delProjId = null)}
+          onkeydown={(e) => e.key === "Escape" && (delProjId = null)}
+          role="presentation"
+        ></div>
+        <div
+          class="del-dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delproj-title"
+          aria-describedby="delproj-desc"
+        >
+          <h3 id="delproj-title">{$t("tasks.flow.delProjectTitle")}</h3>
+          <p id="delproj-desc">{$t("tasks.flow.delProjectMsg")}</p>
+          <div class="form-actions">
+            <button class="btn-del" onclick={confirmDeleteProject}>
+              {$t("tasks.flow.delete")}
+            </button>
+            <button class="btn-ghost" onclick={() => (delProjId = null)}>
+              {$t("tasks.cancel")}
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
     <div class="flow-wrap">
       <SvelteFlow
@@ -395,9 +576,25 @@
         fitView
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
-        <Controls />
-        <MiniMap pannable zoomable />
+        <Controls position="top-left" />
+        <MiniMap pannable zoomable position="bottom-left" />
       </SvelteFlow>
+      <button
+        class="save-fab btn-primary"
+        onclick={saveProject}
+        aria-label={$t("tasks.flow.save")}
+        title={$t("tasks.flow.save")}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <path d="M17 21v-8H7v8" />
+          <path d="M7 3v5h8" />
+        </svg>
+        <span>{$t("tasks.flow.save")}</span>
+      </button>
+      {#if saveToast}
+        <div class="save-toast" role="status">{$t("tasks.flow.saved")}</div>
+      {/if}
       <div class="flow-add">
         <button
           class="btn-primary add-node"
@@ -645,6 +842,9 @@
   .flow-bar {
     position: relative;
     flex: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   .proj-tabs {
     display: flex;
@@ -652,26 +852,130 @@
     gap: 8px;
     overflow-x: auto;
     padding-bottom: 2px;
+    flex: 1;
+    min-width: 0;
   }
-  .proj-tabs [role="tab"] {
+  .proj-tab {
     flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
     min-height: 44px;
-    padding: 0 16px;
+    padding-left: 16px;
+    padding-right: 4px;
     border-radius: 10px;
     border: 1px solid var(--border, #2a2e36);
     background: var(--panel, #121419);
+  }
+  .proj-tab.active {
+    background: var(--card, #16181d);
+    border-color: var(--accent, #10b981);
+  }
+  .proj-name {
+    border: 0;
+    background: transparent;
     color: var(--muted, #9aa0aa);
     font-size: 14px;
     font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+    min-height: 40px;
+  }
+  .proj-tab.active .proj-name {
+    color: var(--text, #e8eaed);
+  }
+  .proj-del {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted, #9aa0aa);
+    cursor: pointer;
+    padding: 0;
+  }
+  .proj-del:hover {
+    color: #f87171;
+    background: rgb(248 113 113 / 0.12);
+  }
+  .proj-del svg {
+    width: 14px;
+    height: 14px;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgb(0 0 0 / 0.55);
+  }
+  .del-dialog {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 51;
+    width: min(360px, calc(100vw - 48px));
+    background: var(--card, #16181d);
+    border: 1px solid var(--border, #2a2e36);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  }
+  .del-dialog h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .del-dialog p {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted, #9aa0aa);
+  }
+  .btn-del {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
     cursor: pointer;
   }
-  .proj-tabs [role="tab"].active {
-    background: var(--card, #16181d);
-    color: var(--text, #e8eaed);
-    border-color: var(--accent, #10b981);
+  .btn-del:hover {
+    filter: brightness(1.1);
   }
   .add-proj {
     flex: none;
+  }
+  .flow-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+  }
+  .flow-controls button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+  }
+  .flow-controls button svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .flow-controls button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .proj-dialog {
     position: absolute;
@@ -784,6 +1088,40 @@
     top: 12px;
     right: 12px;
     z-index: 10;
+  }
+  .save-fab {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .save-fab svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .save-toast {
+    position: absolute;
+    left: 50%;
+    bottom: 76px;
+    transform: translateX(-50%);
+    z-index: 11;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--accent, #10b981);
+    color: #06281e;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
+    white-space: nowrap;
   }
   .add-node {
     width: 44px;
