@@ -201,6 +201,7 @@ impl OllamaProvider {
             served_by: Self::id().to_string(),
             input_tokens: out.prompt_eval_count,
             output_tokens: out.eval_count,
+            error: None,
         })
     }
 
@@ -446,6 +447,7 @@ impl OpenAiCompatProvider {
             served_by: self.id.to_string(),
             input_tokens: out.usage.as_ref().and_then(|u| u.prompt_tokens),
             output_tokens: out.usage.as_ref().and_then(|u| u.completion_tokens),
+            error: None,
         })
     }
 }
