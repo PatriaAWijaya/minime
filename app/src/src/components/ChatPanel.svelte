@@ -13,6 +13,9 @@
     messagesByAgent,
     modelCatalog,
     newTaskSignal,
+    realProviders,
+    refreshProviders,
+    isTauri,
     pushMessage,
     sendChatViaRouter,
   } from "../lib/store";
@@ -105,9 +108,14 @@
     try {
       // Tahap 2: coba model router nyata dulu; fallback ke mock lokal bila
       // backend belum tersedia (browser/preview) atau semua provider gagal.
+      // Muat provider nyata dulu agar validasi memakai katalog model asli.
+      if (get(realProviders) === null && (await isTauri())) {
+        await refreshProviders();
+      }
       let mid = $agentModel[id];
       if (!mid || !get(modelCatalog).some((m) => m.id === mid)) {
         mid = defaultModelFor(id);
+        agentModel.update((m) => ({ ...m, [id]: mid }));
       }
       const mopt = getModel(mid);
       const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
@@ -119,7 +127,9 @@
       const res = await sendChatViaRouter(id, mid, tier, systemPrompt, history);
       if (res && res.error && res.error.trim()) {
         // Router gagal tapi menyampaikannya sebagai field (bukan rejection).
-        pushMessage(id, "agent", res.error.trim());
+        // Bersihkan kode warna ANSI dari stderr provider.
+        const clean = res.error.replace(/\x1b\[[0-9;]*m/g, "");
+        pushMessage(id, "agent", clean.trim());
       } else if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
       } else if (res === null) {
