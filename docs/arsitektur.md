@@ -77,6 +77,12 @@ backend Rust menyatu di proses Tauri.
 - **Mimi (CIO, model Muse)** adalah orkestrator: menerima permintaan
   pengguna, memecah jadi tugas, mendelegasikan ke agen yang tepat,
   menggabungkan hasil, dan meminta approval pengguna.
+- **Tugas via chat (keputusan Patria 19 Okt):** user bisa meminta agen
+  melaksanakan tugas langsung dari chat di tab Agents — baik tugas mandiri
+  maupun yang butuh integrasi dengan agen lain (diorlestrasi Mimi) dan
+  aplikasi lain (via tools gateway). Setiap tugas yang diberikan otomatis
+  tercatat sebagai kartu di tab Tugas (Kanban; Koneksi menampilkan jumlah
+  tugas per node).
 
 ### 4.2 Model router (keputusan Patria 18 Okt 22:40)
 - **Gratis: Ollama = default**, OpenCode = fallback (pola UI Providers
