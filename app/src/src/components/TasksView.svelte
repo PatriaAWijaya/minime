@@ -494,26 +494,26 @@
       </div>
       <div class="flow-controls" role="group" aria-label={$t("tasks.flow.projects")}>
         <button
-          class="btn-primary run-btn"
+          class="btn-primary run-btn icon-only"
           onclick={runProject}
           disabled={flowRunning || $flowNodes.length === 0}
           aria-label={flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
+          title={flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />
           </svg>
-          {flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
         </button>
         <button
-          class="btn-ghost"
+          class="btn-ghost icon-only"
           onclick={() => stopRun()}
           disabled={!flowRunning}
           aria-label={$t("tasks.flow.stop")}
+          title={$t("tasks.flow.stop")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none" />
           </svg>
-          {$t("tasks.flow.stop")}
         </button>
       </div>
       {#if projDialogOpen}
@@ -972,6 +972,11 @@
     width: 16px;
     height: 16px;
     flex: none;
+  }
+  .flow-controls button.icon-only {
+    min-width: 44px;
+    padding: 0 12px;
+    gap: 0;
   }
   .flow-controls button:disabled {
     opacity: 0.45;
