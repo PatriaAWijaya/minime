@@ -76,6 +76,10 @@ pub struct ChatResult {
     pub input_tokens: Option<u64>,
     #[serde(default)]
     pub output_tokens: Option<u64>,
+    /// Diisi bila router gagal; frontend menampilkan ini sebagai pesan agen.
+    /// (Dikirim sebagai field agar tidak bergantung pada invoke rejection.)
+    #[serde(default)]
+    pub error: Option<String>,
 }
 
 impl ChatResult {
@@ -85,6 +89,7 @@ impl ChatResult {
             served_by,
             input_tokens: None,
             output_tokens: None,
+            error: None,
         }
     }
 }

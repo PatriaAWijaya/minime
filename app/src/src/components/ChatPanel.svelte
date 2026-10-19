@@ -112,7 +112,10 @@
         content: m.text,
       }));
       const res = await sendChatViaRouter(id, mid, tier, systemPrompt, history);
-      if (res && res.text.trim()) {
+      if (res && res.error && res.error.trim()) {
+        // Router gagal tapi menyampaikannya sebagai field (bukan rejection).
+        pushMessage(id, "agent", res.error.trim());
+      } else if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
       } else if (res === null) {
         // Bukan di Tauri (browser/preview): pakai mock lokal.

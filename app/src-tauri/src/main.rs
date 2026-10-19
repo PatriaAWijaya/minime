@@ -85,16 +85,25 @@ async fn agent_chat(
     eprintln!("[agent_chat] pesan tersimpan, panggil router...");
 
     let router = Router::new(routerku_base_url());
-    let res = match router.chat(&model_id, tier, wire).await {
+    let mut res = match router.chat(&model_id, tier, wire).await {
         Ok(r) => {
             eprintln!("[agent_chat] router OK via {}", r.served_by);
             r
         }
         Err(e) => {
             eprintln!("[agent_chat] router GAGAL: {e}");
-            return Err(e);
+            // Kembalikan sebagai field error (Ok) — invoke rejection terbukti
+            // tidak selalu sampai ke webview.
+            return Ok(providers::ChatResult {
+                text: String::new(),
+                served_by: String::new(),
+                input_tokens: None,
+                output_tokens: None,
+                error: Some(e),
+            });
         }
     };
+    res.error = None;
 
     // Simpan balasan + catat usage (metering untuk tab Cost).
     let _ = db.save_message(&agent_id, "assistant", &res.text, Some(&res.served_by));
