@@ -8,8 +8,8 @@
   --border: #2b3038;
   --text: #edf0f4;
   --dim: #98a1ac;
-  --accent: #34d399;
-  --accent-ink: #052e21;
+  --accent: #4FA6F0;
+  --accent-ink: #0a1f33;
   --warn: #fbbf24;
   --ok: #34d399;
   --danger: #f87171;
@@ -160,7 +160,7 @@ input, select, textarea { font: inherit; color: var(--text); }
 .badge {
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 18px; font-weight: 800; flex: none;
+  color: #0a1f33; font-size: 18px; font-weight: 800; flex: none;
 }
 .badge.big { width: 56px; height: 56px; font-size: 26px; }
 .agent-row .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }

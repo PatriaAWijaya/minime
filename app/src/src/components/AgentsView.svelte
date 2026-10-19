@@ -1223,7 +1223,7 @@
   }
   .ok-note {
     font-size: 13px;
-    color: var(--ok);
+    color: var(--accent);
     margin: 8px 0 0;
   }
 

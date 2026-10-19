@@ -138,7 +138,7 @@
     box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
   }
   .flow-node.selected {
-    border-color: var(--accent, #10b981);
+    border-color: var(--accent, #4FA6F0);
     box-shadow: 0 0 0 2px rgb(16 185 129 / 0.35);
   }
   /* Per-card actions: visible on hover, or always when selected / touch. */
@@ -184,7 +184,7 @@
   }
   .node-act:hover {
     color: var(--text, #e8eaed);
-    border-color: var(--accent, #10b981);
+    border-color: var(--accent, #4FA6F0);
   }
   .node-act.danger:hover {
     color: #f87171;
@@ -203,7 +203,7 @@
     justify-content: center;
     font-weight: 700;
     font-size: 16px;
-    color: #fff;
+    color: #0a1f33;
     flex: none;
   }
   .meta {
@@ -241,8 +241,8 @@
     height: 24px;
     padding: 0 7px;
     border-radius: 12px;
-    background: var(--accent, #10b981);
-    color: #06281e;
+    background: var(--accent, #4FA6F0);
+    color: #0a1f33;
     font-size: 12px;
     font-weight: 800;
     display: inline-flex;
@@ -255,8 +255,8 @@
     flex: none;
     border-radius: 50%;
     border: 2px solid #0b0d10;
-    background: var(--accent, #10b981);
-    color: #06281e;
+    background: var(--accent, #4FA6F0);
+    color: #0a1f33;
     font-size: 18px;
     font-weight: 700;
     line-height: 1;
@@ -316,7 +316,7 @@
   .flow-node :global(.svelte-flow__handle) {
     width: 12px;
     height: 12px;
-    background: var(--accent, #10b981);
+    background: var(--accent, #4FA6F0);
     border: 2px solid #0b0d10;
   }
 </style>

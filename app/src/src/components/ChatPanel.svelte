@@ -182,7 +182,7 @@
   .badge {
     width: 44px; height: 44px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 20px; font-weight: 800; flex: none;
+    color: #0a1f33; font-size: 20px; font-weight: 800; flex: none;
   }
   .badge.big { width: 64px; height: 64px; font-size: 30px; }
   .who { flex: 1; min-width: 0; }

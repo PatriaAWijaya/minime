@@ -577,7 +577,7 @@ export function toggleFolder(id: number) {
 }
 
 let customAgentSeq = 1;
-const CUSTOM_AGENT_COLORS = ["#64748b", "#0ea5e9", "#f43f5e", "#a855f7"];
+const CUSTOM_AGENT_COLORS = ["#F4A7C3", "#A8D8FF", "#B5E8C0", "#FFD6A5", "#D3BFF0", "#FFF3B0"];
 
 /** Agents created in-app via the "+" menu (mock). */
 export const customAgents = writable<Agent[]>([]);

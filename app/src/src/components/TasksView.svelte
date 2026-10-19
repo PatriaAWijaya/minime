@@ -748,7 +748,7 @@
     justify-content: center;
     font-weight: 700;
     font-size: 13px;
-    color: #fff;
+    color: #0a1f33;
     flex: none;
   }
   .card-agent .name {
@@ -841,7 +841,7 @@
   }
   .proj-tab.active {
     background: var(--card, #16181d);
-    border-color: var(--accent, #10b981);
+    border-color: var(--accent, #4FA6F0);
   }
   .proj-name {
     border: 0;
@@ -1053,11 +1053,11 @@
     overflow: hidden;
   }
   .flow-wrap :global(.svelte-flow__edge path) {
-    stroke: var(--accent, #10b981);
+    stroke: var(--accent, #4FA6F0);
     stroke-width: 2;
   }
   .flow-wrap :global(.svelte-flow__connection-path) {
-    stroke: var(--accent, #10b981);
+    stroke: var(--accent, #4FA6F0);
     stroke-width: 2;
   }
   .save-fab {
@@ -1087,8 +1087,8 @@
     z-index: 11;
     padding: 10px 18px;
     border-radius: 999px;
-    background: var(--accent, #10b981);
-    color: #06281e;
+    background: var(--accent, #4FA6F0);
+    color: #0a1f33;
     font-size: 14px;
     font-weight: 700;
     box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
