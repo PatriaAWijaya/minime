@@ -410,6 +410,12 @@ const id: Dict = {
   "agents.search": "Cari agen",
   "agents.agentTitle": "Judul",
   "agents.editAvatar": "Ubah avatar",
+  "scenario.title": "Skenario Project",
+  "scenario.desc": "Mulai project multi-agen dari template",
+  "scenario.use": "Gunakan skenario",
+  "scenario.kopiSusu.desc": "Riset pasar → strategi → materi launching kopi susu",
+  "scenario.auditUmkm.desc": "Kumpulkan data → analisis → rekomendasi efisiensi",
+  "scenario.landingPage.desc": "Riset → copywriting → bangun → optimasi",
 };
 
 const en: Dict = {
@@ -793,6 +799,12 @@ const en: Dict = {
   "agents.search": "Search agents",
   "agents.agentTitle": "Title",
   "agents.editAvatar": "Change avatar",
+  "scenario.title": "Project Scenarios",
+  "scenario.desc": "Start a multi-agent project from a template",
+  "scenario.use": "Use scenario",
+  "scenario.kopiSusu.desc": "Market research → strategy → launch materials",
+  "scenario.auditUmkm.desc": "Collect data → analyze → efficiency recommendations",
+  "scenario.landingPage.desc": "Research → copywriting → build → optimize",
 };
 
 const zh: Dict = {
@@ -1175,6 +1187,12 @@ const zh: Dict = {
   "agents.search": "搜索代理",
   "agents.agentTitle": "标题",
   "agents.editAvatar": "更改头像",
+  "scenario.title": "项目场景",
+  "scenario.desc": "从模板开始多代理项目",
+  "scenario.use": "使用场景",
+  "scenario.kopiSusu.desc": "市场调研 → 策略 → 发布物料",
+  "scenario.auditUmkm.desc": "收集数据 → 分析 → 效率建议",
+  "scenario.landingPage.desc": "调研 → 文案 → 构建 → 优化",
 };
 
 const dicts: Record<Lang, Dict> = { id, en, zh };

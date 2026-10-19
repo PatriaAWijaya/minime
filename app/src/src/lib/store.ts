@@ -694,19 +694,8 @@ function persistList<T>(key: string, store: Writable<T[]>) {
 let kanbanSeq = 1;
 
 function seedKanban(): KanbanCard[] {
-  const day = 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const seed: KanbanCard[] = [
-    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", projectId: "proj-a", createdAt: "18 Okt", createdAtTs: now - 1 * day },
-    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
-    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", projectId: "proj-a", createdAt: "9 Okt", createdAtTs: now - 10 * day },
-    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", projectId: "proj-b", createdAt: "18 Okt", createdAtTs: now - 1 * day },
-    { id: kanbanSeq++, title: "Materi kampanye Ramadhan", agentId: "kreatif", col: "approval", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
-    { id: kanbanSeq++, title: "Perbaiki headline brosur", agentId: "strategis", col: "revision", projectId: "proj-b", createdAt: "8 Sep", createdAtTs: now - 40 * day },
-    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", projectId: "proj-a", createdAt: "15 Okt", createdAtTs: now - 4 * day },
-    { id: kanbanSeq++, title: "Evaluasi vendor cetak tahunan", agentId: "finance", col: "done", projectId: "proj-a", createdAt: "10 Jun", createdAtTs: now - 130 * day },
-  ];
-  return seed;
+  // Mulai kosong — keputusan Patria 19 Okt: hapus data dummy.
+  return [];
 }
 
 /** Backfill new card fields for cards persisted before they existed. */
@@ -714,14 +703,17 @@ function normalizeKanban(list: KanbanCard[]): KanbanCard[] {
   const now = Date.now();
   return list.map((c) => ({
     ...c,
-    projectId: c.projectId ?? "proj-a",
+    projectId: c.projectId ?? "",
     createdAtTs: c.createdAtTs ?? now,
   }));
 }
 
 /** Kanban cards (mock, persisted). */
 export const kanbanCards = writable<KanbanCard[]>(
-  normalizeKanban(loadList("minime.kanban", seedKanban)),
+  // Bersihkan kartu dummy lama (projectId proj-a/proj-b).
+  normalizeKanban(loadList("minime.kanban", seedKanban)).filter(
+    (c) => c.projectId !== "proj-a" && c.projectId !== "proj-b",
+  ),
 );
 persistList("minime.kanban", kanbanCards);
 // Continue the id sequence past any persisted cards.
@@ -819,22 +811,19 @@ function saveFlowMap(): void {
   }
 }
 
-function seedProject(id: string, name: string): FlowProject {
-  return { id, name };
-}
-
-/** All projects, shared by the Connection canvas and the Kanban filter. */
+/** All projects, shared by the Connection canvas and the Kanban filter.
+    Mulai kosong — pengguna membuat project sendiri (keputusan Patria
+    19 Okt: hapus project dummy agar tampilan lebih bersih). */
 export const projects = writable<FlowProject[]>(
-  loadList("minime.projects", () => [
-    seedProject("proj-a", "Project A"),
-    seedProject("proj-b", "Project B"),
-  ]),
+  loadList("minime.projects", () => []).filter(
+    (p) => p.id !== "proj-a" && p.id !== "proj-b",
+  ),
 );
 persistList("minime.projects", projects);
 
 /** Active project on the Connection canvas. */
 export const activeFlowProjectId = writable<string>(
-  loadString("minime.flow-project-active", "proj-a"),
+  loadString("minime.flow-project-active", ""),
 );
 activeFlowProjectId.subscribe((v) => {
   try {
@@ -845,29 +834,10 @@ activeFlowProjectId.subscribe((v) => {
 });
 
 function seedFlowMap(): void {
-  if (Object.keys(flowMap).length > 0) return;
-  // Migrate the old flat keys (pre-project) into Project A when present.
-  let aNodes: FlowNode[] | null = null;
-  let aEdges: FlowEdge[] | null = null;
-  try {
-    const n = localStorage.getItem("minime.flow-nodes");
-    const e = localStorage.getItem("minime.flow-edges");
-    if (n) aNodes = JSON.parse(n) as FlowNode[];
-    if (e) aEdges = JSON.parse(e) as FlowEdge[];
-  } catch {
-    /* ignore */
-  }
-  flowMap["proj-a"] = {
-    nodes: aNodes ?? [
-      { id: "node-1", agentId: "mimi", x: 80, y: 120 },
-      { id: "node-2", agentId: "kreatif", x: 400, y: 120 },
-    ],
-    edges: aEdges ?? [{ id: "edge-1", source: "node-1", target: "node-2" }],
-  };
-  flowMap["proj-b"] = {
-    nodes: [{ id: "node-b1", agentId: "mimi", x: 80, y: 120 }],
-    edges: [],
-  };
+  // Tidak ada seed dummy — pengguna membuat project sendiri.
+  // Bersihkan sisa flowMap lama yang merujuk project dummy.
+  delete flowMap["proj-a"];
+  delete flowMap["proj-b"];
   saveFlowMap();
 }
 seedFlowMap();
@@ -883,7 +853,7 @@ function resolveProjectId(): string {
   const list = get(projects);
   const id = get(activeFlowProjectId);
   if (list.some((p) => p.id === id)) return id;
-  return list[0]?.id ?? "proj-a";
+  return list[0]?.id ?? "";
 }
 
 function loadActiveCanvas(): void {
@@ -909,6 +879,94 @@ export function switchFlowProject(id: string): void {
   if (id === resolveProjectId()) return;
   activeFlowProjectId.set(id);
   loadActiveCanvas();
+}
+
+
+/** Template skenario project multi-agen (keputusan Patria 19 Okt).
+    Setiap skenario mendemonstrasikan orkestrasi Mimi: memecah permintaan
+    kompleks menjadi tugas per agen yang berurutan. */
+export interface ProjectScenario {
+  id: string;
+  /** Nama tampilan (tidak diterjemahkan, nama project). */
+  name: string;
+  /** Deskripsi singkat untuk kartu skenario. */
+  descKey: string;
+  /** Urutan agen yang terlibat. */
+  agents: string[];
+  /** Tugas per agen: [agentId, judulTugas]. */
+  tasks: Array<[string, string]>;
+}
+
+export const PROJECT_SCENARIOS: ProjectScenario[] = [
+  {
+    id: "kopi-susu",
+    name: "Launching Kopi Susu",
+    descKey: "scenario.kopiSusu.desc",
+    agents: ["riset", "strategis", "kreatif"],
+    tasks: [
+      ["riset", "Riset kompetitor kopi susu Surabaya"],
+      ["riset", "Survei harga & preferensi target pasar"],
+      ["strategis", "Susun strategi positioning & pricing"],
+      ["kreatif", "Desain kemasan & materi launching"],
+      ["kreatif", "Draf kalender konten sebulan"],
+    ],
+  },
+  {
+    id: "audit-umkm",
+    name: "Audit Keuangan UMKM",
+    descKey: "scenario.auditUmkm.desc",
+    agents: ["finance", "riset", "strategis"],
+    tasks: [
+      ["finance", "Kumpulkan laporan arus kas 6 bulan"],
+      ["finance", "Identifikasi pos biaya bocor"],
+      ["riset", "Benchmark rasio keuangan sejenis"],
+      ["strategis", "Rekomendasi efisiensi & proyeksi"],
+    ],
+  },
+  {
+    id: "landing-page",
+    name: "Landing Page Produk",
+    descKey: "scenario.landingPage.desc",
+    agents: ["code", "kreatif", "riset"],
+    tasks: [
+      ["riset", "Riset kata kunci & kompetitor landing page"],
+      ["kreatif", "Tulis copywriting headline & CTA"],
+      ["code", "Bangun struktur landing page"],
+      ["kreatif", "Review UX & optimasi konversi"],
+    ],
+  },
+];
+
+/** Buat project dari skenario: project + kartu Kanban + node koneksi.
+    Mengembalikan id project baru. */
+export function createProjectFromScenario(scenarioId: string): string {
+  const sc = PROJECT_SCENARIOS.find((x) => x.id === scenarioId);
+  if (!sc) return "";
+  const pid = addFlowProject(sc.name);
+  // Kartu Kanban per tugas (kolom Antrian).
+  for (const [agentId, title] of sc.tasks) {
+    addKanbanCard(title, agentId, "queue", pid);
+  }
+  // Node koneksi: Mimi sebagai orkestrator + agen yang terlibat.
+  const nodeIds: string[] = [];
+  const mkNode = (agentId: string, x: number, y: number): string => {
+    const nid = `node-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    flowMap[pid].nodes.push({ id: nid, agentId, x, y });
+    nodeIds.push(nid);
+    return nid;
+  };
+  const mimiId = mkNode("mimi", 80, 200);
+  sc.agents.forEach((agentId, i) => {
+    const nid = mkNode(agentId, 400 + i * 220, 120 + (i % 2) * 160);
+    flowMap[pid].edges.push({
+      id: `edge-${Date.now()}-${i}`,
+      source: mimiId,
+      target: nid,
+    });
+  });
+  saveFlowMap();
+  loadActiveCanvas();
+  return pid;
 }
 
 /** Create a project (empty canvas) and switch to it. Returns the new id. */

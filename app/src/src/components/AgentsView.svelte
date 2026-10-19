@@ -130,7 +130,7 @@
   function submitTask() {
     const title = taskTitle.trim();
     if (!title) return;
-    const pid = taskProject || $projects[0]?.id || "proj-a";
+    const pid = taskProject || $projects[0]?.id || "";
     addKanbanCard(title, agent.id, "queue", pid);
     taskTitle = "";
     taskAdded = true;
