@@ -6,7 +6,6 @@ mod secrets;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
-use tauri::State;
 
 /// Basic app metadata exposed to the frontend.
 #[derive(Serialize)]
@@ -36,8 +35,8 @@ fn routerku_base_url() -> Option<String> {
 /// Probe every provider: id, kind, state, detail, models.
 /// The Penyedia Model screen renders this instead of mock data.
 #[tauri::command]
-async fn provider_probe(_state: State<'_, RouterState>) -> Vec<ProviderStatus> {
-    Router::new(routerku_base_url()).statuses().await
+async fn provider_probe() -> Result<Vec<ProviderStatus>, String> {
+    Ok(Router::new(routerku_base_url()).statuses().await)
 }
 
 /// Send a chat message through the model router with automatic fallback.
@@ -45,7 +44,6 @@ async fn provider_probe(_state: State<'_, RouterState>) -> Vec<ProviderStatus> {
 /// `muse:muse-spark-1.3`). `tier`: "gratis" | "berbayar".
 #[tauri::command]
 async fn agent_chat(
-    _state: State<'_, RouterState>,
     model_id: String,
     tier: String,
     messages: Vec<ChatMessage>,
@@ -97,9 +95,6 @@ fn provider_account(provider_id: &str) -> Result<&'static str, String> {
     }
 }
 
-/// Shared router config state (kept minimal; Router is rebuilt per call).
-struct RouterState;
-
 #[tauri::command]
 fn agent_send_stub(agent_id: String, _message: String) -> String {
     format!("ack:{agent_id}")
@@ -107,7 +102,6 @@ fn agent_send_stub(agent_id: String, _message: String) -> String {
 
 fn main() {
     tauri::Builder::default()
-        .manage(RouterState)
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
