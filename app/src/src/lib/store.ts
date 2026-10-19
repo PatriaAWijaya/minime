@@ -41,7 +41,7 @@ export const activeAgentId = writable<string>("mimi");
 export const agentStatus = writable<Record<string, AgentStatus>>({
   mimi: "idle",
   kreatif: "idle",
-  riset: "working",
+  riset: "idle",
   finance: "idle",
   strategis: "idle",
   code: "idle",
@@ -1260,12 +1260,19 @@ export async function loadChatHistory(agentId: string): Promise<void> {
     if ((m[agentId] ?? []).length > 0) return m; // sudah ada pesan sesi ini
     return {
       ...m,
-      [agentId]: rows.map((r) => ({
-        id: r.id,
-        role: r.role === "assistant" ? "agent" : "user",
-        text: r.text,
-        time: r.created_at,
-      })),
+      [agentId]: rows.map((r) => {
+        let time = r.created_at;
+        const d = new Date(r.created_at);
+        if (!isNaN(d.getTime())) {
+          time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        }
+        return {
+          id: r.id,
+          role: r.role === "assistant" ? "agent" : "user",
+          text: r.text,
+          time,
+        };
+      }),
     };
   });
 }
