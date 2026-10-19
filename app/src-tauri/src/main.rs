@@ -77,13 +77,24 @@ async fn agent_chat(
     }
     wire.extend(messages.iter().cloned());
 
+    eprintln!("[agent_chat] masuk: agent={agent_id} model={model_id} tier={tier} n_msg={}", messages.len());
     // Simpan pesan user dulu (riwayat tetap ada walau provider gagal).
     if let Some(last) = messages.last() {
         let _ = db.save_message(&agent_id, &last.role, &last.content, None);
     }
+    eprintln!("[agent_chat] pesan tersimpan, panggil router...");
 
     let router = Router::new(routerku_base_url());
-    let res = router.chat(&model_id, tier, wire).await?;
+    let res = match router.chat(&model_id, tier, wire).await {
+        Ok(r) => {
+            eprintln!("[agent_chat] router OK via {}", r.served_by);
+            r
+        }
+        Err(e) => {
+            eprintln!("[agent_chat] router GAGAL: {e}");
+            return Err(e);
+        }
+    };
 
     // Simpan balasan + catat usage (metering untuk tab Cost).
     let _ = db.save_message(&agent_id, "assistant", &res.text, Some(&res.served_by));
