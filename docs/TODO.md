@@ -29,7 +29,7 @@
 - [x] System prompt per agen + skills engine (playbook disuntik otomatis)
 - [x] Frontend: riwayat dari SQLite; tab Cost pakai data usage nyata
 - [x] Verifikasi `cargo check` putaran 2 di MacBook — LOLOS 19 Okt ~11:05 (nol error, nol warning)
-- [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
+- [x] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen via [DELEGATE:agenId] + 3 skenario project template)
 - [ ] Gate: review + vonis Patria
 
 ## Tahap 3 — Tools & distribusi
