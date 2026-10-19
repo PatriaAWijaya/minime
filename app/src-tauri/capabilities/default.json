@@ -5,8 +5,7 @@
   "permissions": [
     "core:default",
     "core:window:default",
-    "notification:default",
-    "notification:allow-request-notification-permission"
+    "notification:default"
   ],
   "windows": [
     "main"
