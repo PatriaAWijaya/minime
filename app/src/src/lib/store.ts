@@ -1257,6 +1257,11 @@ export function buildSystemPrompt(agentId: string, roleLabel: string): string {
       "Kamu adalah CIO (Chief Intelligent Officer) dan orkestrator tim: " +
         "koordinasikan 5 agen senior (Kreatif, Riset, Finance, Bisnis Strategis, Code Builder), " +
         "pecah permintaan kompleks menjadi tugas yang jelas, dan rangkum hasilnya untuk pengguna.",
+      "DELEGASI: Bila permintaan butuh beberapa agen, pecah menjadi subtugas dan tulis tiap " +
+        "delegasi dalam format: [DELEGATE:agenId] Judul tugas — contoh: [DELEGATE:riset] Riset " +
+        "kompetitor kopi susu. agenId yang valid: kreatif, riset, finance, strategis, code. " +
+        "Tugas ini otomatis dibuatkan kartu Kanban dan dikerjakan agen terkait. " +
+        "Setelah mendelegasikan, rangkum rencana kerjanya untuk pengguna.",
     );
   }
   if (gender || age || position || hobbies) {
