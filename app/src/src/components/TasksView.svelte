@@ -229,14 +229,6 @@
     for (const n of get(sfNodes)) moveFlowNode(n.id, n.position.x, n.position.y);
   }
 
-  let addMenuOpen = $state(false);
-
-  function addNode(agentId: string) {
-    addFlowNode(agentId);
-    reloadFlow();
-    addMenuOpen = false;
-  }
-
   // ---------- Flow: node context menu (right-click) ----------
   let ctxMenu = $state<{ x: number; y: number; nodeId: string } | null>(null);
 
@@ -595,26 +587,6 @@
       {#if saveToast}
         <div class="save-toast" role="status">{$t("tasks.flow.saved")}</div>
       {/if}
-      <div class="flow-add">
-        <button
-          class="btn-primary add-node"
-          onclick={() => (addMenuOpen = !addMenuOpen)}
-          aria-expanded={addMenuOpen}
-          aria-label={$t("tasks.addNode")}
-        >
-          +
-        </button>
-        {#if addMenuOpen}
-          <div class="add-menu" role="menu" aria-label={$t("tasks.addNode")}>
-            {#each allAgents as a (a.id)}
-              <button role="menuitem" onclick={() => addNode(a.id)}>
-                <span class="badge" style:background={a.color}>{a.badge}</span>
-                <span class="name">{a.name}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-      </div>
       {#if ctxMenu}
         <div
           class="ctx-backdrop"
@@ -1088,12 +1060,6 @@
     stroke: var(--accent, #10b981);
     stroke-width: 2;
   }
-  .flow-add {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    z-index: 10;
-  }
   .save-fab {
     position: absolute;
     right: 16px;
@@ -1126,49 +1092,6 @@
     font-size: 14px;
     font-weight: 700;
     box-shadow: 0 4px 14px rgb(0 0 0 / 0.4);
-    white-space: nowrap;
-  }
-  .add-node {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    font-size: 24px;
-    line-height: 1;
-    padding: 0;
-  }
-  .add-menu {
-    position: absolute;
-    top: 52px;
-    right: 0;
-    min-width: 220px;
-    background: var(--card, #16181d);
-    border: 1px solid var(--border, #2a2e36);
-    border-radius: 12px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
-  }
-  .add-menu button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    padding: 6px 10px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text, #e8eaed);
-    font-size: 14px;
-    cursor: pointer;
-    text-align: left;
-  }
-  .add-menu button:hover {
-    background: var(--border, #262a32);
-  }
-  .add-menu .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 </style>
