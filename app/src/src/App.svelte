@@ -8,7 +8,7 @@
   import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
   import SettingsView from "./components/SettingsView.svelte";
-  import { activeView, theme, type Theme } from "./lib/store";
+  import { activeView, refreshProviders, theme, type Theme } from "./lib/store";
 
   /** Apply the effective theme to <html> as data-theme="dark"|"light". */
   function applyTheme(t: Theme) {
@@ -23,6 +23,9 @@
   $effect(() => applyTheme($theme));
 
   onMount(() => {
+    // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
+    // model Ollama dinamis + status Penyedia Model).
+    refreshProviders();
     // Live response when the OS theme changes and setting = "system".
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
