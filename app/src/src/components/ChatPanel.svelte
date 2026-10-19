@@ -111,16 +111,21 @@
       const res = await sendChatViaRouter(id, mid, tier, systemPrompt, history);
       if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
-        agentStatus.update((s) => ({ ...s, [id]: "idle" }));
+      } else if (res === null) {
+        // Bukan di Tauri (browser/preview): pakai mock lokal.
+        timer = setTimeout(() => {
+          pushMessage(id, "agent", translate("chat.mockReply", { name: agent.name }));
+          agentStatus.update((s) => ({ ...s, [id]: "idle" }));
+        }, 1400);
         return;
       }
-    } catch {
-      /* jatuh ke mock di bawah */
+    } catch (e) {
+      // Di Tauri tapi router gagal: tampilkan alasan aslinya agar jelas
+      // apa yang kurang (mis. belum ada provider terhubung).
+      const msg = typeof e === "string" && e.trim() ? e.trim() : translate("chat.routerFailed");
+      pushMessage(id, "agent", msg);
     }
-    timer = setTimeout(() => {
-      pushMessage(id, "agent", translate("chat.mockReply", { name: agent.name }));
-      agentStatus.update((s) => ({ ...s, [id]: "idle" }));
-    }, 1400);
+    agentStatus.update((s) => ({ ...s, [id]: "idle" }));
   }
 
   function onKey(e: KeyboardEvent) {

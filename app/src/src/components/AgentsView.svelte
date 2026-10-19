@@ -1366,6 +1366,13 @@
     gap: 8px;
     flex: none;
     min-width: 0;
+    max-width: 65%;
+  }
+  .nav-right .value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
   .chev-r {
     width: 16px;

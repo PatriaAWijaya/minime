@@ -1001,16 +1001,27 @@ export interface ChatWireResult {
   served_by: string;
 }
 
+/** True bila berjalan di Tauri (backend Rust tersedia). Di-cache per sesi. */
+let tauriAvailable: boolean | null = null;
+export async function isTauri(): Promise<boolean> {
+  if (tauriAvailable !== null) return tauriAvailable;
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("get_app_info");
+    tauriAvailable = true;
+  } catch {
+    tauriAvailable = false;
+  }
+  return tauriAvailable;
+}
+
 async function tauriInvoke<T>(
   cmd: string,
   args?: Record<string, unknown>,
 ): Promise<T | null> {
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    return await invoke<T>(cmd, args ?? {});
-  } catch {
-    return null; // bukan di Tauri (browser/preview) → pakai mock
-  }
+  if (!(await isTauri())) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await invoke<T>(cmd, args ?? {});
 }
 
 /** Status provider dari backend Rust; null = belum dicek / browser. */
@@ -1034,12 +1045,16 @@ function mirrorToMock(list: RealProviderStatus[]) {
 /** Pindai ulang semua provider via backend. Dipanggil saat layar
     Penyedia Model dibuka dan setelah connect/disconnect. */
 export async function refreshProviders(): Promise<void> {
-  const res = await tauriInvoke<RealProviderStatus[]>("provider_probe");
-  if (res) {
-    usingRealBackend.set(true);
-    realProviders.set(res);
-    mirrorToMock(res);
-    await migrateRouterkuKey();
+  try {
+    const res = await tauriInvoke<RealProviderStatus[]>("provider_probe");
+    if (res) {
+      usingRealBackend.set(true);
+      realProviders.set(res);
+      mirrorToMock(res);
+      await migrateRouterkuKey();
+    }
+  } catch {
+    /* backend gagal — biarkan mock */
   }
 }
 
@@ -1050,13 +1065,17 @@ export async function connectProviderKey(
 ): Promise<boolean> {
   const key = apiKey.trim();
   if (!key) return false;
-  const saved = await tauriInvoke<void>("provider_connect", {
-    providerId: id,
-    apiKey: key,
-  });
-  if (saved !== null) {
-    await refreshProviders();
-    return true;
+  try {
+    await tauriInvoke<void>("provider_connect", {
+      providerId: id,
+      apiKey: key,
+    });
+    if (await isTauri()) {
+      await refreshProviders();
+      return true;
+    }
+  } catch {
+    return false;
   }
   connectProvider(id); // fallback browser: mock
   return true;
@@ -1064,7 +1083,11 @@ export async function connectProviderKey(
 
 /** Hapus API key provider dari OS Keychain. */
 export async function disconnectProviderKey(id: string): Promise<void> {
-  await tauriInvoke<void>("provider_disconnect", { providerId: id });
+  try {
+    await tauriInvoke<void>("provider_disconnect", { providerId: id });
+  } catch {
+    /* abaikan */
+  }
   providerState.update((s) => ({
     ...s,
     [id]: { connected: false, active: s[id]?.active ?? true },
@@ -1085,17 +1108,21 @@ async function migrateRouterkuKey(): Promise<void> {
     return;
   }
   if (!raw.trim()) return;
-  const saved = await tauriInvoke<void>("provider_connect", {
-    providerId: "routerku",
-    apiKey: raw.trim(),
-  });
-  if (saved !== null) {
-    try {
-      localStorage.removeItem("minime.routerku.key");
-    } catch {
-      /* ignore */
+  try {
+    await tauriInvoke<void>("provider_connect", {
+      providerId: "routerku",
+      apiKey: raw.trim(),
+    });
+    if (await isTauri()) {
+      try {
+        localStorage.removeItem("minime.routerku.key");
+      } catch {
+        /* ignore */
+      }
+      routerkuKey.set("");
     }
-    routerkuKey.set("");
+  } catch {
+    /* abaikan */
   }
 }
 
@@ -1107,18 +1134,22 @@ export async function saveRouterkuSecure(
 ): Promise<boolean> {
   const k = key.trim();
   const u = baseUrl.trim();
-  if (u) {
-    await tauriInvoke<void>("routerku_set_base_url", { baseUrl: u });
-    routerkuBaseUrl.set(u);
-  }
-  if (!k) return false;
-  const saved = await tauriInvoke<void>("provider_connect", {
-    providerId: "routerku",
-    apiKey: k,
-  });
-  if (saved !== null) {
-    await refreshProviders();
-    return true;
+  try {
+    if (u) {
+      await tauriInvoke<void>("routerku_set_base_url", { baseUrl: u });
+      routerkuBaseUrl.set(u);
+    }
+    if (!k) return false;
+    await tauriInvoke<void>("provider_connect", {
+      providerId: "routerku",
+      apiKey: k,
+    });
+    if (await isTauri()) {
+      await refreshProviders();
+      return true;
+    }
+  } catch {
+    return false;
   }
   saveRouterku(k, u); // fallback browser: mock lama
   return true;
@@ -1189,7 +1220,8 @@ export interface RealUsageRow {
 }
 
 /** Kirim chat lewat model router (dengan fallback otomatis).
-    Return null bila backend tidak tersedia → panggil mock. */
+    - Return null → bukan di Tauri (browser/preview), pakai mock.
+    - Throw string → di Tauri tapi router gagal (pesan error Indonesia). */
 export async function sendChatViaRouter(
   agentId: string,
   modelId: string,
@@ -1197,7 +1229,9 @@ export async function sendChatViaRouter(
   systemPrompt: string,
   messages: ChatWireMessage[],
 ): Promise<ChatWireResult | null> {
-  return tauriInvoke<ChatWireResult>("agent_chat", {
+  if (!(await isTauri())) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await invoke<ChatWireResult>("agent_chat", {
     agentId,
     modelId,
     tier,
@@ -1212,10 +1246,15 @@ const historyLoadedFor = new Set<string>();
 export async function loadChatHistory(agentId: string): Promise<void> {
   if (historyLoadedFor.has(agentId)) return;
   historyLoadedFor.add(agentId);
-  const rows = await tauriInvoke<RealStoredMessage[]>("chat_history", {
-    agentId,
-    limit: 100,
-  });
+  let rows: RealStoredMessage[] | null = null;
+  try {
+    rows = await tauriInvoke<RealStoredMessage[]>("chat_history", {
+      agentId,
+      limit: 100,
+    });
+  } catch {
+    return;
+  }
   if (!rows || rows.length === 0) return;
   messagesByAgent.update((m) => {
     if ((m[agentId] ?? []).length > 0) return m; // sudah ada pesan sesi ini
@@ -1235,6 +1274,10 @@ export async function loadChatHistory(agentId: string): Promise<void> {
 export const realUsage = writable<RealUsageRow[] | null>(null);
 
 export async function refreshUsage(): Promise<void> {
-  const rows = await tauriInvoke<RealUsageRow[]>("usage_summary");
-  if (rows) realUsage.set(rows);
+  try {
+    const rows = await tauriInvoke<RealUsageRow[]>("usage_summary");
+    if (rows) realUsage.set(rows);
+  } catch {
+    /* abaikan */
+  }
 }
