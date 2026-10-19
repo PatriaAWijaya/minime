@@ -2,11 +2,11 @@
   import { agents } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
   import {
-    MODEL_CATALOG,
     PROVIDERS,
     activeAgentId,
     activeServer,
     addCustomAgent,
+    addCustomModel,
     addAgentFile,
     addKanbanCard,
     addTaskFolder,
@@ -29,12 +29,15 @@
     customAgents,
     defaultModelFor,
     getModel,
+    modelCatalog,
     projects,
     removeAgentFile,
+    removeCustomModel,
     serverLayout,
     taskFolders,
     toggleFolder,
   } from "../lib/store";
+  import type { ModelSection } from "../lib/store";
   import type { Agent, TaskFolder } from "../lib/types";
   import { t } from "../lib/i18n";
 
@@ -93,6 +96,7 @@
 
   function openModelPanel() {
     closeAll();
+    syncModelSection();
     panelOpen = true;
   }
 
@@ -170,16 +174,50 @@
   );
 
   const ollamaModels = $derived(
-    MODEL_CATALOG.filter((m) => m.providerId === "ollama"),
+    $modelCatalog.filter((m) => m.providerId === "ollama"),
   );
   const opencodeModels = $derived(
-    MODEL_CATALOG.filter((m) => m.providerId === "opencode"),
+    $modelCatalog.filter((m) => m.providerId === "opencode"),
   );
-  const paidModels = $derived(MODEL_CATALOG.filter((m) => m.kind === "paid"));
+  const paidModels = $derived($modelCatalog.filter((m) => m.kind === "paid"));
 
   const q = $derived(query.trim().toLowerCase());
   const matches = (label: string) => !q || label.toLowerCase().includes(q);
-  const anyMatch = $derived(MODEL_CATALOG.some((m) => matches(m.label)));
+  const anyMatch = $derived($modelCatalog.some((m) => matches(m.label)));
+
+  // Model dropdown sections (keputusan Patria 19 Okt)
+  const MODEL_SECTIONS: Array<{ id: ModelSection; labelKey: string }> = [
+    { id: "opencode", labelKey: "model.freeOpenCode" },
+    { id: "ollama", labelKey: "model.freeOllama" },
+    { id: "paid", labelKey: "model.premium" },
+  ];
+  const sectionOf = (id: string): ModelSection => {
+    const m = getModel(id);
+    return m.kind === "paid" ? "paid" : (m.providerId as ModelSection);
+  };
+  const sectionModels = (s: ModelSection) =>
+    s === "paid" ? paidModels : s === "ollama" ? ollamaModels : opencodeModels;
+
+  let modelSectionOpen = $state<ModelSection | null>("opencode");
+  let modelAddFor = $state<ModelSection | null>(null);
+  let newModelName = $state("");
+
+  function syncModelSection() {
+    modelSectionOpen = sectionOf(modelId);
+    modelAddFor = null;
+    newModelName = "";
+  }
+
+  function submitCustomModel(section: ModelSection) {
+    addCustomModel(section, newModelName);
+    newModelName = "";
+    modelAddFor = null;
+    modelSectionOpen = section;
+  }
+
+  function dropCustomModel(section: ModelSection, name: string) {
+    removeCustomModel(section, name);
+  }
 
   function setModel(id: string) {
     agentModel.update((m) => ({ ...m, [agent.id]: id }));
@@ -420,6 +458,7 @@
         onclick={() => {
           const next = !panelOpen;
           closeAll();
+          if (next) syncModelSection();
           panelOpen = next;
         }}
         aria-haspopup="dialog"
@@ -444,51 +483,101 @@
             />
           </div>
 
-          <span class="group-label">{$t("providers.free")}</span>
-          <span class="sub-label">Ollama</span>
-          {#each ollamaModels as m}
-            {#if matches(m.label)}
-              <label class="model-item">
-                <input
-                  type="radio"
-                  name="model-pick"
-                  checked={modelId === m.id}
-                  onchange={() => setModel(m.id)}
-                />
-                <span class="m-label">{m.label}</span>
-                <span class="chip">{$t("providers.free")}</span>
-              </label>
-            {/if}
-          {/each}
-          <span class="sub-label">OpenCode</span>
-          {#each opencodeModels as m}
-            {#if matches(m.label)}
-              <label class="model-item">
-                <input
-                  type="radio"
-                  name="model-pick"
-                  checked={modelId === m.id}
-                  onchange={() => setModel(m.id)}
-                />
-                <span class="m-label">{m.label}</span>
-                <span class="chip">{$t("providers.free")}</span>
-              </label>
-            {/if}
-          {/each}
-
-          <span class="group-label">{$t("providers.paid")}</span>
-          {#each paidModels as m}
-            {#if matches(m.label)}
-              <label class="model-item">
-                <input
-                  type="radio"
-                  name="model-pick"
-                  checked={modelId === m.id}
-                  onchange={() => setModel(m.id)}
-                />
-                <span class="m-label">{m.label}</span>
-                <span class="chip paid">{$t("providers.paid")}</span>
-              </label>
+          {#each MODEL_SECTIONS as sec}
+            <button
+              class="sec-toggle"
+              aria-expanded={modelSectionOpen === sec.id || q !== ""}
+              onclick={() =>
+                (modelSectionOpen =
+                  modelSectionOpen === sec.id ? null : sec.id)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+              <span>{$t(sec.labelKey)}</span>
+            </button>
+            {#if modelSectionOpen === sec.id || q !== ""}
+              {#each sectionModels(sec.id) as m}
+                {#if matches(m.label)}
+                  <label class="model-item">
+                    <input
+                      type="radio"
+                      name="model-pick"
+                      checked={modelId === m.id}
+                      onchange={() => setModel(m.id)}
+                    />
+                    <span class="m-label">{m.label}</span>
+                    <span class="chip {sec.id === 'paid' ? 'paid' : ''}">
+                      {sec.id === "paid" ? $t("providers.paid") : $t("providers.free")}
+                    </span>
+                    {#if m.custom}
+                      <button
+                        class="icon-btn del-model"
+                        type="button"
+                        title={$t("model.removeCustom")}
+                        aria-label={$t("model.removeCustom")}
+                        onclick={(e) => {
+                          e.preventDefault();
+                          dropCustomModel(sec.id, m.label);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    {/if}
+                  </label>
+                {/if}
+              {/each}
+              {#if modelAddFor === sec.id}
+                <div class="add-model">
+                  <input
+                    type="text"
+                    bind:value={newModelName}
+                    placeholder={$t("model.namePlaceholder")}
+                    aria-label={$t("model.namePlaceholder")}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") submitCustomModel(sec.id);
+                      if (e.key === "Escape") {
+                        modelAddFor = null;
+                        newModelName = "";
+                      }
+                    }}
+                  />
+                  <button
+                    class="btn-primary"
+                    type="button"
+                    onclick={() => submitCustomModel(sec.id)}
+                    disabled={!newModelName.trim()}
+                  >
+                    {$t("model.add")}
+                  </button>
+                  <button
+                    class="btn-ghost sm"
+                    type="button"
+                    onclick={() => {
+                      modelAddFor = null;
+                      newModelName = "";
+                    }}
+                  >
+                    {$t("providers.cancel")}
+                  </button>
+                </div>
+              {:else}
+                <button
+                  class="add-model-btn"
+                  type="button"
+                  onclick={() => {
+                    modelAddFor = sec.id;
+                    newModelName = "";
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  <span>{$t("model.addModel")}</span>
+                </button>
+              {/if}
             {/if}
           {/each}
 
@@ -1559,6 +1648,84 @@
     font-weight: 700;
     color: var(--text);
     margin: 8px 4px 2px;
+  }
+  .sec-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .sec-toggle svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    transition: transform 0.15s ease;
+  }
+  .sec-toggle[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+  .add-model-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 10px;
+    margin: 2px 0 8px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .add-model-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .add-model-btn svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
+  .add-model {
+    display: flex;
+    gap: 8px;
+    margin: 2px 0 8px;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+  }
+  .add-model input {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .del-model {
+    width: 36px;
+    height: 36px;
+    flex: none;
+  }
+  .del-model svg {
+    width: 14px;
+    height: 14px;
   }
   .model-item {
     display: flex;

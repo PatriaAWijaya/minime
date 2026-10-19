@@ -1,6 +1,6 @@
 // Central UI state (Phase 1: all local, no backend yet).
 
-import { writable, get, type Writable } from "svelte/store";
+import { writable, get, derived, type Writable, type Readable } from "svelte/store";
 import type {
   Agent,
   AgentFile,
@@ -100,28 +100,140 @@ export interface ModelOption {
   /** Display label (brand/model name, not translated) */
   label: string;
   kind: "free" | "paid";
+  /** True for models the user added themselves. */
+  custom?: boolean;
 }
 
-/** Model catalog (mock). Free: Ollama local models + OpenCode free models.
-    Paid: Muse, Gemini 3.8, DeepSeek. */
-export const MODEL_CATALOG: ModelOption[] = [
-  { id: "ollama:llama3.1", providerId: "ollama", label: "Llama 3.1", kind: "free" },
-  { id: "ollama:qwen2.5", providerId: "ollama", label: "Qwen 2.5", kind: "free" },
-  { id: "ollama:mistral", providerId: "ollama", label: "Mistral", kind: "free" },
-  { id: "ollama:gemma2", providerId: "ollama", label: "Gemma 2", kind: "free" },
-  { id: "opencode:deepseek-v3", providerId: "opencode", label: "DeepSeek V3", kind: "free" },
-  { id: "opencode:qwen2.5-coder", providerId: "opencode", label: "Qwen 2.5 Coder", kind: "free" },
-  { id: "claude", providerId: "claude", label: "Muse", kind: "paid" },
-  { id: "gemini", providerId: "gemini", label: "Gemini 3.8", kind: "paid" },
+/** Free-tier catalog (keputusan Patria 19 Okt): same 10 models for
+    both OpenCode and Ollama dropdowns. */
+const FREE_TIER: Array<[string, string]> = [
+  ["glm-5.3-flash", "GLM-5.3-Flash Free"],
+  ["deepseek-v4.1-flash", "DeepSeek v4.1 Flash Free"],
+  ["nemotron-3.5-lightning", "Nemotron 3.5 Lightning Free"],
+  ["nemotron-3.5-super-vl", "Nemotron 3.5 Super VL Free"],
+  ["nemotron-3-ultra", "Nemotron 3 Ultra Free"],
+  ["mimo-v2.6-flash", "Mimo-v2.6-flash Free"],
+  ["longcat-2.5-preview", "Longcat 2.5 Preview Free"],
+  ["beam", "Beam Free"],
+  ["big-pickle", "Big Pickle"],
+  ["space-bunny", "Space Bunny Free"],
+];
+
+/** Built-in model catalog (mock). */
+const BASE_MODELS: ModelOption[] = [
+  ...FREE_TIER.map(
+    ([slug, label]): ModelOption => ({
+      id: `ollama:${slug}`,
+      providerId: "ollama",
+      label,
+      kind: "free",
+    }),
+  ),
+  ...FREE_TIER.map(
+    ([slug, label]): ModelOption => ({
+      id: `opencode:${slug}`,
+      providerId: "opencode",
+      label,
+      kind: "free",
+    }),
+  ),
+  { id: "claude", providerId: "muse", label: "Muse", kind: "paid" },
+  { id: "gemini", providerId: "gemini", label: "Gemini", kind: "paid" },
+  { id: "gpt", providerId: "gpt", label: "GPT", kind: "paid" },
+  { id: "claude", providerId: "claude", label: "Claude", kind: "paid" },
   { id: "deepseek", providerId: "deepseek", label: "DeepSeek", kind: "paid" },
 ];
 
+/** Section id for the model dropdown groups. */
+export type ModelSection = "opencode" | "ollama" | "paid";
+
+/** Custom models added by the user, persisted per section. */
+export const customModels = writable<Record<ModelSection, string[]>>(
+  (() => {
+    const rec = loadRecord<string[]>("minime.custom-models");
+    return {
+      opencode: rec.opencode ?? [],
+      ollama: rec.ollama ?? [],
+      paid: rec.paid ?? [],
+    };
+  })(),
+);
+persistRecord("minime.custom-models", customModels);
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "model"
+  );
+}
+
+export function addCustomModel(section: ModelSection, name: string): void {
+  const clean = name.trim();
+  if (!clean) return;
+  customModels.update((m) => {
+    const list = m[section];
+    if (list.some((n) => n.toLowerCase() === clean.toLowerCase())) return m;
+    return { ...m, [section]: [...list, clean] };
+  });
+}
+
+export function removeCustomModel(section: ModelSection, name: string): void {
+  customModels.update((m) => ({
+    ...m,
+    [section]: m[section].filter((n) => n !== name),
+  }));
+}
+
+/** Full catalog = built-in models + user-added custom models. */
+export const modelCatalog: Readable<ModelOption[]> = derived(
+  customModels,
+  ($custom): ModelOption[] => [
+    ...BASE_MODELS,
+    ...$custom.ollama.map(
+      (label): ModelOption => ({
+        id: `custom:ollama:${slugify(label)}`,
+        providerId: "ollama",
+        label,
+        kind: "free",
+        custom: true,
+      }),
+    ),
+    ...$custom.opencode.map(
+      (label): ModelOption => ({
+        id: `custom:opencode:${slugify(label)}`,
+        providerId: "opencode",
+        label,
+        kind: "free",
+        custom: true,
+      }),
+    ),
+    ...$custom.paid.map(
+      (label): ModelOption => ({
+        id: `custom:paid:${slugify(label)}`,
+        providerId: "custom",
+        label,
+        kind: "paid",
+        custom: true,
+      }),
+    ),
+  ],
+);
+
+import { derived, get } from "svelte/store";
+
 export function getModel(id: string): ModelOption {
-  return MODEL_CATALOG.find((m) => m.id === id) ?? MODEL_CATALOG[0];
+  const catalog = get(modelCatalog);
+  // Legacy migration: old "claude" id was Muse (renamed to "muse" when
+  // "Claude" became its own option).
+  const resolved = id === "claude" ? "muse" : id;
+  return catalog.find((m) => m.id === resolved) ?? catalog[0];
 }
 
 export function defaultModelFor(agentId: string): string {
-  return agentId === "mimi" ? "claude" : "ollama:llama3.1";
+  return agentId === "mimi" ? "muse" : "ollama:glm-5.3-flash";
 }
 
 /** Reasoning effort per agent (mock, persisted). */
@@ -321,8 +433,10 @@ export function addSkill(name: string) {
 export const PROVIDERS: ProviderInfo[] = [
   { id: "ollama", name: "Ollama", kind: "free", tagKey: "providers.defaultFree", local: true },
   { id: "opencode", name: "OpenCode", kind: "free", tagKey: "providers.backupFree" },
-  { id: "claude", name: "Muse", kind: "paid", tagKey: "providers.defaultPaid" },
-  { id: "gemini", name: "Gemini 3.8", kind: "paid" },
+  { id: "muse", name: "Muse", kind: "paid", tagKey: "providers.defaultPaid" },
+  { id: "gemini", name: "Gemini", kind: "paid" },
+  { id: "gpt", name: "GPT", kind: "paid" },
+  { id: "claude", name: "Claude", kind: "paid" },
   { id: "deepseek", name: "DeepSeek", kind: "paid" },
 ];
 
