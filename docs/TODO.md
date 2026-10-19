@@ -25,9 +25,11 @@
 - [x] Tauri commands: `provider_probe`, `agent_chat`, `provider_connect/disconnect`, `routerku_set_base_url`
 - [x] Frontend: Penyedia Model → status koneksi nyata + form API key (Keychain); chat agen → router nyata (fallback mock di browser)
 - [x] Verifikasi `cargo check` di MacBook — LOLOS 19 Okt ~10:55 (nol error, nol warning)
-- [ ] Wiring SQLite: riwayat chat + usage metering
-- [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output
-- [ ] Skills + quality bar per agen (adaptasi playbook v1 di `skills/`)
+- [x] Wiring SQLite: riwayat chat + usage metering
+- [x] System prompt per agen + skills engine (playbook disuntik otomatis)
+- [x] Frontend: riwayat dari SQLite; tab Cost pakai data usage nyata
+- [ ] Verifikasi `cargo check` putaran 2 di MacBook (butuh Patria)
+- [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
 - [ ] Gate: review + vonis Patria
 
 ## Tahap 3 — Tools & distribusi
