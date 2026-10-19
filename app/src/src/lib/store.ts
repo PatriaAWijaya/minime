@@ -1483,3 +1483,71 @@ export async function sendNotification(title: string, body: string): Promise<voi
     /* abaikan — bukan di Tauri */
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Draft-only Meta/Postiz — Tahap 3 (aturan Patria: tidak auto-post)   */
+/* ------------------------------------------------------------------ */
+
+/** Buat draft konten untuk platform sosial. Selalu masuk kolom approval. */
+export function createSocialDraft(
+  title: string,
+  content: string,
+  platform: "meta" | "postiz",
+  agentId: string,
+  projectId: string,
+): void {
+  const now = new Date();
+  kanbanCards.update((list) => [
+    ...list,
+    {
+      id: kanbanSeq++,
+      title,
+      agentId,
+      col: "approval",
+      projectId,
+      createdAt: now.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+      createdAtTs: now.getTime(),
+      draftContent: content,
+      draftPlatform: platform,
+    },
+  ]);
+  sendNotification(
+    "Draft siap direview",
+    `"${title}" menunggu approval sebelum diposting ke ${platform === "meta" ? "Meta" : "Postiz"}`,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Pireel — Tahap 3 (lapisan editing video untuk agen Kreatif)         */
+/* Cloud-only via MCP + OAuth; kredit tercatat di Penggunaan.          */
+/* ------------------------------------------------------------------ */
+
+export interface PireelJob {
+  id: string;
+  title: string;
+  status: "queued" | "processing" | "done" | "failed";
+  creditsUsed: number;
+  createdAt: number;
+}
+
+/** Daftar job Pireel (mock — koneksi MCP nyata di implementasi penuh). */
+export const pireelJobs = writable<PireelJob[]>([]);
+
+/** Buat job editing Pireel baru (hanya bila tool terhubung). */
+export async function createPireelJob(title: string): Promise<boolean> {
+  const canUse = await agentCanUseTool("kreatif", "pireel");
+  if (!canUse) return false;
+  const connected = await tauriInvoke<boolean>("get_tool_status", { toolId: "pireel" }).catch(() => false);
+  if (!connected) return false;
+  pireelJobs.update((list) => [
+    ...list,
+    {
+      id: `pireel-${Date.now()}`,
+      title,
+      status: "queued",
+      creditsUsed: 0,
+      createdAt: Date.now(),
+    },
+  ]);
+  return true;
+}

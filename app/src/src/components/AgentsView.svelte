@@ -28,12 +28,16 @@
     agentVoiceOn,
     customAgents,
     defaultModelFor,
+    getAgentTools,
     getModel,
     modelCatalog,
     projects,
+    realTools,
+    refreshTools,
     removeAgentFile,
     removeCustomModel,
     serverLayout,
+    setAgentTools,
     taskFolders,
     toggleFolder,
   } from "../lib/store";
@@ -75,6 +79,50 @@
   let addOpen = $state(false);
   let layoutOpen = $state(false);
   let detailOpen = $state(true);
+
+  // Tools allowlist per agen (Tahap 3).
+  const availableTools = [
+    { id: "meta", toolId: "meta", nameKey: "tools.meta", badge: "M", color: "#2563eb" },
+    { id: "postiz", toolId: "postiz", nameKey: "tools.postiz", badge: "P", color: "#7c3aed" },
+    { id: "pireel", toolId: "pireel", nameKey: "tools.pireel", badge: "P", color: "#e11d48" },
+    { id: "drive", toolId: "drive", nameKey: "tools.drive", badge: "D", color: "#059669" },
+    { id: "slack", toolId: "slack", nameKey: "tools.slack", badge: "S", color: "#d97706" },
+    { id: "discord", toolId: "discord", nameKey: "tools.discord", badge: "D", color: "#5865F2" },
+    { id: "telegram", toolId: "telegram", nameKey: "tools.telegram", badge: "T", color: "#0891b2" },
+    { id: "github", toolId: "github", nameKey: "tools.github", badge: "G", color: "#6b7280" },
+    { id: "notion", toolId: "notion", nameKey: "tools.notion", badge: "N", color: "#a3a3a3" },
+    { id: "canva", toolId: "canva", nameKey: "tools.canva", badge: "C", color: "#0ea5e9" },
+    { id: "ruangapi", toolId: "ruangapi", nameKey: "tools.ruangapi", badge: "R", color: "#0ea5e9" },
+    { id: "browser", toolId: "browser", nameKey: "tools.browser", badge: "B", color: "#6b7280" },
+  ];
+  let agentTools = $state<string[]>([]);
+  let toolsLoadedFor = $state("");
+
+  async function loadAgentTools(agentId: string) {
+    if (toolsLoadedFor === agentId) return;
+    agentTools = await getAgentTools(agentId);
+    toolsLoadedFor = agentId;
+  }
+
+  async function toggleAgentTool(toolId: string) {
+    const next = agentTools.includes(toolId)
+      ? agentTools.filter((t) => t !== toolId)
+      : [...agentTools, toolId];
+    agentTools = next;
+    await setAgentTools(agent.id, next);
+  }
+
+  function toolConnected(toolId: string): boolean {
+    const tools = $realTools;
+    if (!tools) return false;
+    return tools.find((t) => t.id === toolId)?.connected ?? false;
+  }
+
+  // Muat allowlist saat agen berubah.
+  $effect(() => {
+    toolsLoadedFor = "";
+    loadAgentTools(agent.id);
+  });
   let query = $state("");
   let agentSearch = $state("");
   // Agent extras menu (+) + dialogs
@@ -961,6 +1009,29 @@
           {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }))}
           {@render navRow(ICONS.files, $t("agents.files"), facts.files)}
           {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }))}
+        </div>
+
+        <div class="section">
+          <h3>{$t("agents.tools")}</h3>
+          <p class="section-desc">{$t("agents.tools.desc")}</p>
+          <div class="tool-list">
+            {#each availableTools as tool}
+              <label class="tool-item">
+                <input
+                  type="checkbox"
+                  checked={agentTools.includes(tool.id)}
+                  onchange={() => toggleAgentTool(tool.id)}
+                />
+                <span class="tool-badge" style:background={tool.color}>{tool.badge}</span>
+                <span class="tool-name">{$t(tool.nameKey)}</span>
+                {#if toolConnected(tool.toolId)}
+                  <span class="tool-status connected">●</span>
+                {:else}
+                  <span class="tool-status">○</span>
+                {/if}
+              </label>
+            {/each}
+          </div>
         </div>
 
         <div class="section">
@@ -1880,5 +1951,51 @@
     .tb-agent-name {
       max-width: 110px;
     }
+  }
+  .section-desc {
+    font-size: 11px;
+    opacity: 0.6;
+    margin: 0 0 8px;
+  }
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tool-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border, #2a2e36);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .tool-item:hover {
+    border-color: var(--accent, #4FA6F0);
+  }
+  .tool-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .tool-name {
+    flex: 1;
+  }
+  .tool-status {
+    font-size: 10px;
+    opacity: 0.4;
+  }
+  .tool-status.connected {
+    color: #22c55e;
+    opacity: 1;
   }
 </style>
