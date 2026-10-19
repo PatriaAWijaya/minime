@@ -18,7 +18,8 @@
   },
   "build": {
     "devUrl": "http://localhost:1420",
-    "frontendDist": "../src/dist"
+    "frontendDist": "../src/dist",
+    "beforeBuildCommand": "npm run build"
   },
   "bundle": {
     "active": true,
