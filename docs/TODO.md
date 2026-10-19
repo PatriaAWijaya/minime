@@ -36,5 +36,5 @@
 - Repo `PatriaAWijaya/minime-v2` (kosong): hapus manual via GitHub settings
   (token tidak punya scope delete).
 - Avatar karakter v1 ditolak Patria — arah avatar baru menunggu keputusannya.
-- Daemon v1 di MacBook: Patria sudah diinstruksikan `launchctl unload`
+- Daemon v1 di MacBook: di-load ulang atas perintah Patria 19 Okt ~10:00 (`launchctl load`, PID 51270, berjalan)
   (belum terkonfirmasi).
