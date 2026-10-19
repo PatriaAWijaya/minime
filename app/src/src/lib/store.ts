@@ -3,6 +3,7 @@
 import { writable, get, type Writable } from "svelte/store";
 import type {
   Agent,
+  AgentFile,
   AgentStatus,
   AgentTemplate,
   CostRow,
@@ -188,6 +189,33 @@ export const agentVoice = writable<Record<string, string>>(
   loadRecord<string>("minime.agent-voice"),
 );
 persistRecord("minime.agent-voice", agentVoice);
+
+/** Per-agent: allow the agent to open a browser on its own (mock, Tahap 1).
+    Real browser via Playwright comes in a later phase. */
+export const agentBrowserOn = writable<Record<string, boolean>>(
+  loadRecord<boolean>("minime.agent-browser-on"),
+);
+persistRecord("minime.agent-browser-on", agentBrowserOn);
+
+/** Per-agent attached files (mock, persisted). */
+export const agentFiles = writable<Record<string, AgentFile[]>>(
+  loadRecord<AgentFile[]>("minime.agent-files"),
+);
+persistRecord("minime.agent-files", agentFiles);
+
+export function addAgentFile(agentId: string, name: string, size: string) {
+  agentFiles.update((m) => ({
+    ...m,
+    [agentId]: [...(m[agentId] ?? []), { name, size }],
+  }));
+}
+
+export function removeAgentFile(agentId: string, index: number) {
+  agentFiles.update((m) => ({
+    ...m,
+    [agentId]: (m[agentId] ?? []).filter((_, i) => i !== index),
+  }));
+}
 
 /** Mock facts shown in the Agents detail panel. */
 export const agentFacts: Record<

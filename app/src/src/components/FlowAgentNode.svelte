@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Handle, Position } from "@xyflow/svelte";
   import { agents } from "../lib/agents";
-  import { agentStatus, customAgents } from "../lib/store";
+  import { activeFlowProjectId, agentStatus, customAgents, kanbanCards } from "../lib/store";
   import { t } from "../lib/i18n";
 
   interface Props {
@@ -21,6 +21,15 @@
     allAgents.find((a) => a.id === data.agentId) ?? allAgents[0],
   );
   const status = $derived($agentStatus[agent.id] ?? "idle");
+  /** Open tasks for this agent (Kanban columns except "Selesai") in the active project. */
+  const taskCount = $derived(
+    $kanbanCards.filter(
+      (c) =>
+        c.agentId === data.agentId &&
+        c.col !== "done" &&
+        c.projectId === $activeFlowProjectId,
+    ).length,
+  );
 
   let childMenuOpen = $state(false);
   let menuEl: HTMLDivElement | null = $state(null);
@@ -81,6 +90,13 @@
     <span class="role">{$t(agent.roleKey)}</span>
   </span>
   <span class="dot {status}" aria-hidden="true"></span>
+  {#if taskCount > 0}
+    <span
+      class="task-count"
+      title={$t("tasks.flow.taskCount", { n: String(taskCount) })}
+      aria-label={$t("tasks.flow.taskCount", { n: String(taskCount) })}
+    >{taskCount}</span>
+  {/if}
   <button
     class="add-child nodrag"
     onclick={(e) => {
@@ -219,6 +235,20 @@
   .dot.idle { background: #22c55e; }
   .dot.working { background: #eab308; }
   .dot.attention { background: #ef4444; }
+  .task-count {
+    flex: none;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 12px;
+    background: var(--accent, #10b981);
+    color: #06281e;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .add-child {
     width: 28px;
     height: 28px;

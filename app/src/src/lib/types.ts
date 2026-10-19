@@ -103,6 +103,11 @@ export interface TaskFolder {
 }
 
 /** Kanban column id (mock task board). */
+export interface AgentFile {
+  name: string;
+  size: string;
+}
+
 export type KanbanCol = "queue" | "doing" | "approval" | "revision" | "done";
 
 /** A task card on the Kanban board (mock). */

@@ -7,8 +7,12 @@
     activeAgentId,
     activeServer,
     addCustomAgent,
+    addAgentFile,
+    addKanbanCard,
     addTaskFolder,
+    agentBrowserOn,
     agentFacts,
+    agentFiles,
     agentGender,
     agentAge,
     agentHobbies,
@@ -25,6 +29,8 @@
     customAgents,
     defaultModelFor,
     getModel,
+    projects,
+    removeAgentFile,
     serverLayout,
     taskFolders,
     toggleFolder,
@@ -68,12 +74,20 @@
   let detailOpen = $state(true);
   let query = $state("");
   let agentSearch = $state("");
+  // Agent extras menu (+) + dialogs
+  let agentMenuOpen = $state(false);
+  let agentDlg = $state<"browser" | "files" | "task" | null>(null);
+  let taskTitle = $state("");
+  let taskProject = $state("");
+  let taskAdded = $state(false);
 
   function closeAll() {
     panelOpen = false;
     serverOpen = false;
     addOpen = false;
     layoutOpen = false;
+    agentMenuOpen = false;
+    agentDlg = null;
     query = "";
   }
 
@@ -85,6 +99,37 @@
   function pickServer(kind: "local" | "cloud") {
     activeServer.set(kind);
     closeAll();
+  }
+
+  // Agent extras: browser toggle, files, task creation (per active agent)
+  const browserOn = $derived($agentBrowserOn[agent.id] ?? false);
+  const files = $derived($agentFiles[agent.id] ?? []);
+
+  function setBrowser(v: boolean) {
+    agentBrowserOn.update((m) => ({ ...m, [agent.id]: v }));
+  }
+
+  function openAgentDlg(kind: "browser" | "files" | "task") {
+    agentMenuOpen = false;
+    taskAdded = false;
+    agentDlg = kind;
+  }
+
+  function addFile() {
+    addAgentFile(agent.id, $t("agents.files.sample"), "120 KB");
+  }
+
+  function dropFile(i: number) {
+    removeAgentFile(agent.id, i);
+  }
+
+  function submitTask() {
+    const title = taskTitle.trim();
+    if (!title) return;
+    const pid = taskProject || $projects[0]?.id || "proj-a";
+    addKanbanCard(title, agent.id, "queue", pid);
+    taskTitle = "";
+    taskAdded = true;
   }
 
   // Task folders: agents grouped into collapsible folders
@@ -480,16 +525,48 @@
         </svg>
         <span>{$t("agents.agentSettings")}</span>
       </button>
-      <button
-        class="icon-btn bordered"
-        aria-label={$t("agents.panel.add")}
-        onclick={closeAll}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="16" rx="2" />
-          <path d="M12 4v16M15 9l3 3-3 3" />
-        </svg>
-      </button>
+      <div class="menu-wrap">
+        <button
+          class="icon-btn bordered"
+          aria-label={$t("agents.menu.title")}
+          aria-haspopup="menu"
+          aria-expanded={agentMenuOpen}
+          onclick={() => {
+            const next = !agentMenuOpen;
+            closeAll();
+            agentMenuOpen = next;
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+        {#if agentMenuOpen}
+          <div class="scrim" onclick={closeAll} aria-hidden="true"></div>
+          <div class="menu" role="menu" aria-label={$t("agents.menu.title")}>
+            <button class="menu-item" role="menuitem" onclick={() => openAgentDlg("browser")}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="20" height="20">
+                <rect x="2" y="4" width="20" height="13" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+              <span>{$t("agents.menu.browser")}</span>
+            </button>
+            <button class="menu-item" role="menuitem" onclick={() => openAgentDlg("files")}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="20" height="20">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+              <span>{$t("agents.menu.files")}</span>
+            </button>
+            <button class="menu-item" role="menuitem" onclick={() => openAgentDlg("task")}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="20" height="20">
+                <path d="M9 6h11M9 12h11M9 18h11" />
+                <path d="M4 5l1 1 2-2M4 11l1 1 2-2M4 17l1 1 2-2" />
+              </svg>
+              <span>{$t("agents.menu.tasks")}</span>
+            </button>
+          </div>
+        {/if}
+      </div>
       <button
         class="icon-btn bordered"
         aria-label={$t("agents.panel.expand")}
@@ -501,6 +578,87 @@
       </button>
     </div>
   </div>
+
+  {#if agentDlg}
+    <div class="scrim" onclick={() => (agentDlg = null)} aria-hidden="true"></div>
+    <div class="agent-dlg" role="dialog" aria-modal="true" aria-label={$t("agents.menu.title")}>
+      {#if agentDlg === "browser"}
+        <h3>{$t("agents.browser.title")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <div class="row">
+          <span class="label">{$t("agents.browser.allow")}</span>
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={browserOn}
+              onchange={(e) => setBrowser(e.currentTarget.checked)}
+              aria-label={$t("agents.browser.allow")}
+            />
+            <span class="track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <p class="note">{$t("agents.browser.note")}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else if agentDlg === "files"}
+        <h3>{$t("agents.files.title")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        {#if files.length === 0}
+          <p class="note">{$t("agents.files.empty")}</p>
+        {:else}
+          <ul class="file-list">
+            {#each files as f, i (i)}
+              <li>
+                <span class="fname">{f.name}</span>
+                <span class="fsize">{f.size}</span>
+                <button
+                  class="mini-btn danger"
+                  onclick={() => dropFile(i)}
+                  aria-label="{$t("agents.files.remove")}: {f.name}"
+                >×</button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        <button class="btn-ghost" onclick={addFile}>+ {$t("agents.files.add")}</button>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else}
+        <h3>{$t("agents.task.title")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <label class="field-label" for="dlg-task-title">{$t("agents.task.name")}</label>
+        <div class="field">
+          <input
+            id="dlg-task-title"
+            type="text"
+            bind:value={taskTitle}
+            maxlength={120}
+          />
+        </div>
+        <label class="field-label" for="dlg-task-project">{$t("agents.task.project")}</label>
+        <div class="field">
+          <select id="dlg-task-project" bind:value={taskProject}>
+            {#each $projects as p (p.id)}
+              <option value={p.id}>{p.name}</option>
+            {/each}
+          </select>
+        </div>
+        {#if taskAdded}
+          <p class="ok-note" role="status">{$t("agents.task.done")}</p>
+        {/if}
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+          <button
+            class="btn-primary"
+            disabled={!taskTitle.trim()}
+            onclick={submitTask}
+          >{$t("agents.task.add")}</button>
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <div class="split" class:no-desc={!detailOpen}>
     <!-- Left column: agent list -->
@@ -870,6 +1028,115 @@
     gap: 4px;
     flex: none;
   }
+  .tb-right .menu {
+    left: auto;
+    right: 0;
+  }
+  /* Agent extras dialogs (Browser / Files / Tugas) */
+  .agent-dlg {
+    position: fixed;
+    top: 64px;
+    right: 16px;
+    width: 330px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    padding: 16px;
+    z-index: 60;
+  }
+  .agent-dlg h3 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .dlg-agent {
+    font-size: 13px;
+    color: var(--dim);
+    margin: 0 0 12px;
+  }
+  .agent-dlg .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+  }
+  .agent-dlg .label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .agent-dlg .note {
+    font-size: 13px;
+    color: var(--dim);
+    margin: 8px 0 0;
+  }
+  .agent-dlg .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 12px 0 4px;
+  }
+  .file-list {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .file-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 6px 6px 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+  }
+  .file-list .fname {
+    flex: 1;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-list .fsize {
+    font-size: 12px;
+    color: var(--dim);
+    flex: none;
+  }
+  .mini-btn {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .mini-btn.danger:hover {
+    color: #f87171;
+    border-color: #f87171;
+  }
+  .dlg-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .ok-note {
+    font-size: 13px;
+    color: var(--ok);
+    margin: 8px 0 0;
+  }
 
   /* 3-column split: list | chat (widest) | description */
   .agents-view .split {
@@ -918,10 +1185,6 @@
     flex: 1;
     padding: 2px;
   }
-  .list-head .menu .scrim {
-    z-index: 55;
-  }
-
   /* Middle column: chat area */
   .chat-col {
     min-width: 0;
