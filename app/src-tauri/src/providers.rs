@@ -67,10 +67,26 @@ pub struct ChatMessage {
 
 /// Hasil chat via router: teks balasan + id provider yang melayani
 /// (berguna untuk menampilkan "dijawab oleh ..." di UI).
+/// Token opsional — diisi bila provider melaporkannya (untuk metering).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResult {
     pub text: String,
     pub served_by: String,
+    #[serde(default)]
+    pub input_tokens: Option<u64>,
+    #[serde(default)]
+    pub output_tokens: Option<u64>,
+}
+
+impl ChatResult {
+    fn text_only(text: String, served_by: String) -> Self {
+        Self {
+            text,
+            served_by,
+            input_tokens: None,
+            output_tokens: None,
+        }
+    }
 }
 
 fn http_client() -> reqwest::Client {
@@ -140,7 +156,7 @@ impl OllamaProvider {
         &self,
         model: &str,
         messages: &[ChatMessage],
-    ) -> Result<String, ProviderError> {
+    ) -> Result<ChatResult, ProviderError> {
         let url = format!("{}/api/chat", self.base_url);
         let model = model.strip_prefix("ollama:").unwrap_or(model);
         let body = serde_json::json!({
@@ -164,6 +180,8 @@ impl OllamaProvider {
         #[derive(Deserialize)]
         struct ChatResp {
             message: RespMsg,
+            prompt_eval_count: Option<u64>,
+            eval_count: Option<u64>,
         }
         #[derive(Deserialize)]
         struct RespMsg {
@@ -173,7 +191,12 @@ impl OllamaProvider {
             .json()
             .await
             .map_err(|e| ProviderError::Failed(format!("ollama chat: {e}")))?;
-        Ok(out.message.content)
+        Ok(ChatResult {
+            text: out.message.content,
+            served_by: Self::id().to_string(),
+            input_tokens: out.prompt_eval_count,
+            output_tokens: out.eval_count,
+        })
     }
 
     pub async fn status(&self) -> ProviderStatus {
@@ -360,7 +383,7 @@ impl OpenAiCompatProvider {
         &self,
         model: &str,
         messages: &[ChatMessage],
-    ) -> Result<String, ProviderError> {
+    ) -> Result<ChatResult, ProviderError> {
         let key = self.key()?;
         let model = model
             .strip_prefix(&format!("{}:", self.id))
@@ -388,6 +411,7 @@ impl OpenAiCompatProvider {
         #[derive(Deserialize)]
         struct ChatResp {
             choices: Vec<Choice>,
+            usage: Option<Usage>,
         }
         #[derive(Deserialize)]
         struct Choice {
@@ -397,16 +421,27 @@ impl OpenAiCompatProvider {
         struct RespMsg {
             content: Option<String>,
         }
+        #[derive(Deserialize)]
+        struct Usage {
+            prompt_tokens: Option<u64>,
+            completion_tokens: Option<u64>,
+        }
         let out: ChatResp = resp
             .json()
             .await
             .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
-        Ok(out
+        let text = out
             .choices
             .into_iter()
             .next()
             .and_then(|c| c.message.content)
-            .unwrap_or_default())
+            .unwrap_or_default();
+        Ok(ChatResult {
+            text,
+            served_by: self.id.to_string(),
+            input_tokens: out.usage.as_ref().and_then(|u| u.prompt_tokens),
+            output_tokens: out.usage.as_ref().and_then(|u| u.completion_tokens),
+        })
     }
 }
 
@@ -496,7 +531,7 @@ impl OpenCodeProvider {
         &self,
         model: &str,
         messages: &[ChatMessage],
-    ) -> Result<String, ProviderError> {
+    ) -> Result<ChatResult, ProviderError> {
         let bin = self
             .find_cli()
             .ok_or_else(|| ProviderError::NotReachable("opencode".to_string()))?;
@@ -519,7 +554,8 @@ impl OpenCodeProvider {
                 String::from_utf8_lossy(&out.stderr).trim()
             )));
         }
-        Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+        let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        Ok(ChatResult::text_only(text, Self::id().to_string()))
     }
 }
 
@@ -620,17 +656,17 @@ impl Router {
     }
 
     /// Kirim chat lewat rantai provider; fallback otomatis bila gagal.
-    /// Mengembalikan (teks, provider_id_yang_melayani).
+    /// Mengembalikan ChatResult dari provider yang berhasil melayani.
     pub async fn chat(
         &self,
         model_id: &str,
         tier: ModelTier,
         messages: Vec<ChatMessage>,
-    ) -> Result<(String, String), String> {
+    ) -> Result<ChatResult, String> {
         let mut last_err = String::new();
         for link in self.chain_for(model_id, tier) {
             match link.chat(model_id, &messages).await {
-                Ok(text) => return Ok((text, link.id().to_string())),
+                Ok(res) => return Ok(res),
                 Err(ProviderError::NoKey(_)) | Err(ProviderError::NotReachable(_)) => {
                     last_err = format!("{} dilewati (belum terkonfigurasi)", link.id());
                     continue;
@@ -669,7 +705,7 @@ impl<'a> ChainLink<'a> {
         &self,
         model_id: &str,
         messages: &[ChatMessage],
-    ) -> Result<String, ProviderError> {
+    ) -> Result<ChatResult, ProviderError> {
         match self {
             ChainLink::Ollama(p) => p.chat(model_id, messages).await,
             ChainLink::OpenCode(p) => p.chat(model_id, messages).await,

@@ -222,8 +222,6 @@ export const modelCatalog: Readable<ModelOption[]> = derived(
   ],
 );
 
-import { derived, get } from "svelte/store";
-
 export function getModel(id: string): ModelOption {
   const catalog = get(modelCatalog);
   // Legacy migration: old "claude" id was Muse (renamed to "muse" when
@@ -1074,20 +1072,6 @@ export async function disconnectProviderKey(id: string): Promise<void> {
   await refreshProviders();
 }
 
-/** Kirim chat lewat model router (dengan fallback otomatis).
-    Return null bila backend tidak tersedia → panggil mock. */
-export async function sendChatViaRouter(
-  modelId: string,
-  tier: "gratis" | "berbayar",
-  messages: ChatWireMessage[],
-): Promise<ChatWireResult | null> {
-  return tauriInvoke<ChatWireResult>("agent_chat", {
-    modelId,
-    tier,
-    messages,
-  });
-}
-
 /** Migrasi sekali: pindahkan API key RouterKu yang dulu tersimpan di
     localStorage (mock Tahap 1) ke OS Keychain, lalu hapus dari sana. */
 let routerkuMigrated = false;
@@ -1138,4 +1122,119 @@ export async function saveRouterkuSecure(
   }
   saveRouterku(k, u); // fallback browser: mock lama
   return true;
+}
+
+/* ---------- System prompt builder (Tahap 2) ----------
+   Persona agen = peran + nama + instruksi kustom + personalisasi.
+   Playbook skill disuntikkan di backend Rust (skills.rs). */
+
+/** Susun system prompt untuk agen. `roleLabel` = peran terterjemah dari UI. */
+export function buildSystemPrompt(agentId: string, roleLabel: string): string {
+  const name = (get(agentNames)[agentId] ?? "").trim();
+  const title = (get(agentTitles)[agentId] ?? "").trim();
+  const instructions = (get(agentInstructions)[agentId] ?? "").trim();
+  const gender = get(agentGender)[agentId];
+  const age = get(agentAge)[agentId];
+  const position = get(agentPosition)[agentId];
+  const hobbies = (get(agentHobbies)[agentId] ?? "").trim();
+
+  const lines: string[] = [];
+  lines.push(
+    `Kamu adalah ${name || agentId}, asisten AI di aplikasi Minime.`,
+    `Peranmu: ${title || roleLabel}.`,
+  );
+  if (agentId === "mimi") {
+    lines.push(
+      "Kamu adalah CIO (Chief Intelligent Officer) dan orkestrator tim: " +
+        "koordinasikan 5 agen senior (Kreatif, Riset, Finance, Bisnis Strategis, Code Builder), " +
+        "pecah permintaan kompleks menjadi tugas yang jelas, dan rangkum hasilnya untuk pengguna.",
+    );
+  }
+  if (gender || age || position || hobbies) {
+    const parts: string[] = [];
+    if (gender) parts.push(gender === "male" ? "laki-laki" : "perempuan");
+    if (age) parts.push(`${age} tahun`);
+    if (position) parts.push(position);
+    if (hobbies) parts.push(`hobi: ${hobbies}`);
+    lines.push(`Kepribadian: ${parts.join(", ")}.`);
+  }
+  lines.push(
+    "Jawab dalam Bahasa Indonesia yang ringkas dan jelas, kecuali pengguna memakai bahasa lain.",
+    "Jangan mengarang fakta; bila tidak tahu, katakan terus terang.",
+  );
+  if (instructions) {
+    lines.push(`Instruksi khusus dari pengguna:\n${instructions}`);
+  }
+  return lines.join("\n");
+}
+
+/* ---------- Chat history + usage nyata (Tahap 2) ---------- */
+
+export interface RealStoredMessage {
+  id: number;
+  agent_id: string;
+  role: string;
+  text: string;
+  served_by: string | null;
+  created_at: string;
+}
+
+export interface RealUsageRow {
+  agent_id: string;
+  provider_id: string;
+  model_id: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+/** Kirim chat lewat model router (dengan fallback otomatis).
+    Return null bila backend tidak tersedia → panggil mock. */
+export async function sendChatViaRouter(
+  agentId: string,
+  modelId: string,
+  tier: "gratis" | "berbayar",
+  systemPrompt: string,
+  messages: ChatWireMessage[],
+): Promise<ChatWireResult | null> {
+  return tauriInvoke<ChatWireResult>("agent_chat", {
+    agentId,
+    modelId,
+    tier,
+    systemPrompt,
+    messages,
+  });
+}
+
+const historyLoadedFor = new Set<string>();
+
+/** Muat riwayat chat agen dari SQLite (sekali per agen per sesi). */
+export async function loadChatHistory(agentId: string): Promise<void> {
+  if (historyLoadedFor.has(agentId)) return;
+  historyLoadedFor.add(agentId);
+  const rows = await tauriInvoke<RealStoredMessage[]>("chat_history", {
+    agentId,
+    limit: 100,
+  });
+  if (!rows || rows.length === 0) return;
+  messagesByAgent.update((m) => {
+    if ((m[agentId] ?? []).length > 0) return m; // sudah ada pesan sesi ini
+    return {
+      ...m,
+      [agentId]: rows.map((r) => ({
+        id: r.id,
+        role: r.role === "assistant" ? "agent" : "user",
+        text: r.text,
+        time: r.created_at,
+      })),
+    };
+  });
+}
+
+/** Ringkasan usage nyata untuk tab Cost; null = belum dimuat / browser. */
+export const realUsage = writable<RealUsageRow[] | null>(null);
+
+export async function refreshUsage(): Promise<void> {
+  const rows = await tauriInvoke<RealUsageRow[]>("usage_summary");
+  if (rows) realUsage.set(rows);
 }

@@ -24,7 +24,7 @@
 - [x] Router per-agen: Gratis Ollama→OpenCode; Berbayar Muse→Gemini→DeepSeek; fallback otomatis
 - [x] Tauri commands: `provider_probe`, `agent_chat`, `provider_connect/disconnect`, `routerku_set_base_url`
 - [x] Frontend: Penyedia Model → status koneksi nyata + form API key (Keychain); chat agen → router nyata (fallback mock di browser)
-- [ ] Verifikasi `cargo check` di MacBook (Rust tidak bisa dicek di VM)
+- [x] Verifikasi `cargo check` di MacBook — LOLOS 19 Okt ~10:55 (nol error, nol warning)
 - [ ] Wiring SQLite: riwayat chat + usage metering
 - [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output
 - [ ] Skills + quality bar per agen (adaptasi playbook v1 di `skills/`)

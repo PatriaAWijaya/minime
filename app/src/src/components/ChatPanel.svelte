@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
-  import { getAgent } from "../lib/agents";
-  import type { Agent } from "../lib/agents";
+  import { onDestroy, onMount } from "svelte";
+  import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
   import {
     activeAgentId,
     agentModel,
     agentStatus,
+    buildSystemPrompt,
     defaultModelFor,
     getModel,
+    loadChatHistory,
     messagesByAgent,
     newTaskSignal,
     pushMessage,
@@ -36,6 +37,19 @@
   // "+ Tugas Baru" focuses the input so the user can type immediately.
   const unsub = newTaskSignal.subscribe(() => {
     queueMicrotask(() => inputEl?.focus());
+  });
+
+  // Muat riwayat chat dari SQLite saat panel dibuka / agen berganti.
+  let lastHistoryAgent = $state("");
+  $effect(() => {
+    const aid = agent.id;
+    if (aid && aid !== lastHistoryAgent) {
+      lastHistoryAgent = aid;
+      loadChatHistory(aid);
+    }
+  });
+  onMount(() => {
+    if (agent.id) loadChatHistory(agent.id);
   });
   onDestroy(() => {
     unsub();
@@ -88,12 +102,13 @@
     const mid = $agentModel[id] ?? defaultModelFor(id);
     const mopt = getModel(mid);
     const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
+    const systemPrompt = buildSystemPrompt(id, translate(agent.roleKey));
     const history = ($messagesByAgent[id] ?? []).map((m) => ({
       role: m.role === "agent" ? "assistant" : "user",
       content: m.text,
     }));
     try {
-      const res = await sendChatViaRouter(mid, tier, history);
+      const res = await sendChatViaRouter(id, mid, tier, systemPrompt, history);
       if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
         agentStatus.update((s) => ({ ...s, [id]: "idle" }));

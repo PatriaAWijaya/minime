@@ -1,11 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod db;
 mod providers;
 mod secrets;
+mod skills;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
+use tauri::State;
 
 /// Basic app metadata exposed to the frontend.
 #[derive(Serialize)]
@@ -42,19 +45,72 @@ async fn provider_probe() -> Result<Vec<ProviderStatus>, String> {
 /// Send a chat message through the model router with automatic fallback.
 /// `model_id` format: `provider:model` (e.g. `ollama:llama3.1`,
 /// `muse:muse-spark-1.3`). `tier`: "gratis" | "berbayar".
+/// `system_prompt`: persona + instruksi agen dari UI; playbook skill
+/// disuntikkan otomatis di backend. Riwayat + usage dicatat ke SQLite.
 #[tauri::command]
 async fn agent_chat(
+    db: State<'_, db::Db>,
+    agent_id: String,
     model_id: String,
     tier: String,
+    system_prompt: String,
     messages: Vec<ChatMessage>,
 ) -> Result<providers::ChatResult, String> {
     let tier = match tier.as_str() {
         "berbayar" => ModelTier::Berbayar,
         _ => ModelTier::Gratis,
     };
+
+    // System prompt final: persona dari UI + playbook skill agen.
+    let skill_ctx = skills::skill_context(&agent_id);
+    let full_system = if skill_ctx.is_empty() {
+        system_prompt.clone()
+    } else {
+        format!("{system_prompt}\n\n{skill_ctx}")
+    };
+    let mut wire: Vec<ChatMessage> = Vec::with_capacity(messages.len() + 1);
+    if !full_system.trim().is_empty() {
+        wire.push(ChatMessage {
+            role: "system".to_string(),
+            content: full_system,
+        });
+    }
+    wire.extend(messages.iter().cloned());
+
+    // Simpan pesan user dulu (riwayat tetap ada walau provider gagal).
+    if let Some(last) = messages.last() {
+        let _ = db.save_message(&agent_id, &last.role, &last.content, None);
+    }
+
     let router = Router::new(routerku_base_url());
-    let (text, served_by) = router.chat(&model_id, tier, messages).await?;
-    Ok(providers::ChatResult { text, served_by })
+    let res = router.chat(&model_id, tier, wire).await?;
+
+    // Simpan balasan + catat usage (metering untuk tab Cost).
+    let _ = db.save_message(&agent_id, "assistant", &res.text, Some(&res.served_by));
+    let _ = db.record_usage(
+        &agent_id,
+        &res.served_by,
+        &model_id,
+        res.input_tokens.unwrap_or(0) as i64,
+        res.output_tokens.unwrap_or(0) as i64,
+    );
+    Ok(res)
+}
+
+/// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
+#[tauri::command]
+fn chat_history(
+    db: State<'_, db::Db>,
+    agent_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<db::StoredMessage>, String> {
+    db.history(&agent_id, limit.unwrap_or(100).clamp(1, 500))
+}
+
+/// Ringkasan usage per agen+provider+model (untuk tab Cost).
+#[tauri::command]
+fn usage_summary(db: State<'_, db::Db>) -> Result<Vec<db::UsageRow>, String> {
+    db.usage_summary()
 }
 
 /// Connect a paid provider: store its API key in the OS keychain.
@@ -101,11 +157,17 @@ fn agent_send_stub(agent_id: String, _message: String) -> String {
 }
 
 fn main() {
+    // open() sudah fallback ke in-memory bila file gagal; expect di sini
+    // hanya untuk kegagalan total yang praktis tidak mungkin.
+    let database = db::Db::open().expect("database (file/memory) harus bisa dibuka");
     tauri::Builder::default()
+        .manage(database)
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
             agent_chat,
+            chat_history,
+            usage_summary,
             provider_connect,
             provider_disconnect,
             routerku_set_base_url,
