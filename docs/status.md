@@ -1526,3 +1526,18 @@ evaluasi AgentShield ❌.
 - Rebuild Tahap 4 (avatar 3D → security+CSP → .exe → uji bersih)
 - Sisa Tahap 4.5; tinjau ulang semua tahap; uji project asli pertama
 - Fase 6 komersil; Fase Voice (STT riil); aplikasi mobile
+
+## 21 Okt 2026 ~06:00 — FIX AKAR MASALAH OAUTH PIREEL/DRIVE
+
+- Gejala: halaman browser "Pireel terhubung" muncul tapi token tidak tersimpan
+  di Keychain → aplikasi tidak pernah benar-benar terhubung.
+- Akar masalah (terbukti via probe test): `write_bundle` dipanggil dari
+  `std::thread::spawn` (callback thread) — di macOS, keychain write dari
+  thread mentah TIDAK persisten (set_password return Ok tapi tidak tersimpan).
+- Fix: callback thread hanya menukar kode → token disimpan di
+  `pending_tokens`; `pireel_oauth_poll`/`drive_oauth_poll` (thread Tauri,
+  konteks yang sama dengan provider_connect yang terbukti bekerja) yang
+  menulis ke Keychain + verifikasi read-back. Gagal tulis kini tampil sebagai
+  error di UI (tidak lagi diam-diam).
+- Berlaku untuk Pireel dan Google Drive. cargo check 0, test 32/32.
+- Status: menunggu Patria klik "Hubungkan Pireel" sekali lagi dari aplikasi.
