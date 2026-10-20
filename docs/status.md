@@ -1228,3 +1228,28 @@ menolak di level store.
 **Catatan:** sinkronisasi folder↔Koneksi + kolom resizable (perintah 16:23)
 diparkir — baru tahap investigasi kode, belum ada perubahan; menunggu
 perintah lanjut. Uji klik visual tetap menunggu Patria.
+
+## 20 Okt 2026 ~18:40 — Sync folder↔Koneksi dua arah + kolom resizable (perintah Patria)
+
+**1. Folder → Koneksi:** folder berisi agen + kanvas kosong ⇒ buka Koneksi
+otomatis memunculkan rantai agen sesuai urutan folder (node per agen,
+terhubung berurutan). Tombol ↑↓ di tiap agen dalam folder untuk atur urutan
+tugas; kanvas yang masih murni (auto) ikut regenerasi saat folder
+diubah (tambah/hapus/reorder). Kanvas yang sudah diedit manual tidak
+diutak-atik.
+
+**2. Koneksi → Folder:** tambah node agen di kanvas (tombol + tiap node)
+otomatis memasukkan agen itu ke folder project (tanpa mereset posisi node).
+Buat project baru di Koneksi ⇒ folder muncul otomatis di list Agen (sudah
+satu store sejak awal — terverifikasi). Hapus agen permanen juga
+membersihkan node-node kanvasnya.
+
+**3. Kolom resizable:** tepi kolom di tab Agen (daftar | chat | detail) bisa
+ditarik dengan mouse; lebar tersimpan persisten per perangkat (min/maks
+dijaga). Node Koneksi juga pakai nama/role terpusat (helper display).
+
+**Verifikasi:** cargo 0/0, test 30/30, vite lolos, IPC 20/20, i18n paritas
+penuh, TODO/console.log = 0. Build debug MacBook sukses (54 MB), relaunch
+PID 54745 fresh, CPU idle 0,2–0,6%, RAM 75 MB. Uji klik visual menunggu Patria.
+
+**Push:** lokal cee58d9 ↔ remote 416fc8c (tree identik).
