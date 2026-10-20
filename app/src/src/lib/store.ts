@@ -65,6 +65,20 @@ export function setAgentEnabled(id: string, enabled: boolean): void {
   agentEnabled.update((m) => ({ ...m, [id]: enabled }));
 }
 
+/** Activate an agent: it joins the active Agents list (Patria 20 Okt).
+ *  New agents automatically appear in Tasks and Tools via the shared registry. */
+export function activateAgent(id: string): void {
+  setAgentEnabled(id, true);
+}
+
+/** Deactivate an agent (Patria 20 Okt): it disappears from the active Agents
+ *  list, but stays in Tools (manageable) and in Tasks (its cards remain —
+ *  only its function is disabled, enforced in runToolTask). Folder
+ *  memberships are kept so reactivation restores them. */
+export function deactivateAgent(id: string): void {
+  setAgentEnabled(id, false);
+}
+
 /** Chat history per agent id (local mock). */
 export const messagesByAgent = writable<Record<string, Message[]>>({});
 
@@ -1466,6 +1480,7 @@ function toolErrorLabel(code: string): string {
     "not_connected",
     "not_implemented",
     "unknown_tool",
+    "agent_inactive",
   ] as const;
   return (known as readonly string[]).includes(code) ? code : "error";
 }
@@ -1475,6 +1490,11 @@ export async function runToolTask(
   run: ToolRunArgs,
   opts: { title?: string } = {},
 ): Promise<{ ok: boolean; error?: string }> {
+  // Patria 20 Okt: a deactivated agent keeps its cards, but its function is
+  // off — tool runs are refused at the store level (not just hidden in UI).
+  if (!isAgentEnabled(run.agentId)) {
+    return { ok: false, error: "agent_inactive" };
+  }
   moveKanbanCard(cardId, "doing");
   try {
     const res = await tauriInvoke<{ ok: boolean; summary: string }>("tool_run", {
@@ -1683,13 +1703,16 @@ export function renameProject(id: string, name: string): void {
 /** Agents assigned to a project = agents in its folder. An agent belongs to
     at most one folder; adding it to a project removes it from the others. */
 export function addAgentToProject(projectId: string, agentId: string): void {
+  // Patria 20 Okt: the same agent MAY serve several folders/projects, but it
+  // cannot appear twice inside one folder — dedup is per-folder only.
   projects.update((list) =>
-    list.map((p) => {
-      const ids = (p.agentIds ?? []).filter((x) => x !== agentId);
-      return p.id === projectId ? { ...p, agentIds: [...ids, agentId] } : { ...p, agentIds: ids };
-    }),
+    list.map((p) =>
+      p.id === projectId && !(p.agentIds ?? []).includes(agentId)
+        ? { ...p, agentIds: [...(p.agentIds ?? []), agentId] }
+        : p,
+    ),
   );
-  // An agent plotted for a project is meant to work: make it visible.
+  // An agent plotted for a project is meant to work: make it active.
   setAgentEnabled(agentId, true);
 }
 

@@ -54,7 +54,8 @@
     removeCustomModel,
     serverLayout,
     folderOpen,
-    setAgentEnabled,
+    activateAgent,
+    deactivateAgent,
     toggleFolder,
     isFolderOpen,
   } from "../lib/store";
@@ -263,19 +264,24 @@
   // Project folders: agents grouped into collapsible folders. The folder IS
   // the project (Patria 20 Okt): agents in a folder are the agents assigned
   // to work on that project (Tasks, Kanban, Brief).
-  // All real agents are listed (Patria 20 Okt): the count matches Tools.
-  // Only Mimi is enabled by default; disabled agents appear dimmed and can
-  // be activated from their detail panel.
+  // Only ACTIVE agents are listed (Patria 20 Okt): the user activates agents
+  // from the Minime defaults (or creates new ones); deactivated agents leave
+  // the list but stay in Tools and Tasks. Mimi is always active.
   const isEnabled = (a: Agent) => a.id === "mimi" || ($agentEnabled[a.id] ?? false);
   const groupedIds = $derived(
     new Set($projects.flatMap((p) => p.agentIds ?? [])),
   );
   const looseAgents = $derived(
-    allAgents.filter((a) => !groupedIds.has(a.id)),
+    allAgents.filter((a) => !groupedIds.has(a.id) && isEnabled(a)),
   );
   function folderAgents(p: FlowProject): Agent[] {
-    return allAgents.filter((a) => (p.agentIds ?? []).includes(a.id));
+    return allAgents.filter((a) => (p.agentIds ?? []).includes(a.id) && isEnabled(a));
   }
+  // Inactive registry agents available for activation (Patria 20 Okt):
+  // built-in defaults not yet active plus deactivated custom agents.
+  const inactiveAgents = $derived(
+    allAgents.filter((a) => a.id !== "mimi" && !($agentEnabled[a.id] ?? false)),
+  );
   const folderIsOpen = (id: string) => isFolderOpen(id, $folderOpen);
 
   // "+ Add agent" menu per folder: pick from agents not in any folder.
@@ -470,7 +476,6 @@
   <button
     class="agent-row"
     class:active={$activeAgentId === a.id}
-    class:disabled={!isEnabled(a)}
     onclick={() => activeAgentId.set(a.id)}
   >
     <span class="badge" style:background={a.color}>{a.badge}</span>
@@ -1161,6 +1166,24 @@
                 <span class="check" aria-hidden="true"></span>
                 <span>{$t("agents.addFolder")}</span>
               </button>
+              {#if inactiveAgents.length > 0}
+                <div class="menu-sep" aria-hidden="true"></div>
+                <div class="menu-label">{$t("agents.addFromDefaults")}</div>
+                {#each inactiveAgents as a (a.id)}
+                  <button
+                    class="menu-item"
+                    onclick={() => {
+                      activateAgent(a.id);
+                      activeAgentId.set(a.id);
+                      detailOpen = true;
+                      closeAll();
+                    }}
+                  >
+                    <span class="badge sm" style:background={a.color}>{a.badge}</span>
+                    <span>{agentDisplayName(a, $agentNames, $t)}</span>
+                  </button>
+                {/each}
+              {/if}
             </div>
           {/if}
         </div>
@@ -1262,11 +1285,14 @@
               </div>
             </div>
             {#if addAgentMenuFor === p.id}
+              {@const candidates = allAgents.filter(
+                (a) => isEnabled(a) && !(p.agentIds ?? []).includes(a.id),
+              )}
               <div class="folder-add-menu" role="menu" aria-label={$t("agents.folder.addAgent")}>
-                {#if looseAgents.length === 0}
+                {#if candidates.length === 0}
                   <p class="folder-add-empty">{$t("agents.folder.noLooseAgents")}</p>
                 {:else}
-                  {#each looseAgents as a (a.id)}
+                  {#each candidates as a (a.id)}
                     <button
                       class="menu-item"
                       onclick={() => {
@@ -1325,18 +1351,28 @@
           </button>
         </div>
 
-        <div class="row">
-          <span class="label">{$t("agents.enabled")}</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={isEnabled(agent)}
-              onchange={(e) => setAgentEnabled(agent.id, e.currentTarget.checked)}
-              aria-label={$t("agents.enabled")}
-            />
-            <span class="track" aria-hidden="true"></span>
-          </label>
-        </div>
+        {#if agent.id !== "mimi"}
+          <div class="row">
+            <span class="label">{$t("agents.enabled")}</span>
+            <label class="switch">
+              <input
+                type="checkbox"
+                checked={isEnabled(agent)}
+                onchange={(e) => {
+                  const on = e.currentTarget.checked;
+                  if (on) activateAgent(agent.id);
+                  else {
+                    deactivateAgent(agent.id);
+                    // Leave the detail panel on an active agent.
+                    activeAgentId.set("mimi");
+                  }
+                }}
+                aria-label={$t("agents.enabled")}
+              />
+              <span class="track" aria-hidden="true"></span>
+            </label>
+          </div>
+        {/if}
 
         <div class="field">
           <label for="d-name">{$t("agents.name")}</label>

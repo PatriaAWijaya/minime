@@ -16,6 +16,7 @@
   import {
     agentStatus,
     agentNames,
+    agentEnabled,
     customAgents,
     tasksView,
     kanbanCards,
@@ -458,8 +459,10 @@
             {#each cards as card (card.id)}
               {@const a = agentOf(card.agentId)}
               {@const st = $agentStatus[a.id] ?? "idle"}
+              {@const agentActive = card.agentId === "mimi" || ($agentEnabled[card.agentId] ?? false)}
               <article
                 class="card"
+                class:agent-off={!agentActive}
                 draggable="true"
                 ondragstart={(e) => onDragStart(e, card.id)}
               >
@@ -473,6 +476,9 @@
                 <div class="card-agent">
                   <span class="badge" style:background={a.color}>{a.badge}</span>
                   <span class="name">{dispName(a)}</span>
+                  {#if !agentActive}
+                    <span class="inactive-badge">{$t("tasks.agentInactive")}</span>
+                  {/if}
                   <span class="dot {st}" aria-hidden="true"></span>
                 </div>
                 <span class="card-date">{card.createdAt}</span>
@@ -538,7 +544,12 @@
                         <p class="tool-err">{toolMsg[card.id]}</p>
                       {/if}
                     {:else}
-                      <button class="mini-btn" onclick={() => openToolRunner(card)}>
+                      <button
+                        class="mini-btn"
+                        onclick={() => openToolRunner(card)}
+                        disabled={!agentActive}
+                        title={!agentActive ? $t("tasks.tool.err.agent_inactive") : $t("tasks.tool.run")}
+                      >
                         {$t("tasks.tool.run")}
                       </button>
                     {/if}
@@ -561,7 +572,7 @@
               <label>
                 <span>{$t("tasks.agent")}</span>
                 <select bind:value={draftAgent}>
-                  {#each allAgents as a (a.id)}
+                  {#each allAgents.filter((a) => a.id === "mimi" || ($agentEnabled[a.id] ?? false)) as a (a.id)}
                     <option value={a.id}>{dispName(a)}</option>
                   {/each}
                 </select>
@@ -969,6 +980,20 @@
     border: 1px solid var(--accent);
     border-radius: 8px;
     padding: 1px 7px;
+  }
+  .inactive-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--dim);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1px 7px;
+  }
+  .card.agent-off .badge {
+    filter: grayscale(0.7);
+    opacity: 0.6;
   }
   .draft-preview {
     margin: 6px 0 0;

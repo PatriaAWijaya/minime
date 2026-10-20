@@ -2,6 +2,7 @@
   import { agents, agentDisplayName } from "../lib/agents";
   import {
     activeFlowProjectId,
+    agentEnabled,
     agentNames,
     customAgents,
     getProjectBrief,
@@ -20,7 +21,13 @@
   const pid = $derived($activeFlowProjectId);
   const briefRec = $derived($projectBriefs[pid] ?? getProjectBrief(pid));
   const todos = $derived($projectTodos.filter((x) => x.projectId === pid));
-  const briefAgents = $derived([...agents, ...$customAgents]);
+  // Patria 20 Okt: only active agents can receive new todos — a deactivated
+  // agent keeps its existing cards, but its function is off.
+  const briefAgents = $derived(
+    [...agents, ...$customAgents].filter(
+      (a) => a.id === "mimi" || ($agentEnabled[a.id] ?? false),
+    ),
+  );
   /* Patria 20 Okt: agen dalam folder project = agen yang diplot untuk
      project itu — jadikan default pilihan agen saat tambah todo. */
   const projectTeam = $derived(
@@ -40,7 +47,9 @@
       const rec = getProjectBrief(pid);
       briefText = rec.brief;
       goalsText = rec.goals;
-      newTodoAgent = projectTeam[0] ?? "mimi";
+      newTodoAgent =
+        projectTeam.find((id) => id === "mimi" || ($agentEnabled[id] ?? false)) ??
+        "mimi";
     }
   });
 
