@@ -29,6 +29,7 @@
     flowNodes,
     flowEdges,
     addKanbanCard,
+    decideKanbanCard,
     moveKanbanCard,
     addFlowNode,
     addFlowEdge,
@@ -418,6 +419,19 @@
                   <span class="dot {st}" aria-hidden="true"></span>
                 </div>
                 <span class="card-date">{card.createdAt}</span>
+                {#if col === "approval"}
+                  <div class="card-actions">
+                    <button class="mini-btn ok" onclick={() => decideKanbanCard(card.id, "approve")}>
+                      {$t("tasks.approve")}
+                    </button>
+                    <button class="mini-btn" onclick={() => decideKanbanCard(card.id, "revise")}>
+                      {$t("tasks.revise")}
+                    </button>
+                    <button class="mini-btn danger" onclick={() => decideKanbanCard(card.id, "reject")}>
+                      {$t("tasks.reject")}
+                    </button>
+                  </div>
+                {/if}
               </article>
             {/each}
           </div>
@@ -786,6 +800,26 @@
   .dot.idle { background: var(--ok); }
   .dot.working { background: var(--warn); }
   .dot.attention { background: var(--danger); }
+  .card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .card-actions .mini-btn {
+    flex: 1;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .card-actions .mini-btn:hover { border-color: var(--accent); }
+  .card-actions .mini-btn.ok { color: var(--ok); border-color: var(--ok); }
+  .card-actions .mini-btn.danger { color: var(--danger); }
   .card-date {
     font-size: 12px;
     color: var(--muted, #9aa0aa);

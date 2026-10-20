@@ -526,6 +526,17 @@ export async function fetchAgentCanUseTool(agentId: string, toolId: string): Pro
   return await tauriInvoke<boolean>("agent_can_use_tool", { agentId, toolId });
 }
 
+/* ---------- Native notifications (Phase 3.2: approval gate) ---------- */
+
+/** Send a native OS notification via the Rust backend. No-op in browser. */
+export async function sendNotification(title: string, body: string): Promise<void> {
+  try {
+    await tauriInvoke("send_notification", { title, body });
+  } catch {
+    /* notifications unavailable — never block the workflow */
+  }
+}
+
 export function addSkill(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return;
@@ -840,9 +851,30 @@ export function addKanbanCard(
 }
 
 export function moveKanbanCard(id: number, col: KanbanCol) {
+  let cardTitle = "";
   kanbanCards.update((list) =>
-    list.map((c) => (c.id === id ? { ...c, col } : c)),
+    list.map((c) => {
+      if (c.id === id) {
+        cardTitle = c.title;
+        return { ...c, col };
+      }
+      return c;
+    }),
   );
+  // Native notification when a card needs approval or is finished (Phase 3.2).
+  if (col === "approval") {
+    void sendNotification("Butuh approval", `"${cardTitle}" menunggu persetujuanmu`);
+  } else if (col === "done") {
+    void sendNotification("Tugas selesai", `"${cardTitle}" selesai`);
+  }
+}
+
+/** Approval decisions from the Kanban approval column (Phase 3.2):
+    approve -> done, revise -> revision, reject -> back to queue. */
+export function decideKanbanCard(id: number, decision: "approve" | "revise" | "reject") {
+  const col: KanbanCol =
+    decision === "approve" ? "done" : decision === "revise" ? "revision" : "queue";
+  moveKanbanCard(id, col);
 }
 
 /** Kanban filter state (persisted). "all" = no filter. */
