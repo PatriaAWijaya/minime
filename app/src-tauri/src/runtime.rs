@@ -357,6 +357,7 @@ mod tests {
             .await
             .expect("real fetch must work");
         assert!(r.ok);
-        assert!(r.data["text"].as_str().unwrap().contains("Example"));
+        assert!(r.data["title"].as_str().unwrap().contains("Example Domain"));
+        assert!(!r.data["text"].as_str().unwrap().is_empty());
     }
 }
