@@ -147,6 +147,9 @@ pub fn island_get_state(state: State<'_, IslandState>) -> Option<IslandPayload> 
 
 /// Fire a macOS Force Touch haptic (generic pattern). No-op elsewhere —
 /// other platforms have no system haptic API for desktop windows.
+// The objc 0.2 macros expand with an internal cfg(cargo-clippy) check;
+// silence that crate-generated lint at this single call site.
+#[allow(unexpected_cfgs)]
 #[tauri::command]
 pub fn island_haptic() {
     #[cfg(target_os = "macos")]
