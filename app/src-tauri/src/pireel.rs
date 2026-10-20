@@ -800,4 +800,17 @@ mod tests {
         assert_eq!(url_decode("a+b%20c%2F"), "a b c/");
         assert_eq!(url_encode("a b/c"), "a%20b%2Fc");
     }
+
+    /// Without a keychain token the status must fail cleanly as
+    /// "not_connected" — and make no network request. Skips the assertion
+    /// (vacuous pass) when a token happens to exist in the keychain.
+    #[tokio::test]
+    async fn status_without_token_is_not_connected() {
+        if read_bundle().is_some() {
+            return;
+        }
+        let s = pireel_status().await.expect("status never fails hard");
+        assert!(!s.connected);
+        assert_eq!(s.detail, "not_connected");
+    }
 }
