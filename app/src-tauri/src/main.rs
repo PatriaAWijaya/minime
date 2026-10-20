@@ -3,6 +3,7 @@
 
 mod db;
 mod island;
+mod pireel;
 mod providers;
 mod secrets;
 mod skills;
@@ -485,6 +486,7 @@ fn main() {
         .manage(database)
         .manage(tools::ToolRegistry::new())
         .manage(island::IslandState(std::sync::Mutex::new(None)))
+        .manage(pireel::PireelState::new())
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
@@ -514,6 +516,10 @@ fn main() {
             get_agent_skills,
             set_agent_skills,
             create_skill,
+            pireel::pireel_connect_url,
+            pireel::pireel_oauth_poll,
+            pireel::pireel_status,
+            pireel::pireel_disconnect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
