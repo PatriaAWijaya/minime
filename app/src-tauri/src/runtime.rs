@@ -53,9 +53,9 @@ fn extract_text(html: &str) -> (String, String) {
         })
         .unwrap_or_default();
 
-    // Strip scripts/styles, then all tags.
+    // Strip head/scripts/styles, then all tags.
     let mut text = html.to_string();
-    for tag in ["script", "style", "noscript"] {
+    for tag in ["head", "script", "style", "noscript"] {
         loop {
             let lower = text.to_lowercase();
             let open = match lower.find(&format!("<{tag}")) {
