@@ -1432,3 +1432,26 @@ queue, agen nonaktif: ditolak; createSocialDraft → approval/done + notifikasi.
   semua parameter OAuth2+PKCE S256 ✓. Eksekusi penuh (login) butuh Patria.
 
 VONIS: 45+ pemeriksaan, SEMUA LOLOS. Nol error, nol gimmick.
+
+## 20 Okt 2026 ~20:55 — FIX OAuth jujur + centang hijau (temuan Patria)
+
+**Akar masalah:** halaman browser "Pireel terhubung" ditampilkan SEBELUM
+pertukaran kode-token berjalan. Pertukaran gagal diam-diam (tidak ada token
+di Keychain) → aplikasi tidak pernah terhubung, UI macet di "menghubungkan".
+
+**Perbaikan:**
+- oauth_local.rs: `accept_callback` dipecah jadi `accept_callback_raw` +
+  `reply_callback`; fungsi lama yang menyesatkan dihapus.
+- pireel.rs & drive.rs: alur baru = terima callback → tukar kode → BARU
+  tampilkan halaman hasil (sukses hanya bila token benar tersimpan; gagal =
+  halaman + alasan).
+- Alasan kegagalan disimpan (`last_error`) dan ditampilkan di UI + tombol
+  "Coba lagi". Tidak ada lagi kegagalan diam-diam.
+- Badge "Terhubung" kini "✓ Terhubung" hijau di semua kartu Apps;
+  Skills sudah punya ✓ saat dipasang ke agen.
+- i18n: `mkt.pireel.retry` × 3 bahasa (755 kunci, paritas penuh).
+
+**Verifikasi:** cargo check 0/0, test 32/32, vite 0 error, build debug
+sukses + skills terbundel.
+
+**Push:** lokal 01410cc ↔ remote ee2418c (tree identik).
