@@ -849,7 +849,7 @@
   overflow-y: auto;
   min-height: 0;
   padding: 26px 40px 40px;
-  max-width: 1120px;
+  max-width: 1024px;
 }
 .set-main h2 {
   font-size: 21px;
@@ -864,7 +864,7 @@
 .sec-title:first-of-type { margin-top: 0; }
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 14px;
   padding: 4px 18px;
 }
