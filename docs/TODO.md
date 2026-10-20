@@ -32,12 +32,51 @@
 - [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
 - [x] Gate: review + vonis Patria (LOLOS 20 Okt 11:59)
 
-## Tahap 3 — Tools & distribusi
-- [ ] Meta (draft-only), Postiz/Viralin (draft-only), Pireel
-- [ ] Approval gate + notifikasi native
-- [ ] Upload deliverable → folder MIMI (Google Drive)
-- [ ] Gate: 1 pipeline end-to-end + vonis Patria
-- Rencana rebuild rinci: `docs/RENCANA-REBUILD-TAHAP-3.md` (disiapkan 20 Okt 12:31) — sumber kode lama: commit b34e4f2, 4ddc817, 186d9ae, 28674c5
+## Tahap 3 — Tools & distribusi (REBUILD — rencana: `docs/RENCANA-REBUILD-TAHAP-3.md`)
+> Metode: pulihkan dari git history → adaptasi ke kode saat ini → uji satu per satu.
+> MeHarness berlaku (framework §7). Tiap sub-fase ditutup cek konsistensi + performa.
+
+### 3.1 Tools Gateway (Rust) — sumber: `b34e4f2`
+- [ ] Pulihkan `app/src-tauri/src/tools.rs` (registry 12 tool + ToolInfo)
+- [ ] Daftarkan 6 command di main.rs: `list_tools`, `get_tool_status`, `set_tool_connected`, `get_agent_tools`, `set_agent_tools`, `agent_can_use_tool`
+- [ ] `cargo check` nol error/nol warning
+- [ ] Hubungkan ToolsView ke status koneksi nyata (gantikan status lokal)
+- [ ] Uji: status tool tampil di UI; toggle koneksi bekerja
+- [ ] Cek konsistensi: IPC baru cocok frontend↔backend
+
+### 3.2 Approval Gate + Notifikasi Native — sumber: `4ddc817`
+- [ ] Pulihkan permission `notification` di capabilities
+- [ ] Aksi tool sensitif → kartu di Kanban kolom "Butuh Approval"
+- [ ] Keputusan user (Setuju/Revisi/Tolak) tercatat + notifikasi native terkirim
+- [ ] Uji: 1 kartu approval dari chat → notifikasi muncul → keputusan tercatat
+
+### 3.3 Meta & Postiz — Draft-Only — sumber: `186d9ae`
+- [ ] Pulihkan `createSocialDraft()` — hasil agen = DRAFT, tidak pernah auto-post
+- [ ] Postiz: penjadwalan sebagai draft
+- [ ] Direct post HANYA atas perintah eksplisit user (aturan revisi 19 Okt)
+- [ ] Uji: 1 konten agen → draft di Library → TIDAK terposting
+
+### 3.4 Pireel — Editing Video — sumber: `186d9ae`
+- [ ] Pulihkan framework koneksi cloud MCP + OAuth (akun Free, 20 kredit/hari)
+- [ ] Pipeline: generate → Pireel edit → QC → approval; hemat kredit
+- [ ] Uji: OAuth tersambung + status tampil (tanpa memotong kredit)
+
+### 3.5 Google Drive — Folder MIMI — sumber: `28674c5`
+- [ ] Pulihkan framework upload deliverable → Drive folder MIMI
+- [ ] OAuth kredensial user sendiri (aplikasi publik, tidak dibundel)
+- [ ] Uji: 1 file ter-upload ke MIMI + tercatat di Library
+
+### 3.6 Integrasi Runtime
+- [ ] Agen memanggil tool sesuai allowlist saat bekerja (dari chat)
+- [ ] Hasil tool → Library; progres → Kanban
+- [ ] Sambungkan tab Brief: todo hasil inisiasi = tugas tool nyata
+- [ ] Uji: alur penuh brief → delegasi → tool → hasil di Library
+
+### Gate Tahap 3
+- [ ] Pipeline E2E teruji (brief → delegasi → tool → approval → draft/upload → Library/Kanban)
+- [ ] Draft-only terbukti (tidak ada auto-post)
+- [ ] Cek konsistensi + performa akhir fase lolos
+- [ ] Vonis Patria
 
 ## Tahap 4 — Rilis macOS + Windows
 - [ ] Build dmg + exe; installer mudah & intuitif
