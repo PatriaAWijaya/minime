@@ -374,6 +374,7 @@ fn serve_callback(
     pending: PendingOAuth,
     pending_slot: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
     error_slot: std::sync::Arc<Mutex<Option<String>>>,
+    tokens_slot: std::sync::Arc<Mutex<Option<TokenBundle>>>,
 ) {
     // Patria 20 Okt: accept first, exchange the code, THEN reply — the page
     // must reflect the real outcome, never a premature "connected".
@@ -580,8 +581,8 @@ pub fn pireel_oauth_poll(state: tauri::State<'_, PireelState>) -> PireelOAuthSta
     }
     let pending = state.pending.lock().unwrap().clone();
     let mut error = state.last_error.lock().unwrap().clone();
-    if write_error.is_some() {
-        error = write_error;
+    if let Some(e) = write_error.clone() {
+        error = Some(e);
     }
     let st = match pending {
         None => {

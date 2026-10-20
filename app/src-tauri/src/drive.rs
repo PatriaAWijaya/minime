@@ -408,8 +408,8 @@ pub fn drive_oauth_poll(state: tauri::State<'_, DriveState>) -> DriveOAuthPhase 
     }
     let pending = state.pending.lock().unwrap().clone();
     let mut error = state.last_error.lock().unwrap().clone();
-    if write_error.is_some() {
-        error = write_error;
+    if let Some(e) = write_error.clone() {
+        error = Some(e);
     }
     let st = match pending {
         None => {
