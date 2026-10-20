@@ -669,8 +669,8 @@ mod tmp_keychain_probe {
     #[test]
     fn probe_write_read_delete() {
         let b = TokenBundle {
-            access_token: <redacted>
-            refresh_token: <redacted>
+            access_token: "probe-at".into(),
+            refresh_token: "probe-rt".into(),
             expires_at: now_epoch() + 3600,
             client_id: "probe".into(),
             token_endpoint: "https://example.com/token".into(),
