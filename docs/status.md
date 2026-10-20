@@ -933,3 +933,20 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   berikutnya). Semua tersimpan per agen (localStorage).
 - Commit d207fc7 ↔ remote 52aa0f2, ter-push. Build sukses; i18n 282 key
   × 3 bahasa paritas penuh.
+
+---
+
+## 2026-10-20 ~12:10 WIB — Adopsi Harness² (Google) + ECC: framework & workflow
+
+- Keputusan Patria: adopsi Google Harness² dan ECC "untuk kita pakai" —
+  clone bila memungkinkan; bila tidak, susun framework + workflow-nya.
+- Clone referensi shallow di LUAR repo (bahan studi, bukan dependensi):
+  `~/workspace/refs/harness2` (15 MB, Apache 2.0) & `~/workspace/refs/ecc`
+  (103 MB, MIT).
+- Dokumen baru `docs/meharness.md`: pemetaan 8 komponen Harness² →
+  permukaan Minime; **Loop Tuning Minime** (adaptasi Propose–Probe–Compose;
+  proses DEV, bukan runtime publik; pagar gate vonis Patria); set tugas uji
+  (benchmark mini) di `tests/harness/`; kurasi ECC gelombang 1
+  (code-reviewer, TDD, agent-eval, self-evaluation, AgentShield) dengan
+  aturan review manual anti prompt-injection.
+- TODO: seksi "Adopsi Harness" ditambahkan. Belum di-push — menunggu OK Patria.

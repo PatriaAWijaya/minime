@@ -43,6 +43,14 @@
 - [ ] Security audit + Impeccable audit
 - [ ] Gate: instalasi bersih + vonis rilis Patria
 
+## MeHarness — Adopsi Harness (20 Okt 2026)
+> Framework lengkap: `docs/meharness.md`. Proses DEV, bukan fitur runtime.
+- [ ] Set tugas uji (benchmark mini) per agen di `tests/harness/` (3–5 tugas + rubrik)
+- [ ] `docs/meharness-lessons.md` — library pelajaran loop tuning
+- [ ] Putaran tuning pilot: Code Builder (Propose–Probe–Compose, k=1, executor OpenCode)
+- [ ] Kurasi ECC gelombang 1 → format Minime (code-reviewer, build-error-resolver, e2e-runner, tdd-workflow, ai-regression-testing, agent-eval, agent-self-evaluation)
+- [ ] Evaluasi konsep AgentShield (pindai konfigurasi agen) untuk Tahap 3/4
+
 ## Catatan
 - Repo `PatriaAWijaya/minime-v2` (kosong): hapus manual via GitHub settings
   (token tidak punya scope delete).
