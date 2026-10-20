@@ -152,3 +152,21 @@ export interface FlowProject {
   id: string;
   name: string;
 }
+
+/** Project workflow (Patria 20 Okt): user buat project → brief awal +
+    to-do list + goals di Mimi → Mimi auto-delegasi ke agen → agen kerja
+    mandiri & lapor progres ke Library → user pantau selesai di Kanban. */
+export interface ProjectBrief {
+  projectId: string;
+  brief: string;
+  goals: string;
+  initiated: boolean;
+}
+
+export interface ProjectTodo {
+  id: string;
+  projectId: string;
+  text: string;
+  agentId: string;
+  done: boolean;
+}

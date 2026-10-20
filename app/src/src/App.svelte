@@ -2,8 +2,7 @@
   import { onMount } from "svelte";
   import IconSidebar from "./components/IconSidebar.svelte";
   import AgentsView from "./components/AgentsView.svelte";
-  import TasksView from "./components/TasksView.svelte";
-  import ScheduleView from "./components/ScheduleView.svelte";
+  import TasksView from "./components/TasksView.svelte";  import ScheduleView from "./components/ScheduleView.svelte";
   import LibraryView from "./components/LibraryView.svelte";
   import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";

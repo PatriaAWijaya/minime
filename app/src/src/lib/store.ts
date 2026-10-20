@@ -47,6 +47,24 @@ export const agentStatus = writable<Record<string, AgentStatus>>({
   code: "idle",
 });
 
+/** Agent active/enabled state (Patria 20 Okt): by default ONLY the main
+    agent (Mimi) is active. Other agents activate when the user enables
+    them or when Mimi delegates work to them. */
+export const agentEnabled = writable<Record<string, boolean>>(
+  loadRecord<boolean>("minime.agent-enabled"),
+);
+persistRecord("minime.agent-enabled", agentEnabled);
+
+export function isAgentEnabled(id: string): boolean {
+  if (id === "mimi") return true;
+  return get(agentEnabled)[id] ?? false;
+}
+
+export function setAgentEnabled(id: string, enabled: boolean): void {
+  if (id === "mimi") return;
+  agentEnabled.update((m) => ({ ...m, [id]: enabled }));
+}
+
 /** Chat history per agent id (local mock). */
 export const messagesByAgent = writable<Record<string, Message[]>>({});
 
@@ -676,7 +694,7 @@ const CUSTOM_AGENT_COLORS = ["#F4A7C3", "#A8D8FF", "#B5E8C0", "#FFD6A5", "#D3BFF
 export const customAgents = writable<Agent[]>([]);
 
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
-export type TasksViewKind = "kanban" | "flow";
+export type TasksViewKind = "kanban" | "flow" | "brief";
 
 export const tasksView = writable<TasksViewKind>("kanban");
 
@@ -867,6 +885,64 @@ export const projects = writable<FlowProject[]>(
   ]),
 );
 persistList("minime.projects", projects);
+
+/** Project briefs + todos (workflow Patria 20 Okt). Brief awal dibuat user
+    di Mimi; Mimi auto-delegasi menjadi todo per agen. */
+export const projectBriefs = writable<Record<string, import("./types").ProjectBrief>>(
+  loadRecord<import("./types").ProjectBrief>("minime.project-briefs"),
+);
+persistRecord("minime.project-briefs", projectBriefs);
+
+export const projectTodos = writable<import("./types").ProjectTodo[]>(
+  loadList("minime.project-todos", () => []),
+);
+persistList("minime.project-todos", projectTodos);
+
+let todoSeq = 1;
+
+export function getProjectBrief(projectId: string): import("./types").ProjectBrief {
+  const rec = get(projectBriefs);
+  return rec[projectId] ?? { projectId, brief: "", goals: "", initiated: false };
+}
+
+export function setProjectBrief(projectId: string, brief: string, goals: string): void {
+  projectBriefs.update((m) => ({
+    ...m,
+    [projectId]: { ...(m[projectId] ?? { projectId, brief: "", goals: "", initiated: false }), brief, goals },
+  }));
+}
+
+export function addProjectTodo(projectId: string, text: string, agentId: string): void {
+  const t = text.trim();
+  if (!t) return;
+  projectTodos.update((list) => [
+    ...list,
+    { id: `todo-${todoSeq++}`, projectId, text: t, agentId, done: false },
+  ]);
+}
+
+export function toggleProjectTodo(id: string): void {
+  projectTodos.update((list) =>
+    list.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
+  );
+}
+
+export function removeProjectTodo(id: string): void {
+  projectTodos.update((list) => list.filter((t) => t.id !== id));
+}
+
+/** Auto-delegation: Mimi turns the brief into per-agent todos + activates
+    the assigned agents, then marks the project initiated. */
+export function initiateProject(projectId: string, assignments: { agentId: string; task: string }[]): void {
+  for (const a of assignments) {
+    addProjectTodo(projectId, a.task, a.agentId);
+    setAgentEnabled(a.agentId, true);
+  }
+  projectBriefs.update((m) => ({
+    ...m,
+    [projectId]: { ...(m[projectId] ?? { projectId, brief: "", goals: "", initiated: false }), initiated: true },
+  }));
+}
 
 /** Active project on the Connection canvas. */
 export const activeFlowProjectId = writable<string>(

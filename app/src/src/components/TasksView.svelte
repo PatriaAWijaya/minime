@@ -40,6 +40,7 @@
   import type { KanbanCol } from "../lib/types";
   import { t } from "../lib/i18n";
   import FlowAgentNode from "./FlowAgentNode.svelte";
+  import BriefPanel from "./BriefPanel.svelte";
 
   const cols: KanbanCol[] = ["queue", "doing", "approval", "revision", "done"];
   const allAgents = $derived([...agents, ...$customAgents]);
@@ -340,6 +341,20 @@
         </svg>
         {$t("tasks.flow")}
       </button>
+      <button
+        role="tab"
+        aria-selected={$tasksView === "brief"}
+        class:active={$tasksView === "brief"}
+        onclick={() => setView("brief")}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+          <line x1="9" y1="17" x2="15" y2="17" />
+        </svg>
+        {$t("tasks.brief")}
+      </button>
     </div>
   </div>
 
@@ -450,7 +465,7 @@
         </section>
       {/each}
     </div>
-  {:else}
+  {:else if $tasksView === "flow"}
     <div class="flow-bar">
       <div class="proj-tabs" role="tablist" aria-label={$t("tasks.flow.projects")}>
         {#each $projects as p (p.id)}
@@ -609,6 +624,8 @@
         </div>
       {/if}
     </div>
+  {:else if $tasksView === "brief"}
+    <BriefPanel />
   {/if}
 </div>
 
