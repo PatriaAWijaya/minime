@@ -93,6 +93,8 @@ pub struct DriveState {
     pending: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
     /// Last OAuth failure reason, surfaced to the UI (Patria 20 Okt).
     last_error: std::sync::Arc<Mutex<Option<String>>>,
+    /// Tokens awaiting keychain write on the Tauri thread (Patria 21 Okt).
+    pending_tokens: std::sync::Arc<Mutex<Option<TokenBundle>>>,
 }
 
 impl DriveState {
@@ -100,6 +102,7 @@ impl DriveState {
         Self {
             pending: std::sync::Arc::new(Mutex::new(None)),
             last_error: std::sync::Arc::new(Mutex::new(None)),
+            pending_tokens: std::sync::Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -197,6 +200,7 @@ fn serve_callback(
     pending: PendingOAuth,
     pending_slot: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
     error_slot: std::sync::Arc<Mutex<Option<String>>>,
+    tokens_slot: std::sync::Arc<Mutex<Option<TokenBundle>>>,
 ) {
     // Patria 20 Okt: accept first, exchange the code, THEN reply — the page
     // must reflect the real outcome, never a premature "connected".
@@ -212,7 +216,7 @@ fn serve_callback(
                 return;
             }
         };
-    let outcome: Result<(), String> = (|| {
+    let outcome: Result<TokenBundle, String> = (|| {
         let code = params.get("code").cloned().unwrap_or_default();
         let cb_state = params.get("state").cloned().unwrap_or_default();
         if code.is_empty() {
@@ -234,11 +238,11 @@ fn serve_callback(
             &pending.verifier,
             &code,
         ))?;
-        write_bundle(&bundle)
+        Ok(bundle)
     })();
     let ok = outcome.is_ok();
     let msg = match &outcome {
-        Ok(()) => "Otorisasi selesai — Google Drive terhubung.".to_string(),
+        Ok(_) => "Otorisasi selesai — Google Drive terhubung.".to_string(),
         Err(e) => format!("Koneksi gagal: {e}"),
     };
     crate::oauth_local::reply_callback(
@@ -250,6 +254,7 @@ fn serve_callback(
     );
     let mut slot = pending_slot.lock().unwrap();
     if ok {
+        *tokens_slot.lock().unwrap() = outcome.ok();
         *slot = None;
         *error_slot.lock().unwrap() = None;
     } else {
@@ -377,15 +382,35 @@ pub async fn drive_connect_url(
     *s.last_error.lock().unwrap() = None;
     let slot = std::sync::Arc::clone(&s.pending);
     let error_slot = std::sync::Arc::clone(&s.last_error);
-    std::thread::spawn(move || serve_callback(listener, pending, slot, error_slot));
+    let tokens_slot = std::sync::Arc::clone(&s.pending_tokens);
+    std::thread::spawn(move || {
+        serve_callback(listener, pending, slot, error_slot, tokens_slot)
+    });
     let _ = open_browser(&auth_url);
     Ok(auth_url)
 }
 
 #[tauri::command]
 pub fn drive_oauth_poll(state: tauri::State<'_, DriveState>) -> DriveOAuthPhase {
+    let mut write_error: Option<String> = None;
+    if let Some(bundle) = state.pending_tokens.lock().unwrap().take() {
+        match write_bundle(&bundle) {
+            Ok(()) => {
+                if read_bundle().is_none() {
+                    write_error = Some("keychain tidak menyimpan token".to_string());
+                }
+            }
+            Err(e) => write_error = Some(e),
+        }
+        if let Some(e) = write_error.clone() {
+            *state.last_error.lock().unwrap() = Some(e);
+        }
+    }
     let pending = state.pending.lock().unwrap().clone();
-    let error = state.last_error.lock().unwrap().clone();
+    let mut error = state.last_error.lock().unwrap().clone();
+    if write_error.is_some() {
+        error = write_error;
+    }
     let st = match pending {
         None => {
             if read_bundle().is_some() {
@@ -396,6 +421,11 @@ pub fn drive_oauth_poll(state: tauri::State<'_, DriveState>) -> DriveOAuthPhase 
         }
         Some(p) if p.expires_at == 0 || p.expires_at < now_epoch() => "idle",
         Some(_) => "pending",
+    };
+    let st = if st == "connected" && write_error.is_some() {
+        "idle"
+    } else {
+        st
     };
     DriveOAuthPhase {
         state: st.to_string(),

@@ -157,6 +157,10 @@ pub struct PireelState {
     pending: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
     /// Last OAuth failure reason, surfaced to the UI (Patria 20 Okt).
     last_error: std::sync::Arc<Mutex<Option<String>>>,
+    /// Tokens from a completed exchange, awaiting keychain write on the
+    /// Tauri thread (Patria 21 Okt: keychain writes from a raw spawned
+    /// thread do not persist on macOS).
+    pending_tokens: std::sync::Arc<Mutex<Option<TokenBundle>>>,
 }
 
 impl PireelState {
@@ -165,6 +169,7 @@ impl PireelState {
             meta: std::sync::Arc::new(Mutex::new(None)),
             pending: std::sync::Arc::new(Mutex::new(None)),
             last_error: std::sync::Arc::new(Mutex::new(None)),
+            pending_tokens: std::sync::Arc::new(Mutex::new(None)),
         }
     }
 
@@ -174,6 +179,10 @@ impl PireelState {
 
     fn error_arc(&self) -> std::sync::Arc<Mutex<Option<String>>> {
         std::sync::Arc::clone(&self.last_error)
+    }
+
+    fn tokens_arc(&self) -> std::sync::Arc<Mutex<Option<TokenBundle>>> {
+        std::sync::Arc::clone(&self.pending_tokens)
     }
 }
 
@@ -380,7 +389,7 @@ fn serve_callback(
                 return;
             }
         };
-    let outcome: Result<(), String> = (|| {
+    let outcome: Result<TokenBundle, String> = (|| {
         let code = params.get("code").cloned().unwrap_or_default();
         let cb_state = params.get("state").cloned().unwrap_or_default();
         if code.is_empty() {
@@ -392,7 +401,10 @@ fn serve_callback(
         if cb_state != pending.state {
             return Err("state mismatch".to_string());
         }
-        // Synchronous token exchange inside a blocking thread.
+        // Synchronous token exchange inside a blocking thread. The bundle is
+        // NOT written here: keychain writes from a raw spawned thread do not
+        // persist on macOS (Patria 21 Okt) — the poller writes it on the
+        // Tauri thread instead.
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -401,7 +413,7 @@ fn serve_callback(
     })();
     let ok = outcome.is_ok();
     let msg = match &outcome {
-        Ok(()) => "Otorisasi selesai — akun Pireel terhubung.".to_string(),
+        Ok(_) => "Otorisasi selesai — akun Pireel terhubung.".to_string(),
         Err(e) => format!("Koneksi gagal: {e}"),
     };
     crate::oauth_local::reply_callback(
@@ -411,10 +423,11 @@ fn serve_callback(
         "Pireel gagal terhubung",
         &msg,
     );
-    // Publish the final state for the poller: success clears the slot
-    // (bundle is in the keychain); failure marks it expired + records why.
+    // Publish the final state for the poller: success stashes the bundle
+    // for the Tauri-thread keychain write; failure marks it expired.
     let mut slot = pending_slot.lock().unwrap();
     if ok {
+        *tokens_slot.lock().unwrap() = outcome.ok();
         *slot = None;
         *error_slot.lock().unwrap() = None;
     } else {
@@ -426,7 +439,7 @@ fn serve_callback(
     }
 }
 
-async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<(), String> {
+async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<TokenBundle, String> {
     let client = http_client();
     let mut form = HashMap::new();
     form.insert("grant_type", "authorization_code");
@@ -445,7 +458,7 @@ async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<(), String>
         .json()
         .await
         .map_err(|e| format!("token parse failed: {e}"))?;
-    write_bundle(&TokenBundle {
+    Ok(TokenBundle {
         access_token: resp.access_token,
         refresh_token: resp
             .refresh_token
@@ -535,7 +548,10 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
     *s.last_error.lock().unwrap() = None;
     let pending_slot = s.pending_arc();
     let error_slot = s.error_arc();
-    std::thread::spawn(move || serve_callback(listener, pending, pending_slot, error_slot));
+    let tokens_slot = s.tokens_arc();
+    std::thread::spawn(move || {
+        serve_callback(listener, pending, pending_slot, error_slot, tokens_slot)
+    });
 
     // Best effort: also return the URL so the UI can show a fallback link.
     let _ = open_browser(&auth_url);
@@ -545,8 +561,28 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
 /// Poll the OAuth flow state.
 #[tauri::command]
 pub fn pireel_oauth_poll(state: tauri::State<'_, PireelState>) -> PireelOAuthState {
+    // Keychain write happens HERE (Tauri thread), never in the spawned
+    // callback thread (Patria 21 Okt).
+    let mut write_error: Option<String> = None;
+    if let Some(bundle) = state.pending_tokens.lock().unwrap().take() {
+        match write_bundle(&bundle) {
+            Ok(()) => {
+                // Verify it actually persisted.
+                if read_bundle().is_none() {
+                    write_error = Some("keychain tidak menyimpan token".to_string());
+                }
+            }
+            Err(e) => write_error = Some(e),
+        }
+        if let Some(e) = write_error.clone() {
+            *state.last_error.lock().unwrap() = Some(e);
+        }
+    }
     let pending = state.pending.lock().unwrap().clone();
-    let error = state.last_error.lock().unwrap().clone();
+    let mut error = state.last_error.lock().unwrap().clone();
+    if write_error.is_some() {
+        error = write_error;
+    }
     let st = match pending {
         None => {
             if read_bundle().is_some() {
@@ -557,6 +593,12 @@ pub fn pireel_oauth_poll(state: tauri::State<'_, PireelState>) -> PireelOAuthSta
         }
         Some(p) if p.expires_at == 0 || p.expires_at < now_epoch() => "idle",
         Some(_) => "pending",
+    };
+    // A stashed bundle that failed to persist must not read as "connected".
+    let st = if st == "connected" && write_error.is_some() {
+        "idle"
+    } else {
+        st
     };
     PireelOAuthState {
         state: st.to_string(),
@@ -660,25 +702,5 @@ mod tests {
         let s = pireel_status().await.expect("status never fails hard");
         assert!(!s.connected);
         assert_eq!(s.detail, "not_connected");
-    }
-}
-
-#[cfg(test)]
-mod tmp_keychain_probe {
-    use super::*;
-    #[test]
-    fn probe_write_read_delete() {
-        let b = TokenBundle {
-            access_token: "probe-at".into(),
-            refresh_token: "probe-rt".into(),
-            expires_at: now_epoch() + 3600,
-            client_id: "probe".into(),
-            token_endpoint: "https://example.com/token".into(),
-        };
-        write_bundle(&b).expect("write must succeed");
-        let r = read_bundle().expect("read must find it");
-        assert_eq!(r.access_token, "probe-at");
-        delete_bundle().expect("delete must succeed");
-        assert!(read_bundle().is_none());
     }
 }
