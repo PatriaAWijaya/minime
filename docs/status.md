@@ -1092,3 +1092,21 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   kode + unit test; uji klik manual di MacBook menunggu Patria (butuh interaksi
   UI langsung). Tidak ada auto-post: Meta/Postiz tetap draft-only (3.3).
 - Commit: 471d7c4↔0285345, 84849e4↔78da491, 8c2e343↔a4259e9.
+
+## 20 Okt 2026 ~16:05 — Folder = Project, "Agen baru" berfungsi penuh (perintah Patria)
+- "Agen baru" (+) kini benar-benar menambah agen ke list: langsung AKTIF &
+  terlihat (sebelumnya dibuat nonaktif → tak terlihat, terkesan mati), otomatis
+  terpilih + panel kustomisasi terbuka (nama, peran, instruksi, model, dsb).
+- "Folder tugas baru" (+) = tambah project di Tugas (satu konsep): FlowProject
+  kini punya agentIds; folder di tab Agen ADALAH project (nama sama, terhapus
+  bersama, muncul di filter Kanban + kanvas Koneksi). TaskFolder lama dihapus
+  (tidak persisten & tak bisa diisi agen).
+- Agen bisa dimasukkan ke folder via tombol + di header folder (pilih dari agen
+  bebas) atau via dropdown "Folder" di panel kustomisasi agen; satu agen hanya
+  di satu folder; masuk folder = otomatis aktif (diplot untuk project itu).
+- Header folder: buka/tutup, ganti nama inline, hapus (project ikut terhapus).
+- Brief: default agen tiap todo = agen tim folder project; dropdown agen Brief
+  mencakup agen custom.
+- Tools: tab Agen + dialog skill kini menampilkan SEMUA agen nyata (6 bawaan +
+  custom user) — revisi aturan "hanya 6" karena agen custom kini first-class;
+  jumlah skill per kartu dari katalog backend langsung.

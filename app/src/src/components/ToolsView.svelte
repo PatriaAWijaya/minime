@@ -78,8 +78,11 @@
   function agentDisplayName(a: { id: string; name: string; nameKey?: string }): string {
     return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name);
   }
+  /* Patria 20 Okt: tab Agen + dialog skill menampilkan SEMUA agen nyata —
+     6 bawaan + agen custom buatan user ("Agen baru"). Tanpa template fiktif. */
+  const toolsAgents = $derived([...seedList, ...$customAgents]);
   const filteredAgents = $derived(
-    seedList
+    toolsAgents
       .filter(
         (a) =>
           !query ||
@@ -521,9 +524,9 @@
     <div class="mkt-dialog" role="dialog" aria-label={s.name}>
       <h3>{$t("mkt.chooseAgents")}</h3>
       <p class="mkt-dlg-sub">{s.name}</p>
-      <!-- Patria 20 Okt: hanya 6 agen utama Minime yang tampil di sini. -->
+      <!-- Patria 20 Okt: semua agen nyata (6 bawaan + custom user). -->
       <div class="mkt-agent-list">
-        {#each seedList as a (a.id)}
+        {#each toolsAgents as a (a.id)}
           <label class="mkt-agent-row">
             <input
               type="checkbox"

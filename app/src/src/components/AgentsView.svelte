@@ -10,7 +10,11 @@
     addCustomModel,
     addAgentFile,
     addKanbanCard,
-    addTaskFolder,
+    addAgentToProject,
+    removeAgentFromProject,
+    renameProject,
+    removeFlowProject,
+    addFlowProject,
     agentBrowserOn,
     agentFacts,
     agentFiles,
@@ -49,11 +53,12 @@
     removeAgentFile,
     removeCustomModel,
     serverLayout,
-    taskFolders,
+    folderOpen,
     toggleFolder,
+    isFolderOpen,
   } from "../lib/store";
   import type { ModelSection } from "../lib/store";
-  import type { Agent, ServerKind, TaskFolder } from "../lib/types";
+  import type { Agent, ServerKind, FlowProject } from "../lib/types";
   import { t } from "../lib/i18n";
 
   const reasoningOptions = ["low", "mid", "high"] as const;
@@ -251,21 +256,46 @@
     taskAdded = true;
   }
 
-  // Task folders: agents grouped into collapsible folders.
+  // Project folders: agents grouped into collapsible folders. The folder IS
+  // the project (Patria 20 Okt): agents in a folder are the agents assigned
+  // to work on that project (Tasks, Kanban, Brief).
   // Only enabled agents are listed (Patria 20 Okt): by default only the
   // main agent (Mimi) appears; others appear once activated.
   const isVisible = (a: Agent) => a.id === "mimi" || ($agentEnabled[a.id] ?? false);
   const groupedIds = $derived(
-    new Set($taskFolders.flatMap((f) => f.agentIds)),
+    new Set($projects.flatMap((p) => p.agentIds ?? [])),
   );
   const looseAgents = $derived(
     allAgents.filter((a) => !groupedIds.has(a.id) && isVisible(a)),
   );
-  function folderAgents(f: TaskFolder): Agent[] {
-    return allAgents.filter((a) => f.agentIds.includes(a.id) && isVisible(a));
+  function folderAgents(p: FlowProject): Agent[] {
+    return allAgents.filter((a) => (p.agentIds ?? []).includes(a.id) && isVisible(a));
   }
-  function folderName(f: TaskFolder): string {
-    return f.num ? $t(f.nameKey, { n: String(f.num) }) : $t(f.nameKey);
+  const folderIsOpen = (id: string) => isFolderOpen(id, $folderOpen);
+
+  // "+ Add agent" menu per folder: pick from agents not in any folder.
+  let addAgentMenuFor = $state<string | null>(null);
+  // Inline rename state per folder.
+  let renamingFolder = $state<string | null>(null);
+  let renameValue = $state("");
+  function startRename(p: FlowProject) {
+    renamingFolder = p.id;
+    renameValue = p.name;
+  }
+  function commitRename(p: FlowProject) {
+    if (renamingFolder === p.id) renameProject(p.id, renameValue);
+    renamingFolder = null;
+  }
+  function addFolderProject() {
+    const n = $projects.length + 1;
+    const id = addFlowProject($t("tasks.projectNew", { n: String(n) }));
+    folderOpen.update((m) => ({ ...m, [id]: true }));
+  }
+  function addNewAgent() {
+    const id = addCustomAgent();
+    activeAgentId.set(id);
+    detailOpen = true;
+    closeAll();
   }
 
   // Agent-list search
@@ -280,18 +310,27 @@
     looseAgents.filter((a) => !aq || labelOf(a).includes(aq)),
   );
   const folderView = $derived(
-    $taskFolders
-      .map((f) => ({
-        f,
-        agents: folderAgents(f).filter((a) => !aq || labelOf(a).includes(aq)),
+    $projects
+      .map((p) => ({
+        p,
+        agents: folderAgents(p).filter((a) => !aq || labelOf(a).includes(aq)),
       }))
       .filter(
-        ({ f, agents }) =>
+        ({ p, agents }) =>
           !aq ||
-          folderName(f).toLowerCase().includes(aq) ||
+          p.name.toLowerCase().includes(aq) ||
           agents.length > 0,
       ),
   );
+
+  function agentFolderId(agentId: string): string {
+    return $projects.find((p) => (p.agentIds ?? []).includes(agentId))?.id ?? "";
+  }
+  function moveAgentToFolder(agentId: string, projectId: string) {
+    const cur = agentFolderId(agentId);
+    if (cur) removeAgentFromProject(cur, agentId);
+    if (projectId) addAgentToProject(projectId, agentId);
+  }
 
   const ollamaModels = $derived(
     $modelCatalog.filter((m) => m.providerId === "ollama"),
@@ -1109,8 +1148,7 @@
               <button
                 class="menu-item"
                 onclick={() => {
-                  addCustomAgent();
-                  closeAll();
+                  addNewAgent();
                 }}
               >
                 <span class="check" aria-hidden="true"></span>
@@ -1119,7 +1157,7 @@
               <button
                 class="menu-item"
                 onclick={() => {
-                  addTaskFolder();
+                  addFolderProject();
                   closeAll();
                 }}
               >
@@ -1141,30 +1179,110 @@
         {#each filteredLoose as a (a.id)}
           {@render agentRow(a)}
         {/each}
-        {#each folderView as { f, agents: fAgents } (f.id)}
+        {#each folderView as { p, agents: fAgents } (p.id)}
+          {@const open = folderIsOpen(p.id) || !!aq}
           <div class="folder">
-            <button
-              class="folder-head"
-              onclick={() => toggleFolder(f.id)}
-              aria-expanded={f.open || !!aq}
-            >
-              <svg
-                class="chev"
-                class:open={f.open || !!aq}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
+            <div class="folder-head">
+              <button
+                class="folder-toggle"
+                onclick={() => toggleFolder(p.id)}
+                aria-expanded={open}
+                aria-label={p.name}
               >
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-              <span class="folder-name">{folderName(f)}</span>
-              <span class="folder-count"
-                >{$t("agents.folder.count", { n: String(fAgents.length) })}</span
-              >
-            </button>
-            {#if f.open || aq}
+                <svg
+                  class="chev"
+                  class:open={open}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+                {#if renamingFolder === p.id}
+                  <input
+                    class="folder-rename"
+                    bind:value={renameValue}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") commitRename(p);
+                      else if (e.key === "Escape") renamingFolder = null;
+                    }}
+                    onblur={() => commitRename(p)}
+                    aria-label={$t("agents.folder.rename")}
+                  />
+                {:else}
+                  <span class="folder-name">{p.name}</span>
+                {/if}
+                <span class="folder-count"
+                  >{$t("agents.folder.count", { n: String(fAgents.length) })}</span
+                >
+              </button>
+              <div class="folder-actions">
+                <button
+                  class="icon-btn sm"
+                  aria-label={$t("agents.folder.addAgent")}
+                  title={$t("agents.folder.addAgent")}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    addAgentMenuFor = addAgentMenuFor === p.id ? null : p.id;
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                <button
+                  class="icon-btn sm"
+                  aria-label={$t("agents.folder.rename")}
+                  title={$t("agents.folder.rename")}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    startRename(p);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M17 3a2.8 2.8 0 1 1 4 4L8 20l-5 1 1-5z" />
+                  </svg>
+                </button>
+                {#if $projects.length > 1}
+                  <button
+                    class="icon-btn sm danger"
+                    aria-label={$t("agents.folder.delete")}
+                    title={$t("agents.folder.delete")}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      removeFlowProject(p.id);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+                    </svg>
+                  </button>
+                {/if}
+              </div>
+            </div>
+            {#if addAgentMenuFor === p.id}
+              <div class="folder-add-menu" role="menu" aria-label={$t("agents.folder.addAgent")}>
+                {#if looseAgents.length === 0}
+                  <p class="folder-add-empty">{$t("agents.folder.noLooseAgents")}</p>
+                {:else}
+                  {#each looseAgents as a (a.id)}
+                    <button
+                      class="menu-item"
+                      onclick={() => {
+                        addAgentToProject(p.id, a.id);
+                        addAgentMenuFor = null;
+                      }}
+                    >
+                      <span class="badge sm" style:background={a.color}>{a.badge}</span>
+                      <span>{$agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name)}</span>
+                    </button>
+                  {/each}
+                {/if}
+              </div>
+            {/if}
+            {#if open}
               <div class="folder-body">
                 {#each fAgents as a (a.id)}
                   {@render agentRow(a)}
@@ -1239,6 +1357,21 @@
             oninput={(e) =>
               agentInstructions.update((m) => ({ ...m, [agent.id]: e.currentTarget.value }))}
           ></textarea>
+        </div>
+
+        <div class="field">
+          <label for="d-folder">{$t("agents.folder.label")}</label>
+          <select
+            id="d-folder"
+            value={agentFolderId(agent.id)}
+            onchange={(e) => moveAgentToFolder(agent.id, e.currentTarget.value)}
+          >
+            <option value="">{$t("agents.folder.none")}</option>
+            {#each $projects as p (p.id)}
+              <option value={p.id}>{p.name}</option>
+            {/each}
+          </select>
+          <p class="hint">{$t("agents.folder.hint")}</p>
         </div>
 
         <div class="section">
@@ -2220,10 +2353,20 @@
   .folder-head {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     width: 100%;
     min-height: 44px;
-    padding: 0 12px;
+    padding: 0 8px 0 12px;
+    background: transparent;
+    color: var(--text);
+  }
+  .folder-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
     border: 0;
     background: transparent;
     color: var(--text);
@@ -2231,8 +2374,9 @@
     font-weight: 700;
     cursor: pointer;
     text-align: left;
+    padding: 0;
   }
-  .folder-head:hover {
+  .folder-toggle:hover {
     background: var(--panel-2);
   }
   .folder-head .chev {
@@ -2257,6 +2401,92 @@
     font-weight: 600;
     color: var(--dim);
     flex: none;
+  }
+  .folder-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: none;
+  }
+  .icon-btn.sm {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    border-radius: 8px;
+  }
+  .icon-btn.sm svg {
+    width: 15px;
+    height: 15px;
+  }
+  .icon-btn.sm.danger:hover {
+    color: #ff7a7a;
+    background: rgba(255, 90, 90, 0.12);
+  }
+  .folder-rename {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 6px 10px;
+    outline: none;
+  }
+  .folder-add-menu {
+    margin: 2px 8px 6px;
+    padding: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .folder-add-menu .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .folder-add-menu .menu-item:hover {
+    background: var(--panel-3);
+  }
+  .folder-add-empty {
+    margin: 0;
+    padding: 10px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .badge.sm {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .field .hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+  .field select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    outline: none;
   }
   .folder-body {
     padding: 2px 6px 8px;

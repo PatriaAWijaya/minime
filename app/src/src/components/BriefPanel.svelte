@@ -2,6 +2,8 @@
   import { agents } from "../lib/agents";
   import {
     activeFlowProjectId,
+    agentNames,
+    customAgents,
     getProjectBrief,
     initiateProject,
     projectBriefs,
@@ -18,6 +20,12 @@
   const pid = $derived($activeFlowProjectId);
   const briefRec = $derived($projectBriefs[pid] ?? getProjectBrief(pid));
   const todos = $derived($projectTodos.filter((x) => x.projectId === pid));
+  const briefAgents = $derived([...agents, ...$customAgents]);
+  /* Patria 20 Okt: agen dalam folder project = agen yang diplot untuk
+     project itu — jadikan default pilihan agen saat tambah todo. */
+  const projectTeam = $derived(
+    $projects.find((p) => p.id === pid)?.agentIds ?? [],
+  );
 
   let briefText = $state("");
   let goalsText = $state("");
@@ -32,6 +40,7 @@
       const rec = getProjectBrief(pid);
       briefText = rec.brief;
       goalsText = rec.goals;
+      newTodoAgent = projectTeam[0] ?? "mimi";
     }
   });
 
@@ -52,6 +61,9 @@
 
   function agentName(id: string): string {
     return agents.find((a) => a.id === id)?.name ?? id;
+  }
+  function briefAgentName(a: { id: string; name: string; nameKey?: string }): string {
+    return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name) ?? a.id;
   }
 </script>
 
@@ -102,8 +114,8 @@
         onkeydown={(e) => { if (e.key === "Enter") submitTodo(); }}
       />
       <select bind:value={newTodoAgent} aria-label={$t("tasks.brief.agent")}>
-        {#each agents as a (a.id)}
-          <option value={a.id}>{a.name}</option>
+        {#each briefAgents as a (a.id)}
+          <option value={a.id}>{briefAgentName(a)}</option>
         {/each}
       </select>
       <button class="btn-ghost" onclick={submitTodo} disabled={!newTodo.trim()}>
