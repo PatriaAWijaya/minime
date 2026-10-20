@@ -481,7 +481,18 @@
       {#if panelOpen}
         <div class="scrim" onclick={closeAll} aria-hidden="true"></div>
         <div class="model-panel" role="dialog" aria-label={$t("agents.model")}>
-          <div class="field">
+          <button
+            class="panel-x"
+            onclick={closeAll}
+            aria-label={$t("common.close")}
+            title={$t("common.close")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+          <div class="field field-search">
             <input
               type="search"
               bind:value={query}
@@ -678,6 +689,17 @@
   {#if agentDlg}
     <div class="scrim" onclick={() => (agentDlg = null)} aria-hidden="true"></div>
     <div class="agent-dlg" role="dialog" aria-modal="true" aria-label={$t("agents.menu.title")}>
+      <button
+        class="panel-x"
+        onclick={() => (agentDlg = null)}
+        aria-label={$t("common.close")}
+        title={$t("common.close")}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      </button>
       {#if agentDlg === "browser"}
         <h3>{$t("agents.browser.title")}</h3>
         <p class="dlg-agent">{displayName}</p>
@@ -1680,8 +1702,24 @@
     padding: 12px;
     z-index: 100;
   }
-  .model-panel .field {
-    margin-bottom: 4px;
+  .panel-x {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+  }
+  .panel-x:hover { background: var(--panel-2); color: var(--text); }
+  .model-panel .field-search { margin-right: 40px; }
+  .model-panel .field {    margin-bottom: 4px;
   }
   .group-label {
     display: block;

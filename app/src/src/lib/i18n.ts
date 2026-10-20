@@ -31,6 +31,7 @@ type Dict = Record<string, string>;
 
 const id: Dict = {
   "nav.agents": "Agen",
+  "common.close": "Tutup",
   "nav.agents.desc": "Lihat & atur 6 agen AI",
   "nav.tasks": "Tugas",
   "nav.tasks.desc": "Chat dengan tiap agen untuk kerja",
@@ -447,6 +448,7 @@ const id: Dict = {
 
 const en: Dict = {
   "nav.agents": "Agents",
+  "common.close": "Close",
   "nav.agents.desc": "View & configure the 6 AI agents",
   "nav.tasks": "Tasks",
   "nav.tasks.desc": "Chat with each agent to get work done",
@@ -863,6 +865,7 @@ const en: Dict = {
 
 const zh: Dict = {
   "nav.agents": "代理",
+  "common.close": "关闭",
   "nav.agents.desc": "查看和配置6个AI代理",
   "nav.tasks": "任务",
   "nav.tasks.desc": "与每个代理聊天交办工作",
