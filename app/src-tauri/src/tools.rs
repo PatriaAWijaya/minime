@@ -17,6 +17,9 @@ pub struct ToolInfo {
     pub draft_only: bool,
 }
 
+/// Structured allowlist payload (contract type for the frontend / future
+/// structured allowlist API; the current commands exchange plain lists).
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentToolAllowlist {
     pub agent_id: String,
