@@ -1205,3 +1205,26 @@ penuh, TODO/console.log/dbg! = 0. Build debug MacBook sukses, relaunch PID
 53572 fresh, CPU idle 0,1–0,2%, RAM 81 MB. Uji klik visual menunggu Patria.
 
 **Push:** lokal 54e5e4f ↔ remote 99f06c5 (tree identik).
+
+## 20 Okt 2026 ~18:00 — Audit penuh pasca hapus-permanen (perintah Patria)
+
+**Cakupan:** seluruh aplikasi dari awal sampai saat ini.
+
+**Statis:** cargo check 0 error / 0 warning; cargo test 30/30 lolos; vite
+build bersih; TODO/FIXME = 0; console.log = 0; dbg! = 0; paritas IPC 20/20
+(semua invoke frontend terdaftar di backend); i18n 744 kunci × 3 bahasa
+paritas penuh.
+
+**Gimmick:** tidak ada data dummy baru. Sisa kata "mock" hanya di komentar
+dokumentasi (fallback preview browser) — bukan data karangan yang tampil
+ke user. Fitur terakhir terverifikasi nyata: `deleteCustomAgent`
+membersihkan 15 store per-agen + folder + skill backend + chat dan
+mengalihkan kartu/todo ke Mimi; guard `agent_inactive` di `runToolTask`
+menolak di level store.
+
+**Performa (MacBook, build debug):** app 54 MB, dist 688 KB; CPU idle
+0,1–0,3%; RAM ±29–81 MB (idle). Ollama 5 model online; 30+ skill di bundle.
+
+**Catatan:** sinkronisasi folder↔Koneksi + kolom resizable (perintah 16:23)
+diparkir — baru tahap investigasi kode, belum ada perubahan; menunggu
+perintah lanjut. Uji klik visual tetap menunggu Patria.
