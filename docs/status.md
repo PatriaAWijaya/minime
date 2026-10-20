@@ -1554,3 +1554,11 @@ evaluasi AgentShield ❌.
   lapor sukses diam-diam.
 - cargo check 0, test 32/32, build debug + relaunch OK.
 - Status: menunggu Patria klik "Hubungkan Pireel" sekali lagi.
+
+## 21 Okt 2026 ~06:20 — PIREEL TERHUBUNG ✅
+
+- Patria klik "Hubungkan Pireel" → badge hijau "✓✓ Terhubung".
+- Verifikasi: entri "pireel" ADA di Keychain; `pireel_status` memanggil API
+  asli (get_state) dan mendapat respons valid.
+- Status "mode offline (tanpa tab terbuka)" = koneksi API bekerja; Pireel
+  melaporkan tidak ada sesi cloud aktif (wajar bila pireel.com tidak dibuka).
