@@ -1186,3 +1186,22 @@ relaunch PID 52775 fresh, CPU idle 0,1–0,2%, RAM 79 MB. Uji klik visual
 menunggu Patria.
 
 **Push:** lokal 808f500 ↔ remote ff96978 (tree identik).
+
+## 20 Okt 2026 ~17:50 — Hapus permanen agen (perintah Patria)
+
+**Aturan:** hapus permanen HANYA dari menu Tools. Tombol hapus di tiap kartu
+agen di tab Tools > Agen, KECUALI 6 agen bawaan Minime (tanpa tombol hapus —
+hanya bisa dinonaktifkan).
+
+**Implementasi:** `deleteCustomAgent(id)` di store — menolak hapus agen
+bawaan; membersihkan registry custom, 15 config per-agen (enabled, model,
+nama, judul, instruksi, dst.), membership folder, override skill di backend
+SQLite, dan riwayat chat; kartu Kanban + todo Brief dialihkan ke Mimi agar
+tak ada kerja yatim. Dialog konfirmasi ("tindakan tidak bisa dibatalkan")
+sebelum eksekusi.
+
+**Verifikasi:** cargo 0/0, test 30/30, vite lolos, IPC 20/20, i18n paritas
+penuh, TODO/console.log/dbg! = 0. Build debug MacBook sukses, relaunch PID
+53572 fresh, CPU idle 0,1–0,2%, RAM 81 MB. Uji klik visual menunggu Patria.
+
+**Push:** lokal 54e5e4f ↔ remote 99f06c5 (tree identik).
