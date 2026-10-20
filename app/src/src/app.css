@@ -4,9 +4,11 @@
 :root,
 :root[data-theme="dark"] {
   --bg: #131518;
-  --panel: #1a1d22;
-  --panel-2: #21262d;
-  --border: #2b3038;
+  --bg-glass: radial-gradient(1200px 800px at 20% -10%, #1b2330 0%, #131518 55%, #0e1114 100%);
+  --panel: rgba(26, 29, 34, 0.72);
+  --panel-2: rgba(33, 38, 45, 0.66);
+  --panel-solid: #1a1d22;
+  --border: rgba(70, 78, 90, 0.55);
   --text: #edf0f4;
   --dim: #98a1ac;
   --muted: #98a1ac;
@@ -15,9 +17,10 @@
   --warn: #fbbf24;
   --ok: #34d399;
   --danger: #f87171;
-  --card: #16181d;
+  --card: rgba(22, 24, 29, 0.68);
   --canvas: #0b0d10;
   --radius: 10px;
+  --glass-blur: blur(22px) saturate(160%);
   color-scheme: dark;
 }
 
@@ -55,6 +58,24 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dark glass: frosted surfaces on dark theme only (light theme stays flat). */
+:root[data-theme="dark"] body {
+  background: var(--bg-glass);
+  background-attachment: fixed;
+}
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .agent-list,
+:root[data-theme="dark"] .desc-col,
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .agent-dlg,
+:root[data-theme="dark"] .dialog,
+:root[data-theme="dark"] .kanban-col,
+:root[data-theme="dark"] .tasks-topbar,
+:root[data-theme="dark"] .topbar {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 
 h1, h2, h3 { margin: 0; font-weight: 700; }
