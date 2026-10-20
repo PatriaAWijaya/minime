@@ -429,12 +429,12 @@ async fn refresh_access_token(
 
 /// Ensure a usable access token (refresh when near expiry).
 /// Returns the access token, or an error code for the UI.
-async fn valid_access_token(state: &PireelState) -> Result<String, String> {
+async fn valid_access_token() -> Result<String, String> {
     let bundle = read_bundle().ok_or_else(|| "not_connected".to_string())?;
     if !bundle.needs_refresh() {
         return Ok(bundle.access_token);
     }
-    let meta = fetch_server_meta(state).await?;
+    // The bundle carries its own client_id + token endpoint from registration.
     let fresh = refresh_access_token(&bundle.token_endpoint, &bundle.client_id, &bundle.refresh_token)
         .await
         .map_err(|_| "reauth_needed".to_string())?;
@@ -704,11 +704,8 @@ pub struct PireelStatus {
 }
 
 #[tauri::command]
-pub async fn pireel_status(
-    state: tauri::State<'_, PireelState>,
-) -> Result<PireelStatus, String> {
-    let s = state.inner().clone();
-    let token = match valid_access_token(&s).await {
+pub async fn pireel_status() -> Result<PireelStatus, String> {
+    let token = match valid_access_token().await {
         Ok(t) => t,
         Err(code) => {
             return Ok(PireelStatus {
