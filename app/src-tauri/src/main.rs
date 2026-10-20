@@ -168,6 +168,9 @@ fn provider_account(provider_id: &str) -> Result<&'static str, String> {
         "gemini" => Ok("gemini"),
         "deepseek" => Ok("deepseek"),
         "routerku" => Ok("routerku"),
+        // ElevenLabs Scribe (Settings > Voice): the key only lives in the OS
+        // keychain; it is not a chat-router provider.
+        "elevenlabs" => Ok("elevenlabs"),
         other => Err(format!("provider '{other}' tidak butuh API key")),
     }
 }

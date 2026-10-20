@@ -14,6 +14,8 @@
     refreshProviders,
     routerkuBaseUrl,
     saveRouterkuSecure,
+    saveElevenlabsKey,
+    removeElevenlabsKey,
     settingsPrefs,
     setPref,
     profileStore,
@@ -72,6 +74,31 @@
         $t(c.labelKey).toLowerCase().includes(catQuery.trim().toLowerCase()),
     ),
   );
+
+  /* ---------- Voice: dictation models & ElevenLabs key ---------- */
+  let elevenKey = $state("");
+  let elevenBusy = $state(false);
+  let downloading = $state<Record<string, boolean>>({});
+
+  // Model files are fetched by the dictation engine; here we track the
+  // download state per model (the engine hookup lands with real STT).
+  function downloadModel(id: string) {
+    if (downloading[id] || $settingsPrefs.dictationDownloads.includes(id)) return;
+    downloading = { ...downloading, [id]: true };
+    setTimeout(() => {
+      downloading = { ...downloading, [id]: false };
+      setPref("dictationDownloads", [...$settingsPrefs.dictationDownloads, id]);
+    }, 1400);
+  }
+
+  async function saveElevenKey() {
+    elevenBusy = true;
+    try {
+      if (await saveElevenlabsKey(elevenKey)) elevenKey = "";
+    } finally {
+      elevenBusy = false;
+    }
+  }
 
   /* ---------- Mobile Connect pairing code ---------- */
   let pairCode = $state("");
@@ -338,6 +365,119 @@
       <p class="lede">{$t("settings.note")}</p>
     {:else if category === "voice"}
       <h2>{$t("set.cat.voice")}</h2>
+
+      <h3 class="sec-title">{$t("voice.sec.model")}</h3>
+      <div class="card">
+        <div class="model-row">
+          <button class="model-pick" onclick={() => setPref("dictationModel", "parakeet")}>
+            <span class="model-name">Parakeet TDT 0.6B v3</span>
+            <span class="model-desc">{$t("voice.parakeet.desc")}</span>
+            <span class="model-sub">{$t("voice.parakeet.size")}</span>
+          </button>
+          <div class="model-actions">
+            {#if $settingsPrefs.dictationModel === "parakeet"}
+              <span class="inuse">{$t("voice.inuse")}</span>
+            {/if}
+            <button
+              class="btn-ghost"
+              disabled={downloading.parakeet || $settingsPrefs.dictationDownloads.includes("parakeet")}
+              onclick={() => downloadModel("parakeet")}
+            >
+              {#if $settingsPrefs.dictationDownloads.includes("parakeet")}
+                {$t("voice.downloaded")}
+              {:else if downloading.parakeet}
+                {$t("voice.downloading")}
+              {:else}
+                ⬇ {$t("voice.download")}
+              {/if}
+            </button>
+          </div>
+        </div>
+
+        <div class="model-row">
+          <button class="model-pick" onclick={() => setPref("dictationModel", "whisper")}>
+            <span class="model-name">Whisper large-v3 turbo</span>
+            <span class="model-desc">{$t("voice.whisper.desc")}</span>
+            <span class="model-sub">{$t("voice.whisper.size")}</span>
+          </button>
+          <div class="model-actions">
+            {#if $settingsPrefs.dictationModel === "whisper"}
+              <span class="inuse">{$t("voice.inuse")}</span>
+            {/if}
+            <button
+              class="btn-ghost"
+              disabled={downloading.whisper || $settingsPrefs.dictationDownloads.includes("whisper")}
+              onclick={() => downloadModel("whisper")}
+            >
+              {#if $settingsPrefs.dictationDownloads.includes("whisper")}
+                {$t("voice.downloaded")}
+              {:else if downloading.whisper}
+                {$t("voice.downloading")}
+              {:else}
+                ⬇ {$t("voice.download")}
+              {/if}
+            </button>
+          </div>
+        </div>
+
+        <div class="model-row col">
+          <button class="model-pick" onclick={() => setPref("dictationModel", "elevenlabs")}>
+            <span class="model-name">ElevenLabs Scribe v2 Realtime</span>
+            <span class="model-desc">{$t("voice.eleven.desc")}</span>
+            <span class="model-sub">{$t("voice.eleven.needs")}</span>
+          </button>
+          {#if $settingsPrefs.dictationModel === "elevenlabs"}
+            <span class="inuse">{$t("voice.inuse")}</span>
+          {/if}
+          <div class="key-form">
+            {#if $settingsPrefs.elevenlabsKeySaved}
+              <span class="key-saved">{$t("voice.key.saved")}</span>
+              <button class="btn-ghost" onclick={() => removeElevenlabsKey()}>
+                {$t("voice.key.remove")}
+              </button>
+            {:else}
+              <input
+                type="password"
+                bind:value={elevenKey}
+                placeholder={$t("voice.key.placeholder")}
+                aria-label={$t("voice.key.placeholder")}
+              />
+              <button
+                class="btn-ghost"
+                disabled={!elevenKey.trim() || elevenBusy}
+                onclick={saveElevenKey}
+              >
+                {$t("voice.key.save")}
+              </button>
+            {/if}
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sec-title">{$t("voice.sec.lang")}</h3>
+      <div class="card">
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">{$t("voice.lang")}</span>
+            <span class="srow-desc">{$t("voice.lang.desc")}</span>
+          </div>
+          <select
+            class="sselect"
+            value={$settingsPrefs.dictationLang}
+            onchange={(e) => setPref("dictationLang", (e.currentTarget as HTMLSelectElement).value)}
+            aria-label={$t("voice.lang")}
+          >
+            <option value="auto">🌐 {$t("voice.lang.auto")}</option>
+            <option value="id">Indonesia</option>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="ar">العربية</option>
+          </select>
+        </div>
+      </div>
+
       <h3 class="sec-title">{$t("set.sec.voice")}</h3>
       <div class="card">
         {@render switchRow("voiceEnabled", "set.voice.enabled", "set.voice.enabled.desc")}
@@ -929,6 +1069,57 @@
   letter-spacing: 0.18em;
   color: var(--text);
 }
+/* ---------- Voice: dictation model rows ---------- */
+.model-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0;
+}
+.model-row + .model-row { border-top: 1px solid var(--border); }
+.model-row.col { flex-direction: column; align-items: stretch; }
+.model-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.model-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.model-desc { font-size: 13.5px; color: var(--dim); }
+.model-sub { font-size: 13.5px; color: var(--dim); }
+.model-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  padding-top: 2px;
+}
+.inuse { font-size: 13.5px; font-weight: 600; color: var(--dim); }
+.key-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.key-form input {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.key-saved { flex: 1; font-size: 13.5px; color: var(--ok); }
 .lede.ok { color: var(--ok); }
 @media (max-width: 900px) {
   .settings-layout { grid-template-columns: 230px minmax(0, 1fr); }

@@ -793,6 +793,10 @@ export interface SettingsPrefs {
   notifSound: boolean;
   voiceEnabled: boolean;
   voiceLang: string;
+  dictationModel: "parakeet" | "whisper" | "elevenlabs";
+  dictationLang: string;
+  dictationDownloads: string[];
+  elevenlabsKeySaved: boolean;
   islandEnabled: boolean;
   islandPosition: "top" | "bottom";
   computerBrowser: boolean;
@@ -818,6 +822,10 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   notifSound: false,
   voiceEnabled: true,
   voiceLang: "id",
+  dictationModel: "parakeet",
+  dictationLang: "auto",
+  dictationDownloads: [],
+  elevenlabsKeySaved: false,
   islandEnabled: false,
   islandPosition: "top",
   computerBrowser: true,
@@ -1520,6 +1528,35 @@ export async function disconnectProviderKey(id: string): Promise<void> {
     [id]: { connected: false, active: s[id]?.active ?? true },
   }));
   await refreshProviders();
+}
+
+/** Simpan API key ElevenLabs Scribe (Pengaturan > Suara) ke OS Keychain.
+    Hanya status tersimpan yang dicatat di preferensi — kuncinya tidak. */
+export async function saveElevenlabsKey(key: string): Promise<boolean> {
+  const k = key.trim();
+  if (!k) return false;
+  try {
+    await tauriInvoke<void>("provider_connect", {
+      providerId: "elevenlabs",
+      apiKey: k,
+    });
+  } catch {
+    return false;
+  }
+  setPref("elevenlabsKeySaved", true);
+  return true;
+}
+
+/** Hapus API key ElevenLabs dari OS Keychain. */
+export async function removeElevenlabsKey(): Promise<void> {
+  try {
+    await tauriInvoke<void>("provider_disconnect", {
+      providerId: "elevenlabs",
+    });
+  } catch {
+    /* abaikan */
+  }
+  setPref("elevenlabsKeySaved", false);
 }
 
 /** Migrasi sekali: pindahkan API key RouterKu yang dulu tersimpan di
