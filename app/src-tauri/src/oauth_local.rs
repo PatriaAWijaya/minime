@@ -201,55 +201,6 @@ pub fn reply_callback(
     let _ = stream.write_all(resp.as_bytes());
 }
 
-/// Accept ONE callback connection (blocking, with deadline) and return the
-/// raw query string. Replies with a small HTML page. `respond_ok` decides
-/// which title is shown.
-pub fn accept_callback(
-    listener: &std::net::TcpListener,
-    timeout: Duration,
-    title_ok: &str,
-    title_err: &str,
-) -> Result<(std::collections::HashMap<String, String>, bool), String> {
-    let _ = listener.set_nonblocking(true);
-    let deadline = std::time::Instant::now() + timeout;
-    while std::time::Instant::now() < deadline {
-        match listener.accept() {
-            Ok((mut stream, _)) => {
-                let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
-                let mut head = vec![0u8; 8192];
-                let n = stream.read(&mut head).unwrap_or(0);
-                let head = String::from_utf8_lossy(&head[..n]).to_string();
-                let line = head.lines().next().unwrap_or("");
-                let path = line.split_whitespace().nth(1).unwrap_or("");
-                let query = path.split('?').nth(1).unwrap_or("");
-                let params = parse_query(query);
-                let ok = params.contains_key("code") && !params["code"].is_empty();
-                let msg = if ok {
-                    "Otorisasi diterima — Minime sedang menyelesaikan koneksi.".to_string()
-                } else {
-                    params
-                        .get("error")
-                        .cloned()
-                        .unwrap_or_else(|| "tidak ada kode otorisasi".to_string())
-                };
-                let body = callback_html(ok, title_ok, title_err, &msg);
-                let resp = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                    body.len(),
-                    body
-                );
-                let _ = stream.write_all(resp.as_bytes());
-                return Ok((params, ok));
-            }
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(200));
-            }
-            Err(e) => return Err(format!("callback accept failed: {e}")),
-        }
-    }
-    Err("callback timed out".to_string())
-}
-
 pub fn now_epoch() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
