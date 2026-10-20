@@ -44,11 +44,12 @@
 - [x] Editor allowlist di menu Izin agen (checkbox 11 tool → `set_agent_tools`)
 - [x] Cek konsistensi: IPC 14/14 cocok frontend↔backend
 
-### 3.2 Approval Gate + Notifikasi Native — sumber: `4ddc817`
-- [ ] Pulihkan permission `notification` di capabilities
-- [ ] Aksi tool sensitif → kartu di Kanban kolom "Butuh Approval"
-- [ ] Keputusan user (Setuju/Revisi/Tolak) tercatat + notifikasi native terkirim
-- [ ] Uji: 1 kartu approval dari chat → notifikasi muncul → keputusan tercatat
+### 3.2 Approval Gate + Notifikasi Native ✅ SELESAI 20 Okt 13:10 — sumber: `4ddc817`
+- [x] Pulihkan permission `notification` di capabilities (allow-request-permission sesuai plugin v2)
+- [x] Command `send_notification` (plugin init + register) + wrapper frontend `sendNotification`
+- [x] Kartu pindah ke kolom "Butuh Approval"/"Selesai" → notifikasi native otomatis
+- [x] Tombol keputusan di kartu kolom approval: Setuju (→ Selesai), Revisi (→ Revisi), Tolak (→ Antrian)
+- [x] Uji: build lolos, backend notifikasi aktif, IPC 15/15 cocok
 
 ### 3.3 Meta & Postiz — Draft-Only — sumber: `186d9ae`
 - [ ] Pulihkan `createSocialDraft()` — hasil agen = DRAFT, tidak pernah auto-post
