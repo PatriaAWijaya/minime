@@ -662,3 +662,23 @@ mod tests {
         assert_eq!(s.detail, "not_connected");
     }
 }
+
+#[cfg(test)]
+mod tmp_keychain_probe {
+    use super::*;
+    #[test]
+    fn probe_write_read_delete() {
+        let b = TokenBundle {
+            access_token: <redacted>
+            refresh_token: <redacted>
+            expires_at: now_epoch() + 3600,
+            client_id: "probe".into(),
+            token_endpoint: "https://example.com/token".into(),
+        };
+        write_bundle(&b).expect("write must succeed");
+        let r = read_bundle().expect("read must find it");
+        assert_eq!(r.access_token, "probe-at");
+        delete_bundle().expect("delete must succeed");
+        assert!(read_bundle().is_none());
+    }
+}
