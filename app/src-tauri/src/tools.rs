@@ -172,8 +172,72 @@ pub fn agent_can_use_tool(
     registry: State<ToolRegistry>,
 ) -> bool {
     let allowlists = registry.allowlists.lock().unwrap();
-    match allowlists.get(&agent_id) {
-        Some(list) => list.contains(&"*".to_string()) || list.contains(&tool_id),
+    can_use(&allowlists, &agent_id, &tool_id)
+}
+
+/// Pure gate logic (extracted so it can be unit-tested without Tauri state).
+fn can_use(
+    allowlists: &HashMap<String, Vec<String>>,
+    agent_id: &str,
+    tool_id: &str,
+) -> bool {
+    match allowlists.get(agent_id) {
+        Some(list) => list.iter().any(|t| t == "*" || t == tool_id),
         None => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registry_has_12_tools_with_draft_only_social() {
+        let tools = known_tools();
+        assert_eq!(tools.len(), 12);
+        let meta = tools.iter().find(|(id, ..)| id == "meta").unwrap();
+        assert!(meta.4, "meta must be draft_only");
+        let postiz = tools.iter().find(|(id, ..)| id == "postiz").unwrap();
+        assert!(postiz.4, "postiz must be draft_only");
+    }
+
+    #[test]
+    fn default_allowlists_match_decision() {
+        let m = default_allowlists();
+        assert_eq!(m.get("mimi").unwrap(), &vec!["*".to_string()]);
+        assert!(m.get("kreatif").unwrap().contains(&"pireel".to_string()));
+        assert!(m.get("kreatif").unwrap().contains(&"canva".to_string()));
+        assert_eq!(m.get("finance").unwrap(), &vec!["ruangapi".to_string()]);
+        assert!(m.get("code").unwrap().contains(&"github".to_string()));
+        assert!(m.get("riset").unwrap().contains(&"browser".to_string()));
+    }
+
+    #[test]
+    fn gate_allows_and_denies_correctly() {
+        let m = default_allowlists();
+        // Mimi (orchestrator) may use everything.
+        assert!(can_use(&m, "mimi", "github"));
+        assert!(can_use(&m, "mimi", "pireel"));
+        // Finance: ruangapi only.
+        assert!(can_use(&m, "finance", "ruangapi"));
+        assert!(!can_use(&m, "finance", "github"));
+        assert!(!can_use(&m, "finance", "meta"));
+        // Code: github yes, pireel no.
+        assert!(can_use(&m, "code", "github"));
+        assert!(!can_use(&m, "code", "pireel"));
+        // Unknown agent: denied everything.
+        assert!(!can_use(&m, "hantu", "ruangapi"));
+    }
+
+    #[test]
+    fn registry_status_roundtrip() {
+        let reg = ToolRegistry::new();
+        {
+            let mut s = reg.status.lock().unwrap();
+            s.insert("meta".to_string(), true);
+        }
+        let s = reg.status.lock().unwrap();
+        assert_eq!(s.get("meta"), Some(&true));
+        assert_eq!(s.get("slack"), None);
     }
 }
