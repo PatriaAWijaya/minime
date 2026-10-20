@@ -245,15 +245,16 @@ struct PendingOAuth {
     expires_at: u64,
 }
 
+#[derive(Clone)]
 pub struct PireelState {
-    meta: Mutex<Option<ServerMeta>>,
+    meta: std::sync::Arc<Mutex<Option<ServerMeta>>>,
     pending: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
 }
 
 impl PireelState {
     pub fn new() -> Self {
         Self {
-            meta: Mutex::new(None),
+            meta: std::sync::Arc::new(Mutex::new(None)),
             pending: std::sync::Arc::new(Mutex::new(None)),
         }
     }
@@ -497,7 +498,7 @@ fn serve_callback(
                     Err(_) => continue,
                 };
                 let head = String::from_utf8_lossy(&head[..n]).to_string();
-                let outcome: Result<String, String> = (|| {
+                let outcome: Result<(), String> = (|| {
                     let (code, cb_state) =
                         parse_callback_query(&head).ok_or("missing code/state")?;
                     if cb_state != pending.state {
@@ -591,11 +592,13 @@ pub struct PireelOAuthState {
 /// Returns the authorization URL (also opened automatically).
 #[tauri::command]
 pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<String, String> {
+    // Own the state so the future is 'static.
+    let s = state.inner().clone();
     // One flow at a time.
-    if state.pending.lock().unwrap().is_some() {
+    if s.pending.lock().unwrap().is_some() {
         return Err("oauth already in progress".to_string());
     }
-    let meta = fetch_server_meta(&state).await?;
+    let meta = fetch_server_meta(&s).await?;
     let reg_url = meta
         .registration_endpoint
         .clone()
@@ -651,8 +654,8 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
         cc = url_encode(&challenge),
     );
 
-    *state.pending.lock().unwrap() = Some(pending.clone());
-    let pending_slot = state.pending_arc();
+    *s.pending.lock().unwrap() = Some(pending.clone());
+    let pending_slot = s.pending_arc();
     std::thread::spawn(move || serve_callback(listener, pending, pending_slot));
 
     // Best effort: also return the URL so the UI can show a fallback link.
@@ -702,7 +705,8 @@ pub struct PireelStatus {
 
 #[tauri::command]
 pub async fn pireel_status(state: tauri::State<'_, PireelState>) -> PireelStatus {
-    let token = match valid_access_token(&state).await {
+    let s = state.inner().clone();
+    let token = match valid_access_token(&s).await {
         Ok(t) => t,
         Err(code) => {
             return PireelStatus {
