@@ -1350,7 +1350,8 @@
             </div>
             {#if addAgentMenuFor === p.id}
               {@const candidates = allAgents.filter(
-                (a) => isEnabled(a) && !(p.agentIds ?? []).includes(a.id),
+                (a) =>
+                  a.id !== "mimi" && isEnabled(a) && !(p.agentIds ?? []).includes(a.id),
               )}
               <div class="folder-add-menu" role="menu" aria-label={$t("agents.folder.addAgent")}>
                 {#if candidates.length === 0}

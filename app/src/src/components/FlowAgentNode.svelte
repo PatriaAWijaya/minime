@@ -111,7 +111,7 @@
   </button>
   {#if childMenuOpen}
     <div class="child-menu nodrag" role="menu" aria-label={$t("tasks.flow.pickAgent")} bind:this={menuEl}>
-      {#each allAgents as a (a.id)}
+      {#each allAgents.filter((a) => a.id !== "mimi") as a (a.id)}
         <button role="menuitem" onclick={() => pickChild(a.id)}>
           <span class="badge sm" style:background={a.color}>{a.badge}</span>
           <span class="name">{agentDisplayName(a, $agentNames, $t)}</span>

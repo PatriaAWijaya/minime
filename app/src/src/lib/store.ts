@@ -1718,7 +1718,11 @@ function saveFlowMap(): void {
 export const projects = writable<FlowProject[]>(
   loadList<FlowProject>("minime.projects", () => []).map((p) => ({
     ...p,
-    agentIds: Array.isArray(p.agentIds) ? p.agentIds : [],
+    // Patria 20 Okt: Mimi is the main agent — she delegates, never joins
+    // folders. Strip any legacy "mimi" roster entries on load.
+    agentIds: (Array.isArray(p.agentIds) ? p.agentIds : []).filter(
+      (id) => id !== "mimi",
+    ),
   })),
 );
 persistList("minime.projects", projects);
@@ -1730,11 +1734,14 @@ export function renameProject(id: string, name: string): void {
   projects.update((list) => list.map((p) => (p.id === id ? { ...p, name: n } : p)));
 }
 
-/** Agents assigned to a project = agents in its folder. An agent belongs to
-    at most one folder; adding it to a project removes it from the others. */
+/** Agents assigned to a project = agents in its folder (Patria 20 Okt: one
+    agent may serve several folders, but never twice in one folder). Mimi
+    never joins folders — she is the main agent and delegates to the team. */
 /** Add an agent id to a folder's roster (dedup per folder). No canvas
  *  side-effects — callers decide about regen. */
 function folderAddAgent(projectId: string, agentId: string): void {
+  // Patria 20 Okt: Mimi is the main agent — she delegates, never joins a folder.
+  if (agentId === "mimi") return;
   projects.update((list) =>
     list.map((p) =>
       p.id === projectId && !(p.agentIds ?? []).includes(agentId)
@@ -1920,6 +1927,27 @@ function resolveProjectId(): string {
   return list[0]?.id ?? "proj-a";
 }
 
+/** Fingerprint of the pre-Mimi auto format (Patria 20 Okt, superseded):
+ *  linear chain, folder order, x = 80+i*320, y = 140, sequential edges.
+ *  Exact match ⇒ auto-generated, safe to migrate to the Mimi-parent star. */
+function isLegacyLinearAuto(
+  nodes: FlowNode[],
+  edges: FlowEdge[],
+  ids: string[],
+): boolean {
+  if (nodes.length !== ids.length || nodes.length === 0) return false;
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].agentId !== ids[i]) return false;
+    if (nodes[i].x !== 80 + i * 320 || nodes[i].y !== 140) return false;
+  }
+  if (edges.length !== nodes.length - 1) return false;
+  for (let i = 0; i + 1 < nodes.length; i++) {
+    const e = edges[i];
+    if (e.source !== nodes[i].id || e.target !== nodes[i + 1].id) return false;
+  }
+  return true;
+}
+
 function loadActiveCanvas(): void {
   const pid = resolveProjectId();
   const d = flowMap[pid];
@@ -1928,15 +1956,14 @@ function loadActiveCanvas(): void {
   const edges = Array.isArray(d?.edges) ? d.edges : [];
   flowNodes.set(nodes);
   flowEdges.set(edges);
-  // Patria 20 Okt — Folder → Koneksi: empty canvas + folder has agents ⇒
-  // auto-generate the agent chain in folder order.
-  if (nodes.length === 0) {
-    const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
-    if (ids.length > 0) {
-      const { nodes: cn, edges: ce } = buildChain(ids);
-      flowNodes.set(cn);
-      flowEdges.set(ce);
-    }
+  // Patria 20 Okt — Folder → Koneksi: an empty canvas auto-generates Mimi
+  // as the parent node; folder agents appear as her team (star). Legacy
+  // linear auto-canvases (pre-Mimi) migrate to the star exactly once.
+  const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
+  if (nodes.length === 0 || isLegacyLinearAuto(nodes, edges, ids)) {
+    const { nodes: cn, edges: ce } = buildChain(ids);
+    flowNodes.set(cn);
+    flowEdges.set(ce);
   }
 }
 
@@ -1952,42 +1979,60 @@ flowNodes.subscribe(() => saveActiveCanvas());
 flowEdges.subscribe(() => saveActiveCanvas());
 loadActiveCanvas();
 
-/** Build a sequential agent chain (Patria 20 Okt): one node per agent in
- *  folder order, linked source → target. */
+/** Build the auto canvas (Patria 20 Okt): Mimi is the main agent — she never
+ *  joins folders; she delegates. She is auto-placed as the FIRST node
+ *  (parent), with one edge to every folder agent (the team). */
 function buildChain(ids: string[]): { nodes: FlowNode[]; edges: FlowEdge[] } {
-  const nodes: FlowNode[] = ids.map((agentId, i) => ({
+  const mimi: FlowNode = {
     id: `node-${flowSeq++}-${Date.now() % 100000}`,
-    agentId,
-    x: 80 + i * 320,
-    y: 140,
-  }));
+    agentId: "mimi",
+    x: Math.round(80 + Math.max(0, ids.length - 1) * 160),
+    y: 60,
+  };
+  const nodes: FlowNode[] = [mimi];
   const edges: FlowEdge[] = [];
-  for (let i = 0; i + 1 < nodes.length; i++) {
+  ids.forEach((agentId, i) => {
+    const n: FlowNode = {
+      id: `node-${flowSeq++}-${Date.now() % 100000}`,
+      agentId,
+      x: 80 + i * 320,
+      y: 300,
+    };
+    nodes.push(n);
     edges.push({
-      id: `edge-${nodes[i].id}-${nodes[i + 1].id}`,
-      source: nodes[i].id,
-      target: nodes[i + 1].id,
+      id: `edge-${mimi.id}-${n.id}`,
+      source: mimi.id,
+      target: n.id,
     });
-  }
+  });
   return { nodes, edges };
 }
 
-/** True when the canvas is a pure reflection of the folder team (same agents,
- *  each exactly once) — i.e. still auto-generated, not manually edited. */
-function isCanvasAuto(pid: string): boolean {
+/** True when the canvas is a pure reflection of the project (Patria 20 Okt):
+ *  Mimi as parent (exactly once) + every folder agent exactly once, with
+ *  star edges Mimi → team. Any manual restructuring breaks auto status. */
+export function isCanvasAuto(pid: string): boolean {
   const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
-  const nodes =
-    pid === get(activeFlowProjectId) ? get(flowNodes) : (flowMap[pid]?.nodes ?? []);
-  if (nodes.length === 0 || nodes.length !== ids.length) return false;
-  const nodeAgents = nodes.map((n) => n.agentId);
-  return (
-    ids.every((id) => nodeAgents.includes(id)) &&
-    nodeAgents.every((id) => ids.includes(id))
+  const active = pid === get(activeFlowProjectId);
+  const nodes = active ? get(flowNodes) : (flowMap[pid]?.nodes ?? []);
+  const edges = active ? get(flowEdges) : (flowMap[pid]?.edges ?? []);
+  if (nodes.length !== ids.length + 1) return false;
+  const counts = new Map<string, number>();
+  for (const n of nodes) counts.set(n.agentId, (counts.get(n.agentId) ?? 0) + 1);
+  if (counts.get("mimi") !== 1) return false;
+  if (!ids.every((id) => counts.get(id) === 1)) return false;
+  const mimiNode = nodes.find((n) => n.agentId === "mimi");
+  const teamNodeIds = new Set(
+    nodes.filter((n) => n.agentId !== "mimi").map((n) => n.id),
+  );
+  if (!mimiNode || edges.length !== ids.length) return false;
+  return edges.every(
+    (e) => e.source === mimiNode.id && teamNodeIds.has(e.target),
   );
 }
 
 /** Regenerate the auto-chain for a project from its current folder order. */
-function regenChain(pid: string): void {
+export function regenChain(pid: string): void {
   const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
   const { nodes, edges } = buildChain(ids);
   if (pid === get(activeFlowProjectId)) {
