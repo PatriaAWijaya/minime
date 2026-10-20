@@ -509,20 +509,30 @@
         {@render switchRow("islandIdle", "island.idle", "island.idle.desc")}
         {@render switchRow("islandExtra", "island.extra", "island.extra.desc")}
         {@render switchRow("islandHaptics", "island.haptics", "island.haptics.desc")}
-        <div class="srow">
-          <div class="srow-meta">
-            <span class="srow-label">{$t("island.position")}</span>
-            <span class="srow-desc">{$t("island.position.desc")}</span>
-          </div>
-          <select
-            class="sselect"
-            value={$settingsPrefs.islandPosition}
-            onchange={(e) => setPref("islandPosition", (e.currentTarget as HTMLSelectElement).value as "top" | "bottom")}
-            aria-label={$t("island.position")}
+      </div>
+
+      <h3 class="sec-title">{$t("island.sec.position")}</h3>
+      <p class="lede">{$t("island.position.desc")}</p>
+      <div class="card">
+        <div class="pos-picker">
+          <button
+            class="pos-option"
+            class:active={$settingsPrefs.islandPosition === "top"}
+            onclick={() => setPref("islandPosition", "top")}
+            aria-pressed={$settingsPrefs.islandPosition === "top"}
           >
-            <option value="top">{$t("set.pos.top")}</option>
-            <option value="bottom">{$t("set.pos.bottom")}</option>
-          </select>
+            <span class="pos-screen"><span class="pos-pill top"></span></span>
+            <span class="pos-label">{$t("island.pos.top")}</span>
+          </button>
+          <button
+            class="pos-option"
+            class:active={$settingsPrefs.islandPosition === "bottom"}
+            onclick={() => setPref("islandPosition", "bottom")}
+            aria-pressed={$settingsPrefs.islandPosition === "bottom"}
+          >
+            <span class="pos-screen"><span class="pos-pill bottom"></span></span>
+            <span class="pos-label">{$t("island.pos.bottom")}</span>
+          </button>
         </div>
       </div>
 
@@ -1329,6 +1339,48 @@
   accent-color: var(--accent);
   cursor: pointer;
 }
+/* ---------- Dynamic Island position picker ---------- */
+.pos-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 14px 0;
+}
+.pos-option {
+  background: var(--panel-2);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  color: var(--text);
+  font: inherit;
+}
+.pos-option:hover { border-color: var(--border); }
+.pos-option.active { border-color: var(--accent); }
+.pos-screen {
+  position: relative;
+  width: 100%;
+  height: 74px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2b2e34, #1b1d21);
+  overflow: hidden;
+}
+.pos-pill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44%;
+  height: 12px;
+  border-radius: 999px;
+  background: #050506;
+}
+.pos-pill.top { top: 6px; }
+.pos-pill.bottom { bottom: 6px; }
+.pos-label { font-size: 13.5px; font-weight: 600; }
 .lede.ok { color: var(--ok); }
 @media (max-width: 900px) {
   .settings-layout { grid-template-columns: 230px minmax(0, 1fr); }
