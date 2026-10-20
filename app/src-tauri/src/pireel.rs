@@ -21,8 +21,8 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::oauth_local::{
-    accept_callback, bind_callback, now_epoch, open_browser, parse_query,
-    pkce_challenge, random_b64url, url_encode,
+    accept_callback, bind_callback, now_epoch, open_browser, pkce_challenge, random_b64url,
+    url_encode,
 };
 
 const MCP_URL: &str = "https://pireel.com/api/studio/mcp";
@@ -573,7 +573,7 @@ pub fn pireel_disconnect() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::oauth_local::now_epoch;
+    use crate::oauth_local::{now_epoch, parse_query};
 
     #[test]
     fn bundle_refresh_logic() {

@@ -22,6 +22,14 @@
     pireelPollOAuth,
     pireelRefreshStatus,
     pireelDisconnect,
+    driveStatus,
+    driveOAuth,
+    driveAuthUrl,
+    driveClientId,
+    driveConnect,
+    drivePollOAuth,
+    driveRefreshStatus,
+    driveDisconnect,
     type SkillCatalogEntry,
   } from "../lib/store";
   import { agents as seedList } from "../lib/agents";
@@ -38,8 +46,10 @@
     void refreshTools();
     void refreshSkillCatalog();
     void pireelRefreshStatus();
+    void driveRefreshStatus();
     const timer = setInterval(() => {
       if ($pireelOAuth === "pending") void pireelPollOAuth();
+      if ($driveOAuth === "pending") void drivePollOAuth();
     }, 2000);
     return () => clearInterval(timer);
   });
@@ -304,6 +314,16 @@
                     {$t("mkt.pireel.connect")}
                   </button>
                 {/if}
+              {:else if app.id === "drive"}
+                {#if $driveStatus?.connected}
+                  <span class="mkt-add added" role="status">{$t("mkt.connected")}</span>
+                {:else if $driveOAuth === "pending"}
+                  <button class="mkt-add" disabled>…</button>
+                {:else}
+                  <button class="mkt-add" onclick={driveConnect}>
+                    {$t("mkt.drive.connect")}
+                  </button>
+                {/if}
               {:else}
               <button
                 class="mkt-add"
@@ -344,6 +364,53 @@
                   </div>
                 {/if}
                 <p class="pireel-note">{$t("mkt.pireel.freeNote")}</p>
+              </div>
+            {/if}
+            {#if app.id === "drive"}
+              <div class="pireel-box">
+                {#if $driveStatus?.connected}
+                  <span class="ok-note" role="status">
+                    {$t(`mkt.drive.status.${$driveStatus.detail}`)}{#if $driveStatus.email} — {$driveStatus.email}{/if}
+                  </span>
+                  <div class="ra-actions">
+                    <button class="btn-ghost" onclick={driveDisconnect}>
+                      {$t("mkt.drive.disconnect")}
+                    </button>
+                  </div>
+                {:else if $driveOAuth === "pending"}
+                  <span class="warn-note" role="status">{$t("mkt.drive.waiting")}</span>
+                  <div class="ra-actions">
+                    {#if $driveAuthUrl}
+                      <a class="link" href={$driveAuthUrl} target="_blank" rel="noopener">
+                        {$t("mkt.drive.openAgain")}
+                      </a>
+                    {/if}
+                    <button class="btn-ghost" onclick={() => driveOAuth.set("idle")}>
+                      {$t("mkt.drive.cancel")}
+                    </button>
+                  </div>
+                {:else}
+                  <div class="field">
+                    <label for="drive-client-id">{$t("mkt.drive.clientId")}</label>
+                    <input
+                      id="drive-client-id"
+                      type="text"
+                      bind:value={$driveClientId}
+                      placeholder={$t("mkt.drive.clientIdPh")}
+                      autocomplete="off"
+                      spellcheck={false}
+                    />
+                  </div>
+                  <a
+                    class="link"
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {$t("mkt.drive.guide")}
+                  </a>
+                {/if}
+                <p class="pireel-note">{$t("mkt.drive.note")}</p>
               </div>
             {/if}
             {#if app.id === "ruangapi"}

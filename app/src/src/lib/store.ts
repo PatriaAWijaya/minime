@@ -572,6 +572,131 @@ export async function pireelDisconnect(): Promise<void> {
   }).catch(() => undefined);
 }
 
+/* ---------- Google Drive (Tahap 3.5 — OAuth client ID milik user) ---------- */
+
+export type DriveOAuthPhase = "idle" | "pending" | "connected";
+
+export interface DriveConnStatus {
+  connected: boolean;
+  /** "not_connected" | "connected" | "reauth_needed" | "network_error" |
+   *  "invalid_client_id" */
+  detail: string;
+  email: string | null;
+}
+
+/** Last known Drive status (null = not checked yet). */
+export const driveStatus = writable<DriveConnStatus | null>(null);
+/** OAuth flow phase for the card UI. */
+export const driveOAuth = writable<DriveOAuthPhase>("idle");
+/** Authorization URL of the in-flight flow (fallback reopen link). */
+export const driveAuthUrl = writable<string | null>(null);
+/** The user's own Google OAuth client ID (Desktop app type). */
+export const driveClientId = writable<string>(
+  loadString("minime.drive.client-id", ""),
+);
+driveClientId.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.drive.client-id", v);
+  } catch {
+    /* ignore */
+  }
+});
+
+/** Start OAuth with the user's own client ID (opens the system browser). */
+export async function driveConnect(): Promise<void> {
+  const clientId = get(driveClientId).trim();
+  if (!clientId) {
+    driveStatus.set({ connected: false, detail: "invalid_client_id", email: null });
+    return;
+  }
+  try {
+    const url = await tauriInvoke<string>("drive_connect_url", {
+      clientId,
+    });
+    if (url) {
+      driveAuthUrl.set(url);
+      driveOAuth.set("pending");
+    } else {
+      driveOAuth.set("idle");
+    }
+  } catch {
+    driveOAuth.set("idle");
+  }
+}
+
+/** Poll the in-flight OAuth flow; refresh status once connected. */
+export async function drivePollOAuth(): Promise<void> {
+  try {
+    const s = await tauriInvoke<{ state: string }>("drive_oauth_poll");
+    if (!s) return;
+    if (s.state === "connected") {
+      driveOAuth.set("connected");
+      await driveRefreshStatus();
+    } else if (s.state === "idle") {
+      driveOAuth.set("idle");
+    }
+  } catch {
+    /* keep polling */
+  }
+}
+
+/** Refresh Drive status from the backend (free about.get check). */
+export async function driveRefreshStatus(): Promise<void> {
+  try {
+    const s = await tauriInvoke<DriveConnStatus>("drive_status");
+    if (s) {
+      driveStatus.set(s);
+      driveOAuth.set(s.connected ? "connected" : "idle");
+      void tauriInvoke("set_tool_connected", {
+        toolId: "drive",
+        connected: s.connected,
+      }).catch(() => undefined);
+    }
+  } catch {
+    /* backend unreachable (browser preview) */
+  }
+}
+
+/** Disconnect: tokens removed from the OS keychain. */
+export async function driveDisconnect(): Promise<void> {
+  try {
+    await tauriInvoke("drive_disconnect");
+  } catch {
+    /* ignore */
+  }
+  driveStatus.set({ connected: false, detail: "not_connected", email: null });
+  driveOAuth.set("idle");
+  driveAuthUrl.set(null);
+  void tauriInvoke("set_tool_connected", {
+    toolId: "drive",
+    connected: false,
+  }).catch(() => undefined);
+}
+
+export interface DriveUploadDone {
+  id: string;
+  name: string;
+}
+
+/** Upload a deliverable into the MIMI folder. `contentBase64` is the raw
+ *  file bytes encoded as base64. Returns the created file or null. */
+export async function driveUploadFile(
+  fileName: string,
+  contentBase64: string,
+  mimeType: string,
+): Promise<DriveUploadDone | null> {
+  try {
+    const r = await tauriInvoke<DriveUploadDone>("drive_upload", {
+      fileName,
+      contentBase64,
+      mimeType,
+    });
+    return r ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Agent tool allowlist from the backend. */
 export async function fetchAgentTools(agentId: string): Promise<string[] | null> {
   return await tauriInvoke<string[]>("get_agent_tools", { agentId });
