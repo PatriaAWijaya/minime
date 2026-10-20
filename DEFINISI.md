@@ -1,29 +1,49 @@
 # Minime — Definisi
 
-> **Minime adalah aplikasi desktop local-first untuk AI teammates yang persisten**
-> — tim agen AI senior yang bekerja untukmu, di komputermu, dengan persetujuanmu.
+> **Minime adalah AI Studio with purpose** — aplikasi desktop local-first yang
+> mengubah satu orang menjadi satu tim produksi campaign kemanusiaan, sosial,
+> dan lingkungan.
 
 ## Apa itu Minime
 
-Minime mengubah satu aplikasi desktop menjadi sebuah tim kerja AI: dipimpin
-seorang orkestrator (Mimi, CIO), didukung lima agen spesialis senior. Kamu
-memberi tugas dalam bahasa sehari-hari; Mimi memecahnya, mendelegasikan ke
-agen yang tepat, menggabungkan hasilnya, dan memintakan persetujuanmu sebelum
-sesuatu yang penting terjadi.
+Satu orang + Minime = satu studio. Riset isu, strategi pesan, naskah, produksi
+video, sampai distribusi campaign — dikerjakan tim agen AI yang persisten,
+dipimpin seorang orkestrator (Mimi, CIO), dengan persetujuan manusia di setiap
+langkah penting.
 
 Semua berjalan **lokal di mesin pengguna** — data, riwayat chat, dan tugas
 tersimpan di komputermu sendiri, bukan di server orang lain.
+
+## Untuk apa
+
+Minime dibangun untuk satu tujuan: **memproduksi campaign yang berdampak**
+— kemanusiaan, sosial, lingkungan. Dari riset → strategi → naskah & konten →
+produksi video → distribusi, dalam satu aplikasi.
+
+Contoh pemakaian: kampanye donasi, edukasi publik, gerakan sosial, advokasi
+lingkungan — dikerjakan tim kecil atau bahkan satu orang dengan daya dobrak
+satu studio.
 
 ## Roster
 
 | Agen | Peran |
 |---|---|
 | **Mimi** (CIO) | Orkestrator: terima permintaan → delegasikan → gabungkan → minta approval |
-| **Kreatif** | Konten, copywriting, storytelling, produksi & editing video |
-| **Riset** | Riset mendalam, data, analisis |
-| **Finance** | Keuangan bisnis, analisis & backtest (dilarang order live otomatis) |
-| **Bisnis Strategis** | Brand, marketing, selling, operasional, strategi |
-| **Code Builder** | Membangun aplikasi & UI |
+| **Kreatif** | Naskah, copywriting, storytelling, produksi & editing video |
+| **Riset** | Riset isu, data, analisis |
+| **Finance** | Anggaran campaign, analisis & backtest (dilarang order live otomatis) |
+| **Bisnis Strategis** | Brand, strategi pesan, strategi distribusi |
+| **Code Builder** | Aplikasi & landing page campaign |
+
+## Alur produksi
+
+**Video:** generate footage (Veo 3.1 via Gemini) → edit/rakit (Pireel) → QC
+(skor 0–100) → approval manusia → distribusi.
+
+**Konten:** riset → strategi → produksi (naskah/copywriting/desain) → QC →
+approval → draft distribusi.
+
+Setiap tahap tercatat; tidak ada yang lolos tanpa jejak.
 
 ## Model AI
 
