@@ -190,11 +190,11 @@ input, select, textarea { font: inherit; color: var(--text); }
 .icon-btn .tip {
   position: absolute; left: calc(100% + 10px); top: 50%;
   transform: translateY(-50%);
-  background: var(--panel-2); border: 1px solid var(--border);
+  background: #1a1d22; border: 1px solid var(--border);
   border-radius: 8px; padding: 8px 12px;
   white-space: nowrap; text-align: left;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.12s; z-index: 50;
+  transition: opacity 0.12s; z-index: 100;
 }
 .icon-btn .tip strong { display: block; font-size: 14px; color: var(--text); }
 .icon-btn .tip span { display: block; font-size: 12px; color: var(--dim); }
