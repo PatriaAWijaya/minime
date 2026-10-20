@@ -81,6 +81,14 @@ body {
   backdrop-filter: var(--glass-blur);
 }
 
+/* Dropdowns & native selects stay SOLID (Patria 20 Okt): transparent
+   backgrounds make their text unreadable. */
+select,
+.dropdown,
+.menu {
+  background: var(--panel-solid, var(--panel));
+}
+
 h1, h2, h3 { margin: 0; font-weight: 700; }
 h2 { font-size: 18px; }
 p { margin: 0; }
