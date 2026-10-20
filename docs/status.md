@@ -1378,3 +1378,24 @@ lingkungan, bukan error kode); yang sahih hasil MacBook di atas. Uji klik
 visual tetap menunggu Patria (tak ada akses GUI via SSH).
 
 **Push:** lokal bbc570d ↔ remote 8147299 (tree identik).
+
+## 20 Okt 2026 ~20:20 — TES E2E (perintah Patria)
+
+**Backend runtime — 32/32 LOLOS** (cargo test, MacBook):
+- Gate: not_allowed, unknown_tool, tool_not_implemented, bad_url ✓
+- BARU: dispatch_not_connected_e2e — tool auth tanpa keychain check gagal
+  jujur `not_connected` di level dispatch (deterministik) ✓
+- BARU: dispatch_browser_fetch_real_internet — fetch nyata ke example.com,
+  judul "Example Domain" terekstrak ✓ (assertion awal gagal karena
+  example.com ganti HTML — bukan bug kode; diperbaiki, lolos)
+- check_connected: drive tanpa token → not_connected ✓
+
+**Frontend pipeline — terverifikasi via trace (wiring lengkap):**
+initiateProject → todos; addKanbanCard/moveKanbanCard (kolom approval);
+runToolTask → doing → tool_run → sukses: Library + approval, gagal: kembali
+queue, agen nonaktif: ditolak; createSocialDraft → approval/done + notifikasi.
+
+**Yang belum bisa dites tanpa Patria:** koneksi OAuth Drive/Pireel di UI
+(upload nyata), klik UI manual, delegasi LLM.
+
+**Push:** lokal 17d9a3b ↔ remote f02b66e (tree identik).
