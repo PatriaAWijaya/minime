@@ -70,17 +70,38 @@ export const messagesByAgent = writable<Record<string, Message[]>>({});
 
 let msgSeq = 1;
 
-export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"]) {
+export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"], replyTo?: string) {
   const msg: Message = {
     id: msgSeq++,
     role,
     text,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     ...(attachments && attachments.length > 0 ? { attachments } : {}),
+    ...(replyTo ? { replyTo } : {}),
   };
   messagesByAgent.update((m) => ({
     ...m,
     [agentId]: [...(m[agentId] ?? []), msg],
+  }));
+}
+
+/** Remove a chat message (per-bubble delete). */
+export function deleteMessage(agentId: string, msgId: number): void {
+  messagesByAgent.update((m) => ({
+    ...m,
+    [agentId]: (m[agentId] ?? []).filter((msg) => msg.id !== msgId),
+  }));
+}
+
+/** Toggle an emoji reaction on a chat message. */
+export function setMessageReaction(agentId: string, msgId: number, emoji: string): void {
+  messagesByAgent.update((m) => ({
+    ...m,
+    [agentId]: (m[agentId] ?? []).map((msg) =>
+      msg.id === msgId
+        ? { ...msg, reaction: msg.reaction === emoji ? undefined : emoji }
+        : msg,
+    ),
   }));
 }
 
@@ -667,11 +688,9 @@ theme.subscribe((v) => {
 
 let folderSeq = 3;
 
-/** Example task folders; each groups agents that work together. */
-export const taskFolders = writable<TaskFolder[]>([
-  { id: 1, nameKey: "agents.folder1.name", agentIds: ["kreatif", "riset"], open: true },
-  { id: 2, nameKey: "agents.folder2.name", agentIds: ["finance", "strategis"], open: false },
-]);
+/** Task folders group agents that work together. Empty by default
+    (Patria 20 Okt): the user creates their own folders. */
+export const taskFolders = writable<TaskFolder[]>([]);
 
 export function addTaskFolder() {
   const id = folderSeq++;

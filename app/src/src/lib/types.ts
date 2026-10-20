@@ -30,6 +30,8 @@ export interface Message {
   text: string;
   time: string;
   attachments?: AttachmentMeta[];
+  reaction?: string;
+  replyTo?: string;
 }
 
 export type ScheduleRange = "day" | "week" | "month";

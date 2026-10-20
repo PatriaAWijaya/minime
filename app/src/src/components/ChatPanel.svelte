@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
   import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
-  import type { AttachmentMeta } from "../lib/types";
+  import type { AttachmentMeta, Message } from "../lib/types";
   import {
     activeAgentId,
     agentModel,
@@ -17,7 +17,9 @@
     realProviders,
     refreshProviders,
     isTauri,
+    deleteMessage,
     pushMessage,
+    setMessageReaction,
     sendChatViaRouter,
   } from "../lib/store";
   import { t } from "../lib/i18n";
@@ -61,6 +63,47 @@
 
   function removeAttachment(i: number) {
     attachments = attachments.filter((_, idx) => idx !== i);
+  }
+
+  // Per-message action menu (reply / reaction / copy / delete).
+  let openMenuId = $state<number | null>(null);
+  let emojiForId = $state<number | null>(null);
+  const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+  function toggleMenu(id: number) {
+    openMenuId = openMenuId === id ? null : id;
+    emojiForId = null;
+  }
+
+  function closeMenus() {
+    openMenuId = null;
+    emojiForId = null;
+  }
+
+  function doReply(m: Message) {
+    const quote = m.text.length > 80 ? m.text.slice(0, 80) + "…" : m.text;
+    draft = `> ${quote}\n`;
+    closeMenus();
+    queueMicrotask(() => inputEl?.focus());
+  }
+
+  async function doCopy(m: Message) {
+    try {
+      await navigator.clipboard.writeText(m.text);
+    } catch {
+      /* clipboard unavailable in this context */
+    }
+    closeMenus();
+  }
+
+  function doReact(m: Message, emoji: string) {
+    setMessageReaction(agent.id, m.id, emoji);
+    closeMenus();
+  }
+
+  function doDelete(m: Message) {
+    deleteMessage(agent.id, m.id);
+    closeMenus();
   }
 
   // Mock voice input (Phase 1): local recording state per panel.
@@ -220,6 +263,44 @@
       {#each messages as m (m.id)}
         <div class="msg {m.role}">
           <div class="bubble">
+            <button
+              class="msg-menu-btn"
+              onclick={(e) => { e.stopPropagation(); toggleMenu(m.id); }}
+              aria-label={$t("chat.msgActions")}
+              aria-haspopup="menu"
+              aria-expanded={openMenuId === m.id}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
+              </svg>
+            </button>
+            {#if openMenuId === m.id}
+              <div class="msg-menu" role="menu">
+                {#if emojiForId === m.id}
+                  <div class="emoji-row" role="menuitem">
+                    {#each REACTIONS as em (em)}
+                      <button class="emoji-btn" onclick={(e) => { e.stopPropagation(); doReact(m, em); }} aria-label={em}>{em}</button>
+                    {/each}
+                  </div>
+                {:else}
+                  <button role="menuitem" class="msg-menu-item" onclick={(e) => { e.stopPropagation(); doReply(m); }}>
+                    {$t("chat.msgReply")}
+                  </button>
+                  <button role="menuitem" class="msg-menu-item" onclick={(e) => { e.stopPropagation(); emojiForId = m.id; }}>
+                    {$t("chat.msgReact")}
+                  </button>
+                  <button role="menuitem" class="msg-menu-item" onclick={(e) => { e.stopPropagation(); doCopy(m); }}>
+                    {$t("chat.msgCopy")}
+                  </button>
+                  <button role="menuitem" class="msg-menu-item danger" onclick={(e) => { e.stopPropagation(); doDelete(m); }}>
+                    {$t("chat.msgDelete")}
+                  </button>
+                {/if}
+              </div>
+            {/if}
+            {#if m.replyTo}
+              <div class="reply-quote">{m.replyTo}</div>
+            {/if}
             {#if m.attachments && m.attachments.length > 0}
               <div class="msg-attach">
                 {#each m.attachments as att (att.name)}
@@ -232,6 +313,9 @@
             {/if}
             <p>{m.text}</p>
             <span class="time">{m.time}</span>
+            {#if m.reaction}
+              <span class="msg-reaction" aria-label={$t("chat.msgReaction")}>{m.reaction}</span>
+            {/if}
           </div>
         </div>
       {/each}
@@ -422,6 +506,55 @@
   }
   .attach-x:hover { color: var(--text); }
   .msg-attach { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .bubble { position: relative; }
+  .msg-menu-btn {
+    position: absolute; top: 4px; right: 4px;
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 50%;
+    background: transparent; color: inherit;
+    opacity: 0.55; cursor: pointer;
+  }
+  .msg-menu-btn:hover { opacity: 1; background: rgba(127, 127, 127, 0.2); }
+  .msg-menu {
+    position: absolute; top: 30px; right: 4px; z-index: 20;
+    min-width: 150px;
+    background: var(--panel-solid, var(--panel));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    padding: 6px;
+    display: flex; flex-direction: column;
+  }
+  .msg-menu-item {
+    text-align: left;
+    padding: 8px 10px;
+    border: none; border-radius: 6px;
+    background: transparent; color: var(--text);
+    font-size: 14px; cursor: pointer;
+  }
+  .msg-menu-item:hover { background: var(--panel-2); }
+  .msg-menu-item.danger { color: var(--danger); }
+  .emoji-row { display: flex; gap: 2px; padding: 2px; }
+  .emoji-btn {
+    font-size: 18px; padding: 4px 6px;
+    border: none; border-radius: 6px;
+    background: transparent; cursor: pointer;
+  }
+  .emoji-btn:hover { background: var(--panel-2); }
+  .reply-quote {
+    font-size: 13px; color: var(--dim);
+    border-left: 3px solid var(--border);
+    padding: 2px 8px; margin-bottom: 6px;
+  }
+  .msg-reaction {
+    position: absolute; bottom: -10px; right: 8px;
+    font-size: 13px;
+    background: var(--panel-solid, var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1px 6px;
+  }
   .btn-stop { min-height: 44px; flex: none; }
   .rec-indicator {
     display: flex; align-items: center; gap: 8px;
