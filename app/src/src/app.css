@@ -4,11 +4,14 @@
 :root,
 :root[data-theme="dark"] {
   --bg: #131518;
-  --bg-glass: radial-gradient(1200px 800px at 20% -10%, #1b2330 0%, #131518 55%, #0e1114 100%);
-  --panel: rgba(26, 29, 34, 0.72);
-  --panel-2: rgba(33, 38, 45, 0.66);
+  --bg-glass: radial-gradient(1200px 800px at 15% -10%, #24344d 0%, transparent 55%),
+    radial-gradient(1000px 700px at 90% 110%, #3a2547 0%, transparent 55%),
+    radial-gradient(800px 600px at 70% 20%, #173832 0%, transparent 50%),
+    #0d0f12;
+  --panel: rgba(255, 255, 255, 0.055);
+  --panel-2: rgba(255, 255, 255, 0.09);
   --panel-solid: #1a1d22;
-  --border: rgba(70, 78, 90, 0.55);
+  --border: rgba(255, 255, 255, 0.14);
   --text: #edf0f4;
   --dim: #98a1ac;
   --muted: #98a1ac;
@@ -17,10 +20,10 @@
   --warn: #fbbf24;
   --ok: #34d399;
   --danger: #f87171;
-  --card: rgba(22, 24, 29, 0.68);
+  --card: rgba(255, 255, 255, 0.05);
   --canvas: #0b0d10;
   --radius: 10px;
-  --glass-blur: blur(22px) saturate(160%);
+  --glass-blur: blur(28px) saturate(180%);
   color-scheme: dark;
 }
 
