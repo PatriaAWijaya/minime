@@ -1,11 +1,12 @@
 // Central UI state (Phase 1: all local, no backend yet).
 
 import { writable, get, derived, type Writable, type Readable } from "svelte/store";
+import { agents } from "./agents";
+import type { AgentTemplateDef } from "./marketplace";
 import type {
   Agent,
   AgentFile,
   AgentStatus,
-  AgentTemplate,
   CostRow,
   FlowEdge,
   FlowNode,
@@ -19,7 +20,6 @@ import type {
   ServerKind,
   ServerLayout,
   ToolInfo,
-  Skill,
   TaskFolder,
 } from "./types";
 
@@ -457,27 +457,6 @@ export const costRows: CostRow[] = [
   { id: 8, agentId: "kreatif", tokens: 22900, costUsd: 0.18, dateKey: "cost.date.5", daysAgo: 29 },
 ];
 
-/** Agent templates (mock). */
-export const templates = writable<AgentTemplate[]>([
-  { id: 1, nameKey: "tools.tpl1.name", descKey: "tools.tpl1.desc", enabled: true },
-  { id: 2, nameKey: "tools.tpl2.name", descKey: "tools.tpl2.desc", enabled: true },
-  { id: 3, nameKey: "tools.tpl3.name", descKey: "tools.tpl3.desc", enabled: false },
-  { id: 4, nameKey: "tools.tpl4.name", descKey: "tools.tpl4.desc", enabled: false },
-  { id: 5, nameKey: "tools.tpl5.name", descKey: "tools.tpl5.desc", enabled: false },
-  { id: 6, nameKey: "tools.tpl6.name", descKey: "tools.tpl6.desc", enabled: false },
-]);
-
-/** Skills (mock). */
-let skillSeq = 7;
-export const skills = writable<Skill[]>([
-  { id: 1, nameKey: "tools.skill1.name", descKey: "tools.skill1.desc", installed: true },
-  { id: 2, nameKey: "tools.skill2.name", descKey: "tools.skill2.desc", installed: true },
-  { id: 3, nameKey: "tools.skill3.name", descKey: "tools.skill3.desc", installed: false },
-  { id: 4, nameKey: "tools.skill4.name", descKey: "tools.skill4.desc", installed: false },
-  { id: 5, nameKey: "tools.skill5.name", descKey: "tools.skill5.desc", installed: false },
-  { id: 6, nameKey: "tools.skill6.name", descKey: "tools.skill6.desc", installed: false },
-]);
-
 /** Installed apps (by app id). RuangAPI connects separately via credentials. */
 export const installedApps = writable<Record<string, boolean>>(
   loadRecord<boolean>("minime.installed-apps"),
@@ -524,6 +503,103 @@ export async function saveAgentTools(agentId: string, toolIds: string[]): Promis
 /** Gate check: may this agent use this tool? */
 export async function fetchAgentCanUseTool(agentId: string, toolId: string): Promise<boolean | null> {
   return await tauriInvoke<boolean>("agent_can_use_tool", { agentId, toolId });
+}
+
+/* ---------- Marketplace > Skills (real catalog in the Rust backend) ---------- */
+
+export interface SkillCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  /** "bundled" (ships with the app) or "user" (created in-app). */
+  source: "bundled" | "user";
+  /** Agent ids whose effective skill set includes this skill. */
+  agents: string[];
+}
+
+/** Catalog snapshot from the backend (null = not loaded / browser). */
+export const skillCatalog = writable<SkillCatalogEntry[] | null>(null);
+
+/** Refresh the skill catalog for every known agent (seed + custom). */
+export async function refreshSkillCatalog(): Promise<SkillCatalogEntry[] | null> {
+  try {
+    const allIds = [
+      ...agents.map((a) => a.id),
+      ...get(customAgents).map((a) => a.id),
+    ];
+    const list = await tauriInvoke<SkillCatalogEntry[]>("list_skill_catalog", {
+      agentIds: allIds,
+    });
+    if (list) skillCatalog.set(list);
+    return list;
+  } catch {
+    return null;
+  }
+}
+
+/** Replace an agent's skill set. The backend persists it to SQLite and the
+ *  skills take effect on that agent's next chat message. */
+export async function saveAgentSkills(
+  agentId: string,
+  skillIds: string[],
+): Promise<boolean> {
+  try {
+    await tauriInvoke("set_agent_skills", { agentId, skills: skillIds });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Create a user skill (writes a real SKILL.md into the user skills dir). */
+export async function createSkillFile(
+  name: string,
+  description: string,
+): Promise<SkillCatalogEntry | null> {
+  try {
+    return await tauriInvoke<SkillCatalogEntry>("create_skill", {
+      name,
+      description,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/* ---------- Marketplace > Agents (real agents from templates) ---------- */
+
+/** Add a real, persistent agent from a Marketplace template.
+ *  The agent gets the template's color, its role description and persona
+ *  instructions, and its real skills (persisted in the backend gateway).
+ *  New agents start disabled, per the "only Mimi active by default" rule. */
+export async function addAgentFromTemplate(
+  tpl: AgentTemplateDef,
+): Promise<string | null> {
+  const id = `tpl-${tpl.slug}`;
+  if (get(customAgents).some((a) => a.id === id)) return null;
+  const initials = tpl.name
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  customAgents.update((list) => [
+    ...list,
+    {
+      id,
+      name: tpl.name,
+      roleKey: "mkt.agent.template",
+      model: "Ollama",
+      badge: initials,
+      color: tpl.color,
+    },
+  ]);
+  agentNames.update((m) => ({ ...m, [id]: tpl.name }));
+  agentTitles.update((m) => ({ ...m, [id]: tpl.desc }));
+  agentInstructions.update((m) => ({ ...m, [id]: tpl.prompt }));
+  agentEnabled.update((m) => ({ ...m, [id]: false }));
+  await saveAgentSkills(id, tpl.skills);
+  return id;
 }
 
 /* ---------- Native notifications (Phase 3.2: approval gate) ---------- */
@@ -1063,8 +1139,17 @@ export function toggleFolder(id: number) {
 let customAgentSeq = 1;
 const CUSTOM_AGENT_COLORS = ["#F4A7C3", "#A8D8FF", "#B5E8C0", "#FFD6A5", "#D3BFF0", "#FFF3B0"];
 
-/** Agents created in-app via the "+" menu (mock). */
-export const customAgents = writable<Agent[]>([]);
+/** Agents created in-app via the "+" menu or the Marketplace.
+ *  Persisted so template agents survive restarts. */
+export const customAgents = writable<Agent[]>(
+  loadList<Agent>("minime.custom-agents", () => []),
+);
+persistList("minime.custom-agents", customAgents);
+// Restore the id sequence so a restart never reuses an id.
+for (const a of get(customAgents)) {
+  const m = /^custom-(\d+)$/.exec(a.id);
+  if (m) customAgentSeq = Math.max(customAgentSeq, parseInt(m[1], 10) + 1);
+}
 
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
 export type TasksViewKind = "kanban" | "flow" | "brief";
@@ -1557,10 +1642,11 @@ export function disconnectFlowNode(id: string) {
 
 export function addCustomAgent() {
   const n = customAgentSeq++;
+  const id = `custom-${n}`;
   customAgents.update((list) => [
     ...list,
     {
-      id: `custom-${n}`,
+      id,
       name: "",
       nameKey: "agents.agentNew.name",
       roleKey: "agents.agentNew.role",
@@ -1569,6 +1655,7 @@ export function addCustomAgent() {
       color: CUSTOM_AGENT_COLORS[(n - 1) % CUSTOM_AGENT_COLORS.length],
     },
   ]);
+  agentEnabled.update((m) => ({ ...m, [id]: false }));
 }
 
 /* ---------- Tauri bridge — model router nyata (Tahap 2) ----------
