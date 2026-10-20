@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeView } from "../lib/store";
+  import { activeView, settingsPrefs } from "../lib/store";
   import { t } from "../lib/i18n";
   import type { View } from "../lib/store";
 
@@ -59,7 +59,7 @@
 </script>
 
 <aside class="rail" aria-label="Minime">
-  <div class="logo" aria-hidden="true">M</div>
+  <div class="logo" style:background={$settingsPrefs.logoColor} aria-hidden="true">M</div>
   <nav class="tabs" aria-label="Minime">
     {#each tabs as tab}
       <button

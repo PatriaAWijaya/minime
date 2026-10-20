@@ -17,6 +17,7 @@
     realProviders,
     refreshProviders,
     isTauri,
+    settingsPrefs,
     deleteMessage,
     pushMessage,
     setMessageReaction,
@@ -234,7 +235,17 @@
   }
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key !== "Enter") return;
+    // Send shortcut preference (Settings > General): "enter" sends on Enter,
+    // "ctrlEnter" sends only on Ctrl/Cmd+Enter; Enter alone = new line.
+    if ($settingsPrefs.sendShortcut === "ctrlEnter") {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        send();
+      }
+      return;
+    }
+    if (!e.shiftKey) {
       e.preventDefault();
       send();
     }

@@ -765,8 +765,7 @@ export function setServerMuted(kind: ServerKind, muted: boolean): void {
 }
 
 /** Per-server notification level: all | mentions | nothing. */
-export type ServerNotifLevel = "all" | "mentions" | "nothing";
-export const serverNotif = writable<Record<string, ServerNotifLevel>>(
+export type ServerNotifLevel = "all" | "mentions" | "nothing";export const serverNotif = writable<Record<string, ServerNotifLevel>>(
   loadRecord<ServerNotifLevel>("minime.server-notif"),
 );
 persistRecord("minime.server-notif", serverNotif);
@@ -774,6 +773,88 @@ persistRecord("minime.server-notif", serverNotif);
 export function setServerNotif(kind: ServerKind, level: ServerNotifLevel): void {
   serverNotif.update((m) => ({ ...m, [kind]: level }));
 }
+
+/* ---------- App settings (Settings view, two-column layout) ---------- */
+
+export interface SettingsPrefs {
+  langMode: "system" | "id" | "en" | "zh";
+  logoColor: string;
+  sendShortcut: "enter" | "ctrlEnter";
+  steerAgents: boolean;
+  memoriesPerAgent: number;
+  externalLinks: "browser" | "inapp";
+  launchAtLogin: boolean;
+  fastConnect: boolean;
+  keepBackground: boolean;
+  restoreWorkspace: boolean;
+  shareAnalytics: boolean;
+  notifApproval: boolean;
+  notifDone: boolean;
+  notifSound: boolean;
+  voiceEnabled: boolean;
+  voiceLang: string;
+  islandEnabled: boolean;
+  islandPosition: "top" | "bottom";
+  computerBrowser: boolean;
+  computerHidden: boolean;
+  computerMirror: boolean;
+  autoUpdate: boolean;
+}
+
+const SETTINGS_DEFAULTS: SettingsPrefs = {
+  langMode: "system",
+  logoColor: "#B18CFF",
+  sendShortcut: "enter",
+  steerAgents: false,
+  memoriesPerAgent: 64,
+  externalLinks: "browser",
+  launchAtLogin: true,
+  fastConnect: true,
+  keepBackground: false,
+  restoreWorkspace: true,
+  shareAnalytics: true,
+  notifApproval: true,
+  notifDone: true,
+  notifSound: false,
+  voiceEnabled: true,
+  voiceLang: "id",
+  islandEnabled: false,
+  islandPosition: "top",
+  computerBrowser: true,
+  computerHidden: false,
+  computerMirror: true,
+  autoUpdate: true,
+};
+
+export const settingsPrefs = writable<SettingsPrefs>({
+  ...SETTINGS_DEFAULTS,
+  ...loadRecord<unknown>("minime.settings-prefs"),
+} as SettingsPrefs);
+settingsPrefs.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.settings-prefs", JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+});
+
+export function setPref<K extends keyof SettingsPrefs>(key: K, value: SettingsPrefs[K]): void {
+  settingsPrefs.update((p) => ({ ...p, [key]: value }));
+}
+
+/** User profile (Settings > Profile). */
+export const profileStore = writable<{ name: string; email: string }>({
+  name: "",
+  email: "",
+  ...(loadRecord<string>("minime.profile") as { name?: string; email?: string }),
+} as { name: string; email: string });
+profileStore.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.profile", JSON.stringify(v));
+  } catch {
+    /* ignore */
+  }
+});
 
 /* ---------- Theme (keputusan Patria 19 Okt): system = follow OS,
    or force dark/light. Applied as data-theme on <html> by App.svelte. ---------- */
@@ -916,10 +997,12 @@ export function moveKanbanCard(id: number, col: KanbanCol) {
       return c;
     }),
   );
-  // Native notification when a card needs approval or is finished (Phase 3.2).
-  if (col === "approval") {
+  // Native notification when a card needs approval or is finished (Phase 3.2),
+  // gated by the user's notification preferences (Settings > Notifications).
+  const prefs = get(settingsPrefs);
+  if (col === "approval" && prefs.notifApproval) {
     void sendNotification("Butuh approval", `"${cardTitle}" menunggu persetujuanmu`);
-  } else if (col === "done") {
+  } else if (col === "done" && prefs.notifDone) {
     void sendNotification("Tugas selesai", `"${cardTitle}" selesai`);
   }
 }
@@ -975,12 +1058,15 @@ export function createSocialDraft(
     },
   ]);
   const platformName = platform === "meta" ? "Meta" : "Postiz";
+  const prefs2 = get(settingsPrefs);
   if (auto) {
-    void sendNotification(
-      "Terposting otomatis",
-      `"${title}" langsung diposting ke ${platformName} (mode autoposting aktif)`,
-    );
-  } else {
+    if (prefs2.notifDone) {
+      void sendNotification(
+        "Terposting otomatis",
+        `"${title}" langsung diposting ke ${platformName} (mode autoposting aktif)`,
+      );
+    }
+  } else if (prefs2.notifApproval) {
     void sendNotification(
       "Draft siap direview",
       `"${title}" menunggu approval sebelum diposting ke ${platformName}`,

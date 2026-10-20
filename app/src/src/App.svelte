@@ -59,7 +59,7 @@
 <style>
   .layout {
     display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: 46px minmax(0, 1fr);
     height: 100%;
   }
   .content {
