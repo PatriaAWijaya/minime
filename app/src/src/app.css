@@ -4,9 +4,9 @@
 :root,
 :root[data-theme="dark"] {
   --bg: #131518;
-  --bg-glass: radial-gradient(1200px 800px at 15% -10%, #24344d 0%, transparent 55%),
-    radial-gradient(1000px 700px at 90% 110%, #3a2547 0%, transparent 55%),
-    radial-gradient(800px 600px at 70% 20%, #173832 0%, transparent 50%),
+  --bg-glass: radial-gradient(1200px 800px at 15% -10%, #2c4266 0%, transparent 62%),
+    radial-gradient(1000px 700px at 90% 110%, #4a2d63 0%, transparent 62%),
+    radial-gradient(800px 600px at 70% 20%, #1e4a41 0%, transparent 58%),
     #0d0f12;
   --panel: rgba(255, 255, 255, 0.055);
   --panel-2: rgba(255, 255, 255, 0.09);
@@ -63,8 +63,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Dark glass: frosted surfaces on dark theme only (light theme stays flat). */
+/* Dark glass: frosted surfaces on dark theme only (light theme stays flat).
+   The gradient is painted on the app shell (.layout) as well as body so
+   the colored backdrop always sits directly behind the glass panels —
+   body-only painting proved fragile (Patria 20 Okt: "dark glass hilang"). */
 :root[data-theme="dark"] body {
+  background: var(--bg-glass);
+  background-attachment: fixed;
+}
+:root[data-theme="dark"] .layout {
   background: var(--bg-glass);
   background-attachment: fixed;
 }
@@ -81,17 +88,20 @@ body {
   backdrop-filter: var(--glass-blur);
 }
 
-/* Dropdowns & native selects stay SOLID (Patria 20 Okt): transparent
-   backgrounds make their text unreadable. */
+/* Dropdowns, hover sub-menus & native selects stay SOLID (Patria 20 Okt):
+   transparent backgrounds make their text unreadable. This list covers
+   every floating surface used by the components — keep it complete. */
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] .dropdown,
 :root[data-theme="dark"] .menu,
 :root[data-theme="dark"] .menu.sub,
+:root[data-theme="dark"] .child-menu,
 :root[data-theme="dark"] .model-panel,
 :root[data-theme="dark"] .msg-menu,
 :root[data-theme="dark"] .ctx-menu,
 :root[data-theme="dark"] .agent-dlg,
 :root[data-theme="dark"] .dialog,
+:root[data-theme="dark"] .del-dialog,
 :root[data-theme="dark"] .popover,
 :root[data-theme="dark"] .tooltip {
   background: #1a1d22 !important;
