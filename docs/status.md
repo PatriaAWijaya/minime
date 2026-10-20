@@ -1455,3 +1455,74 @@ di Keychain) → aplikasi tidak pernah terhubung, UI macet di "menghubungkan".
 sukses + skills terbundel.
 
 **Push:** lokal 01410cc ↔ remote ee2418c (tree identik).
+
+## 20 Okt 2026 ~20:45 — REKAP PROGRES PER FASE (ditulis sebelum Patria tidur)
+
+### FASE 0 — Fondasi ✅ SELESAI
+Repo publik PatriaAWijaya/minime, Tauri 2 + Svelte 5, docs arsitektur/
+framework/workflow, house rules AGENTS.md.
+
+### TAHAP 1 — UI/UX ✅ SELESAI (gate LOLOS)
+Layout ala OpenBot, 6 agen + badge + dot status, 3 bahasa (752 kunci,
+paritas penuh), 7 tab, tema monokrom + #4FA6F0, dark glass. Avatar animasi
+final menunggu Patria (tidak blocking).
+
+### TAHAP 2 — Model Router ✅ SELESAI (gate LOLOS)
+Ollama default gratis (fallback OpenCode); berbayar Muse→Gemini→DeepSeek;
+Keychain; SQLite riwayat + usage; system prompt + skills engine.
+RuangAPI terhubung (150 kuota/bln). RouterKu BELUM (tiket + top-up QRIS —
+langkah Patria).
+
+### TAHAP 2.5 — Alur Kerja + Polish ✅ SELESAI
+BriefPanel, initiateProject, popup inisiasi tim, data dummy dihapus.
+
+### TAHAP 3 — Tools & Distribusi ✅ KODE SELESAI, GATE MENUNGGU VONIS
+- 3.1 Tools Gateway (12 tool, allowlist per agen) ✅
+- 3.2 Approval Gate + notifikasi native ✅
+- 3.3 Meta & Postiz (default draft; autopost opsional) ✅
+- 3.4 Pireel (OAuth 2.1 PKCE, cloud-only) ✅ kode; KONEKSI BELUM —
+  login Patria gagal diam-diam 20:27, diperbaiki 20:55 (OAuth jujur +
+  alasan gagal tampil di UI)
+- 3.5 Google Drive (OAuth client ID milik user) ✅ kode; KONEKSI BELUM —
+  butuh client ID + login Patria
+- 3.6 Runtime integrasi (tool_run + 3 gate) ✅, teruji E2E
+- Tes: 5 skenario (45+ pemeriksaan) SEMUA LOLOS; audit penuh #2 LOLOS.
+- Gate Tahap 3: menunggu vonis Patria.
+
+### TAHAP 4 — Rilis 🟡 SEBAGIAN
+- 4.2 Build release ✅ (app 16 MB, DMG 6,9 MB)
+- 4.1 Avatar 3D ❌ BELUM (file lama, perlu rebuild)
+- 4.3 Security audit + CSP ❌ BELUM (CSP masih null)
+- Installer Windows .exe ❌ BELUM
+- Uji instalasi bersih ❌ BELUM
+
+### TAHAP 4.5 — Scoring Kinerja 🟡 SEBAGIAN
+- Benchmark internal ✅ (startup 0,13 dtk, CPU ~1%, RAM ~107 MB)
+- Latensi IPC formal ❌, Lighthouse CI ❌, audit independen ❌
+
+### MEHARNESS 🟡 SEBAGIAN
+Framework + pilot Code Builder ✅; kurasi ECC gelombang 1 ❌;
+evaluasi AgentShield ❌.
+
+### MALAM INI (20 Okt, sesi lanjutan)
+- Tes E2E: 2 tes Rust baru (not_connected, fetch internet) ✅
+- Audit penuh #2 ✅ LOLOS (37 IPC cocok, 0 error/warning)
+- 5 skenario tes ✅ SEMUA LOLOS
+- Fix OAuth jujur + badge ✓ hijau ✅ (build 20:33, terpasang)
+- Insiden freeze 20:41: Minime memakan WindowServer (~30%) → app dimatikan,
+  desktop pulih (3%). Penyebab pasti belum teridentifikasi — dicurigai
+  terkait interaksi island/jendela saat OAuth.
+- Dedup: build release lama (14:44) dihapus; tersisa 1 Minime.app (debug
+  20:33, terbaru); cache dibersihkan; data app (minime.db) aman.
+- App diluncurkan ulang 20:43: CPU 0,1%, WindowServer 2,4% — sehat.
+
+### PARKIR / MENUNGGU PATRIA
+- Login Pireel + Google Drive di UI (coba lagi setelah buka app)
+- Vonis Gate Tahap 3
+- Tiket support + top-up RouterKu; avatar animasi final; hapus repo minime-v2
+- WebDriver AFK (parkir)
+
+### BELUM DIMULAI
+- Rebuild Tahap 4 (avatar 3D → security+CSP → .exe → uji bersih)
+- Sisa Tahap 4.5; tinjau ulang semua tahap; uji project asli pertama
+- Fase 6 komersil; Fase Voice (STT riil); aplikasi mobile
