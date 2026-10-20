@@ -1049,3 +1049,22 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   akun Free-nya sendiri lewat tombol "Hubungkan Pireel" di aplikasi.
 - Commit: fe5dfac↔c652c8e, 992c1c6↔d2e43c4, 08ebae6↔65fddc4, d40e860↔5d40d88,
   21f354e↔96588e7, e3d85e6↔f9ae57f.
+
+## 20 Okt 2026 ~16:40 — Tahap 3.5 Google Drive: koneksi NYATA via OAuth (SELESAI, teruji)
+- Tiap user memakai OAuth client ID miliknya sendiri (Google Cloud Console →
+  Desktop app); tidak ada kredensial Google dibundel. Token di OS Keychain
+  (service `com.minime.app`, akun `google-drive`).
+- Scope least-privilege `drive.file`: aplikasi hanya melihat file buatannya sendiri.
+- Backend baru `app/src-tauri/src/drive.rs`: `drive_connect_url` (validasi format
+  client ID → loopback OAuth + PKCE → browser sistem), `drive_oauth_poll`,
+  `drive_status` (cek gratis `about.get`), `drive_upload` (multipart → folder MIMI,
+  dibuat otomatis bila belum ada; maks 25 MB), `drive_disconnect`.
+- Helper OAuth localhost di-refactor ke `oauth_local.rs` (dipakai Pireel + Drive).
+- Frontend: kartu Drive di Tools > Apps = input Client ID + panduan + alur nyata
+  (Hubungkan → tunggu login → status + email → Putuskan); 14 kunci `mkt.drive.*`
+  ×3 paritas penuh. `driveUploadFile()` siap dipakai runtime agen (3.6).
+- Uji MacBook: cargo check 0/0, test 21/21 (termasuk status & upload tanpa token
+  gagal bersih), vite build lolos, debug build lolos, app idle CPU 0,1% / 113 MB.
+- BELUM diuji E2E dengan akun Google sungguhan (sengaja): butuh client ID + akun
+  milik Patria di UI aplikasi.
+- Commit: 0a4b4f1↔047e6f7, 14519de↔7368029 (warning impor + frontend Drive).
