@@ -558,8 +558,8 @@
     </div>
     <div class="flow-wrap">
       <SvelteFlow
-        nodes={sfNodes}
-        edges={sfEdges}
+        bind:nodes={$sfNodes}
+        bind:edges={$sfEdges}
         {nodeTypes}
         onconnect={handleConnect}
         onnodedragstop={persistNodePositions}
