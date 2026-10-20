@@ -1253,3 +1253,21 @@ penuh, TODO/console.log = 0. Build debug MacBook sukses (54 MB), relaunch
 PID 54745 fresh, CPU idle 0,2–0,6%, RAM 75 MB. Uji klik visual menunggu Patria.
 
 **Push:** lokal cee58d9 ↔ remote 416fc8c (tree identik).
+
+## 20 Okt 2026 ~18:55 — Icon play/pause/delete di folder (perintah Patria)
+
+Tiap folder project di tab Agen kini punya icon **play** (jalankan),
+**pause** (hentikan, tampil saat project-nya sedang berjalan), dan **delete**
+(sudah ada sebelumnya). Run dipindah ke store (`startFlowRun`/`stopFlowRun`,
+satu state global `flowRunning`/`runningProjectId`) sehingga berefek dua
+arah dengan Koneksi: start dari folder ⇒ toolbar Koneksi ikut menunjukkan
+running, edge beranimasi saat project itu dibuka, dot status agen menyala
+berurutan di semua view; stop dari mana pun menghentikan run. Animasi edge
+hanya untuk project yang sedang dijalankan. Play di folder lain dinonaktifkan
+selama satu run berjalan (satu run dalam satu waktu).
+
+**Verifikasi:** cargo 0/0, test 30/30, vite lolos, i18n paritas penuh,
+TODO/console.log = 0. Build debug MacBook sukses, relaunch PID 55548 fresh,
+CPU idle 0,2–0,9%, RAM 93 MB. Uji klik visual menunggu Patria.
+
+**Push:** lokal f4d3bb2 ↔ remote 3067ca4 (tree identik).
