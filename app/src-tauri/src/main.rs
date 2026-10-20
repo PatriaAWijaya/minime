@@ -5,6 +5,7 @@ mod db;
 mod providers;
 mod secrets;
 mod skills;
+mod tools;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
@@ -188,6 +189,7 @@ fn main() {
     }
     builder
         .manage(database)
+        .manage(tools::ToolRegistry::new())
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
@@ -198,6 +200,12 @@ fn main() {
             provider_disconnect,
             routerku_set_base_url,
             agent_send_stub,
+            tools::list_tools,
+            tools::get_tool_status,
+            tools::set_tool_connected,
+            tools::get_agent_tools,
+            tools::set_agent_tools,
+            tools::agent_can_use_tool,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
