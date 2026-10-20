@@ -1,0 +1,1 @@
+Perbaiki laporan.py agar tes di test_tugas3.py lulus DAN skrip cek_kualitas.py lulus. Jalankan keduanya (python3 test_tugas3.py dan python3 cek_kualitas.py) untuk memastikan. Jangan mengubah file tes maupun cek_kualitas.py.

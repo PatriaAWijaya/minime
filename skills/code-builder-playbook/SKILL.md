@@ -37,6 +37,12 @@ penerimaan, atau review kualitas hasil kode/AI builder.
    - Tidak ada secret di kode/log/git; Bahasa Indonesia untuk user-facing, Inggris untuk kode/komentar.
    - Setiap LLM call yang memproses data user tercatat di tabel `runs`.
 6. **Risiko & pertanyaan terbuka.** Daftar yang belum diketahui + keputusan yang butuh Patria.
+7. **Loop verifikasi saat eksekusi (MeHarness — teruji putaran #1, 20 Okt 2026).**
+   Bila agen atau builder yang dipakai agen menjalankan/mengubah kode: setelah
+   SETIAP perubahan, jalankan tes yang relevan; bila gagal, baca pesan error,
+   perbaiki akar masalahnya, ulangi. Dilarang menyatakan selesai sebelum run
+   tes terakhir lulus semua. Bukti & metode: `docs/meharness-lessons.md`;
+   set uji: `tests/harness/`.
 
 ## Toolbox
 

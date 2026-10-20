@@ -1,0 +1,1 @@
+Implementasikan fungsi parse_rupiah di parser.py sesuai SPESIFIKASI.md agar semua tes di test_tugas2.py lulus. Jalankan tesnya (python3 test_tugas2.py) untuk memastikan. Jangan mengubah file tes.

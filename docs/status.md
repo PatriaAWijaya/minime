@@ -950,3 +950,28 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   (code-reviewer, TDD, agent-eval, self-evaluation, AgentShield) dengan
   aturan review manual anti prompt-injection.
 - TODO: seksi "Adopsi Harness" ditambahkan. Belum di-push — menunggu OK Patria.
+
+---
+
+## 2026-10-20 ~12:45 WIB — MeHarness putaran #1 (pilot Code Builder): LULUS uji
+
+- Perintah Patria: uji MeHarness, pastikan lulus standar — compact &
+  powerful, tidak boleh ada error yang lolos.
+- Set uji dibangun: `tests/harness/code-builder/` (3 tugas: fix bug,
+  implementasi dari spesifikasi, kualitas kode) — penilaian verifikasi
+  mesin (VERIFY.sh exit 0 = lulus, tanpa nilai parsial). Sanity check:
+  kode awal ketiga tugas GAGAL semua tes (sinyal valid).
+- Probe via OpenCode 1.19.3 di MacBook (jembatan): baseline vs
+  kandidat-umum (loop verifikasi) vs kandidat-spesifik (checklist kasus
+  tepi), kondisi setara, yang beda hanya `AGENTS.md`.
+- Hasil: **ketiganya 3/3 lulus (zero-error)**; pembeda kecepatan:
+  kandidat-umum 144 dtk total (tercepat di tiap tugas) vs spesifik
+  195 dtk vs baseline 316 dtk.
+- Compose: **kandidat-umum DIADOPSI** → SOP langkah 7 di
+  `skills/code-builder-playbook/SKILL.md`. Kandidat-spesifik ditolak
+  (lebih gemuk, tak ada keunggulan terukur di set ini).
+- Pelajaran infra (tercatat di `docs/meharness-lessons.md`): OpenCode
+  paralel → `database is locked` (1 sel gugur, diulang sendirian, hasil
+  rerun dipakai); bridge HTTP satu utas → pekerjaan panjang wajib
+  proses lepas + polling.
+- Status gate: menunggu vonis Patria atas hasil uji.

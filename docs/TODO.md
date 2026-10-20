@@ -46,9 +46,9 @@
 
 ## MeHarness — Adopsi Harness (20 Okt 2026)
 > Framework lengkap: `docs/meharness.md`. Proses DEV, bukan fitur runtime.
-- [ ] Set tugas uji (benchmark mini) per agen di `tests/harness/` (3–5 tugas + rubrik)
-- [ ] `docs/meharness-lessons.md` — library pelajaran loop tuning
-- [ ] Putaran tuning pilot: Code Builder (Propose–Probe–Compose, k=1, executor OpenCode)
+- [x] Set tugas uji (benchmark mini) di `tests/harness/` — pilot Code Builder (3 tugas + verifikasi mesin); agen lain menyusul
+- [x] `docs/meharness-lessons.md` — library pelajaran loop tuning (putaran #1 tercatat)
+- [x] Putaran tuning pilot: Code Builder (Propose–Probe–Compose, k=1, executor OpenCode) — kandidat-umum diadopsi ke playbook
 - [ ] Kurasi ECC gelombang 1 → format Minime (code-reviewer, build-error-resolver, e2e-runner, tdd-workflow, ai-regression-testing, agent-eval, agent-self-evaluation)
 - [ ] Evaluasi konsep AgentShield (pindai konfigurasi agen) untuk Tahap 3/4
 

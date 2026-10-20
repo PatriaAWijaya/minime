@@ -1,0 +1,1 @@
+Perbaiki kalkulator.py agar semua tes di test_tugas1.py lulus. Jalankan tesnya (python3 test_tugas1.py) untuk memastikan. Jangan mengubah file tes.

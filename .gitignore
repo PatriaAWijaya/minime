@@ -36,3 +36,6 @@ binary/**
 # Minime v2 app
 app/src/node_modules/
 app/src/dist/
+
+__pycache__/
+*.pyc
