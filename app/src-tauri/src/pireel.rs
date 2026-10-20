@@ -75,17 +75,35 @@ impl TokenBundle {
 }
 
 fn read_bundle() -> Option<TokenBundle> {
-    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).ok()?;
-    let raw = entry.get_password().ok()?;
+    if let Ok(entry) = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT) {
+        if let Ok(raw) = entry.get_password() {
+            if let Ok(b) = serde_json::from_str::<TokenBundle>(&raw) {
+                return Some(b);
+            }
+        }
+    }
+    // Fallback for ad-hoc-signed binaries (Patria 21 Okt).
+    let raw = crate::oauth_local::security_cli_read(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)?;
     serde_json::from_str(&raw).ok()
 }
 
 fn write_bundle(bundle: &TokenBundle) -> Result<(), String> {
     let raw = serde_json::to_string(bundle).map_err(|e| format!("encode failed: {e}"))?;
-    keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
-        .map_err(|e| format!("keychain open failed: {e}"))?
-        .set_password(&raw)
-        .map_err(|e| format!("keychain write failed: {e}"))
+    // 1. keyring crate (may fail closed on ad-hoc-signed builds — Patria 21 Okt).
+    let _ = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
+        .map(|e| e.set_password(&raw));
+    // 2. Verify it persisted; fall back to `security` CLI.
+    if read_bundle().is_some() {
+        return Ok(());
+    }
+    crate::oauth_local::security_cli_write(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT, &raw)
+        .map_err(|e| format!("keychain write failed ({e})"))?;
+    // 3. Final verification — never report success silently.
+    if read_bundle().is_some() {
+        Ok(())
+    } else {
+        Err("keychain tidak menyimpan token".to_string())
+    }
 }
 
 fn delete_bundle() -> Result<(), String> {

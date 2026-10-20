@@ -243,3 +243,56 @@ mod tests {
         assert_eq!(m["state"], "xyz");
     }
 }
+
+/// Write a secret to the macOS keychain via Apple's `security` CLI.
+/// Fallback for ad-hoc-signed binaries where the keyring crate fails closed
+/// (Patria 21 Okt: keyring `set_password` returns Ok but does not persist).
+pub fn security_cli_write(service: &str, account: &str, password: &str) -> Result<(), String> {
+    // `add-generic-password` fails on duplicates — clear first.
+    let _ = std::process::Command::new("security")
+        .args(["delete-generic-password", "-s", service, "-a", account])
+        .output();
+    let out = std::process::Command::new("security")
+        .args([
+            "add-generic-password",
+            "-s",
+            service,
+            "-a",
+            account,
+            "-w",
+            password,
+        ])
+        .output()
+        .map_err(|e| format!("security cli failed: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "security cli: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    Ok(())
+}
+
+/// Read a secret via Apple's `security` CLI (same fallback as secrets.rs).
+pub fn security_cli_read(service: &str, account: &str) -> Option<String> {
+    let out = std::process::Command::new("security")
+        .args([
+            "find-generic-password",
+            "-s",
+            service,
+            "-a",
+            account,
+            "-w",
+        ])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let pw = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if pw.is_empty() {
+        None
+    } else {
+        Some(pw)
+    }
+}
