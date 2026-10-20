@@ -68,7 +68,7 @@ Approval pengguna ──► [setuju] ──► distribusi (draft-only utk Meta)
 Pengguna menambah agen lewat UI "Agen Baru" — cukup isi:
 
 1. Nama & peran (apa tugasnya, untuk siapa).
-2. Model AI pilihan (Gemini 3.8 / model lokal gratis / model custom
+2. Model AI pilihan (Muse / model lokal gratis / model custom
    yang didaftarkan — API key milik pengguna, di keychain).
 3. Skills/playbook (pilih dari gudang atau tulis sendiri).
 4. Tools yang boleh diakses (centang dari daftar peralatan terhubung).

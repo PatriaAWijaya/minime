@@ -104,19 +104,18 @@ export interface ModelOption {
   custom?: boolean;
 }
 
-/** Free-tier catalog (keputusan Patria 19 Okt): same 10 models for
-    both OpenCode and Ollama dropdowns. */
+/** Free-tier catalog: real model names only (no fictitious versions).
+    Ollama models must exist in the Ollama library; OpenCode free models
+    are verified against OpenCode's actual offerings. */
 const FREE_TIER: Array<[string, string]> = [
-  ["glm-5.3-flash", "GLM-5.3-Flash Free"],
-  ["deepseek-v4.1-flash", "DeepSeek v4.1 Flash Free"],
-  ["nemotron-3.5-lightning", "Nemotron 3.5 Lightning Free"],
-  ["nemotron-3.5-super-vl", "Nemotron 3.5 Super VL Free"],
-  ["nemotron-3-ultra", "Nemotron 3 Ultra Free"],
-  ["mimo-v2.6-flash", "Mimo-v2.6-flash Free"],
-  ["longcat-2.5-preview", "Longcat 2.5 Preview Free"],
-  ["beam", "Beam Free"],
-  ["big-pickle", "Big Pickle"],
-  ["space-bunny", "Space Bunny Free"],
+  ["llama3.1:8b", "Llama 3.1 8B"],
+  ["qwen2.5:7b", "Qwen 2.5 7B"],
+  ["deepseek-r1:8b", "DeepSeek R1 8B"],
+  ["mistral:7b", "Mistral 7B"],
+  ["gemma2:9b", "Gemma 2 9B"],
+  ["phi3:mini", "Phi-3 Mini"],
+  ["llama3.2:3b", "Llama 3.2 3B"],
+  ["qwen2.5:3b", "Qwen 2.5 3B"],
 ];
 
 /** Section id for the model dropdown groups. */
@@ -449,7 +448,7 @@ export function addSkill(name: string) {
 
 /* ---------- Model providers (Patria's decision 18 Oct ~22:40) ----------
    Free: Ollama = default, OpenCode = fallback.
-   Paid: Muse = default, fallback = other popular models (Gemini 3.8, DeepSeek).
+   Paid: Muse = default, fallback = Gemini, GPT, Claude (in that order).
    All state below is local mock, persisted on this device. */
 
 /** Built-in providers. */

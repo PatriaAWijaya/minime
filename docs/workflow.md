@@ -28,7 +28,7 @@ Urutan (keputusan Patria 18 Okt 2026): **UI/UX dulu → fitur + skills agen
 - [ ] Runtime agen sungguhan: chat → Mimi orkestrasi → eksekusi → output
       (saat ini chat masih mock lokal)
 - [ ] Skills + quality bar per agen (adaptasi playbook v1 di `skills/`)
-- [ ] Model router: Gemini 3.8 default + model lokal gratis + custom user;
+- [ ] Model router: Muse default + model lokal gratis + custom user;
       routing per-agen + fallback + metering + budget cap
 - [ ] Persistensi SQLite di-wiring (riwayat, tugas, usage)
 - **Gate:** review + vonis Patria
