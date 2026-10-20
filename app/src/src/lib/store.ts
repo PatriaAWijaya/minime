@@ -52,12 +52,13 @@ export const messagesByAgent = writable<Record<string, Message[]>>({});
 
 let msgSeq = 1;
 
-export function pushMessage(agentId: string, role: Message["role"], text: string) {
+export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"]) {
   const msg: Message = {
     id: msgSeq++,
     role,
     text,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
   };
   messagesByAgent.update((m) => ({
     ...m,

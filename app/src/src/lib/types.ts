@@ -18,11 +18,18 @@ export interface Agent {
   color: string;
 }
 
+export interface AttachmentMeta {
+  name: string;
+  kind: "image" | "audio" | "video" | "document";
+  size: string;
+}
+
 export interface Message {
   id: number;
   role: "user" | "agent";
   text: string;
   time: string;
+  attachments?: AttachmentMeta[];
 }
 
 export type ScheduleRange = "day" | "week" | "month";

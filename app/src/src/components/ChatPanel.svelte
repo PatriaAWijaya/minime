@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
   import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
+  import type { AttachmentMeta } from "../lib/types";
   import {
     activeAgentId,
     agentModel,
@@ -29,6 +30,38 @@
   let draft = $state("");
   let inputEl: HTMLTextAreaElement | null = $state(null);
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let fileInput: HTMLInputElement | null = $state(null);
+
+  // Lampiran: gambar, audio, video, dokumen — untuk pengaya skills / analisa project.
+  let attachments = $state<AttachmentMeta[]>([]);
+
+  function kindOf(file: File): AttachmentMeta["kind"] {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("audio/")) return "audio";
+    if (file.type.startsWith("video/")) return "video";
+    return "document";
+  }
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function onFilesPicked(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const files = input.files;
+    if (!files) return;
+    for (const f of Array.from(files)) {
+      if (attachments.length >= 5) break;
+      attachments = [...attachments, { name: f.name, kind: kindOf(f), size: formatSize(f.size) }];
+    }
+    input.value = "";
+  }
+
+  function removeAttachment(i: number) {
+    attachments = attachments.filter((_, idx) => idx !== i);
+  }
 
   // Mock voice input (Phase 1): local recording state per panel.
   let recording = $state(false);
@@ -97,12 +130,14 @@
 
   async function send() {
     const text = draft.trim();
-    if (!text || status === "working") return;
+    const atts = attachments;
+    if ((!text && atts.length === 0) || status === "working") return;
     if (recording) stopRecordingSilent();
     const id = agent.id;
     const translate = $t;
-    pushMessage(id, "user", text);
+    pushMessage(id, "user", text || $t("chat.attachmentSent"), atts.length > 0 ? atts : undefined);
     draft = "";
+    attachments = [];
     agentStatus.update((s) => ({ ...s, [id]: "working" }));
 
     try {
@@ -185,6 +220,16 @@
       {#each messages as m (m.id)}
         <div class="msg {m.role}">
           <div class="bubble">
+            {#if m.attachments && m.attachments.length > 0}
+              <div class="msg-attach">
+                {#each m.attachments as att (att.name)}
+                  <span class="attach-chip sm">
+                    <span class="attach-kind">{att.kind}</span>
+                    <span class="attach-name">{att.name}</span>
+                  </span>
+                {/each}
+              </div>
+            {/if}
             <p>{m.text}</p>
             <span class="time">{m.time}</span>
           </div>
@@ -199,6 +244,22 @@
   </div>
 
   <div class="composer">
+    {#if attachments.length > 0}
+      <div class="attach-row" aria-label={$t("chat.attachments")}>
+        {#each attachments as att, i (i)}
+          <span class="attach-chip">
+            <span class="attach-kind">{att.kind}</span>
+            <span class="attach-name">{att.name}</span>
+            <span class="attach-size">{att.size}</span>
+            <button
+              class="attach-x"
+              onclick={() => removeAttachment(i)}
+              aria-label={$t("chat.attachRemove")}
+            >×</button>
+          </span>
+        {/each}
+      </div>
+    {/if}
     <div class="field">
       <textarea
         bind:this={inputEl}
@@ -209,6 +270,26 @@
         aria-label={$t("chat.placeholder")}
       ></textarea>
     </div>
+    <input
+      type="file"
+      bind:this={fileInput}
+      onchange={onFilesPicked}
+      accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv"
+      multiple
+      hidden
+      aria-hidden="true"
+    />
+    <button
+      class="btn-clip"
+      onclick={() => fileInput?.click()}
+      disabled={status === "working"}
+      aria-label={$t("chat.attach")}
+      title={$t("chat.attach")}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+      </svg>
+    </button>
     {#if recording}
       <div class="rec-indicator" role="status" aria-live="polite" aria-label={$t("chat.recording")}>
         <span class="rec-dot"></span>
@@ -232,7 +313,7 @@
         </svg>
       </button>
     {/if}
-    <button class="btn-primary" onclick={send} disabled={!draft.trim()}>
+    <button class="btn-primary" onclick={send} disabled={!draft.trim() && attachments.length === 0}>
       {$t("chat.send")}
     </button>
   </div>
@@ -303,6 +384,44 @@
   }
   .btn-mic:hover { background: var(--panel-2); color: var(--text); }
   .btn-mic:disabled { opacity: 0.45; cursor: default; }
+  .btn-clip {
+    min-width: 44px; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    flex: none;
+  }
+  .btn-clip:hover { background: var(--panel-2); color: var(--text); }
+  .btn-clip:disabled { opacity: 0.45; cursor: default; }
+  .attach-row {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 8px 0;
+  }
+  .attach-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    background: var(--panel-2);
+  }
+  .attach-chip.sm { font-size: 12px; padding: 4px 8px; }
+  .attach-kind {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .attach-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attach-size { color: var(--dim); font-size: 12px; }
+  .attach-x {
+    border: none; background: none; cursor: pointer;
+    font-size: 16px; line-height: 1; color: var(--dim);
+    padding: 0 2px;
+  }
+  .attach-x:hover { color: var(--text); }
+  .msg-attach { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
   .btn-stop { min-height: 44px; flex: none; }
   .rec-indicator {
     display: flex; align-items: center; gap: 8px;
