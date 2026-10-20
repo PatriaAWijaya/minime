@@ -15,7 +15,7 @@
 - [x] Badge Tools: tetap warna brand (vonis Patria)
 - [ ] Avatar animasi: dibuat ulang oleh Patria sendiri (tidak blocking)
 
-## Tahap 2 — Model router nyata (gate Tahap 1 lolos 19 Okt; berjalan)
+## Tahap 2 — Model router nyata ✅ (gate LOLOS — vonis Patria 20 Okt 11:59)
 - [x] Fondasi Rust: trait provider + registry + error routing (adaptasi pola v1)
 - [x] Secrets: OS Keychain (`keyring` + fallback `security` CLI di macOS)
 - [x] Ollama: deteksi `localhost:11434`, list models, chat (default GRATIS)
@@ -30,7 +30,7 @@
 - [x] Frontend: riwayat dari SQLite; tab Cost pakai data usage nyata
 - [x] Verifikasi `cargo check` putaran 2 di MacBook — LOLOS 19 Okt ~11:05 (nol error, nol warning)
 - [ ] Runtime agen: chat → Mimi orkestrasi → eksekusi → output (delegasi multi-agen)
-- [ ] Gate: review + vonis Patria
+- [x] Gate: review + vonis Patria (LOLOS 20 Okt 11:59)
 
 ## Tahap 3 — Tools & distribusi
 - [ ] Meta (draft-only), Postiz/Viralin (draft-only), Pireel

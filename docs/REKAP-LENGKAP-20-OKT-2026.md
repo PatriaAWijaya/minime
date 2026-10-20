@@ -36,7 +36,7 @@
 
 ---
 
-## TAHAP 2 — Model Router + Runtime Agen 🟡 ~90% — Gate MENUNGGU vonis Patria
+## TAHAP 2 — Model Router + Runtime Agen ✅ SELESAI — Gate LOLOS (vonis Patria 20 Okt 11:59)
 ### Sudah:
 - Router Rust: Ollama (default gratis) → OpenCode (fallback); berbayar: Muse → Gemini → GPT → Claude
 - Chat riil via Ollama qwen2.5:3b — TERUJI (19 Okt 16:15)
@@ -128,12 +128,17 @@
 
 ---
 
+## CATATAN: TINJAUAN AKHIR SEBELUM LAUNCHING
+Keputusan Patria 20 Okt 11:59: semua tahap yang sudah selesai akan DITINJAU LAGI di akhir fase sebelum launching (review menyeluruh: konsistensi, performa, UX). Sisa teknis Tahap 2 (delegasi runtime via chat, budget cap, form agen custom) diselesaikan dalam peninjauan/rebuild berikutnya — fondasi UI-nya sudah ada di tab Brief.
+
+---
+
 ## STATUS GATE SEKARANG
 | Tahap | Status | Menunggu |
 |---|---|---|
 | Fase 0 | ✅ Selesai | — |
 | Tahap 1 | ✅ Gate lolos | — |
-| Tahap 2 | 🟡 ~90% | Vonis Patria + delegasi |
+| Tahap 2 | ✅ Gate lolos (20 Okt 11:59) | — |
 | Tahap 2.5 | ✅ Selesai (dikonfirmasi) | — |
 | Tahap 3 | 🔴 Perlu rebuild | Rebuild + gate E2E |
 | Tahap 4.1–4.3 | 🔴/🟡 Perlu rebuild | Rebuild |
