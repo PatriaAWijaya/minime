@@ -258,7 +258,7 @@
     z-index: 50;
   }
   .dialog {
-    background: var(--panel);
+    background: var(--panel-solid);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 24px;

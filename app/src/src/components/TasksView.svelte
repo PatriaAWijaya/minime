@@ -1012,7 +1012,7 @@
     position: fixed;
     z-index: 41;
     min-width: 200px;
-    background: var(--card, #16181d);
+    background: var(--panel-solid);
     border: 1px solid var(--border, #2a2e36);
     border-radius: 12px;
     padding: 6px;

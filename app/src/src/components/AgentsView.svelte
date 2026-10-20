@@ -1172,7 +1172,7 @@
     max-width: calc(100vw - 32px);
     max-height: calc(100vh - 96px);
     overflow-y: auto;
-    background: var(--panel);
+    background: var(--panel-solid);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
@@ -1591,7 +1591,7 @@
     left: 0;
     min-width: 250px;
     max-width: calc(100vw - 60px);
-    background: var(--panel);
+    background: var(--panel-solid);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
@@ -1672,12 +1672,12 @@
     max-width: calc(100vw - 120px);
     max-height: min(70vh, 560px);
     overflow-y: auto;
-    background: var(--panel);
+    background: var(--panel-solid);
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     padding: 12px;
-    z-index: 60;
+    z-index: 100;
   }
   .model-panel .field {
     margin-bottom: 4px;

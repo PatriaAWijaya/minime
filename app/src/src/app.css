@@ -86,13 +86,17 @@ body {
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] .dropdown,
 :root[data-theme="dark"] .menu,
+:root[data-theme="dark"] .menu.sub,
 :root[data-theme="dark"] .model-panel,
 :root[data-theme="dark"] .msg-menu,
+:root[data-theme="dark"] .ctx-menu,
+:root[data-theme="dark"] .agent-dlg,
+:root[data-theme="dark"] .dialog,
 :root[data-theme="dark"] .popover,
 :root[data-theme="dark"] .tooltip {
-  background: #1a1d22;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  background: #1a1d22 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 h1, h2, h3 { margin: 0; font-weight: 700; }
