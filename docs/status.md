@@ -1418,3 +1418,17 @@ queue, agen nonaktif: ditolak; createSocialDraft → approval/done + notifikasi.
 - VONIS: LOLOS — nol error, nol gimmick.
 
 **Push:** lokal d98aaea ↔ remote 6b521ab (tree identik).
+
+## 20 Okt 2026 ~20:30 — 5 SKENARIO TES (perintah Patria)
+
+- **S1 backend**: cargo test 32/32 LOLOS (gates, fetch nyata, PKCE, client_id).
+- **S2 katalog skill**: 30 SKILL.md, frontmatter valid semua — LOLOS.
+- **S3 i18n**: 492 kunci dipakai UI, 0 hilang dari 752 — LOLOS.
+- **S4 pipeline store (Node, mock localStorage)**: 13/13 LOLOS —
+  initiateProject→todos, kanban tambah/pindah, runToolTask gagal jujur di
+  luar Tauri (kartu kembali Antrian), agen nonaktif ditolak, draft→approval→
+  selesai, Library, guard Mimi tak bisa dinonaktifkan.
+- **S5 OAuth**: PKCE vektor RFC7636 ✓, validasi client ID ✓, URL memuat
+  semua parameter OAuth2+PKCE S256 ✓. Eksekusi penuh (login) butuh Patria.
+
+VONIS: 45+ pemeriksaan, SEMUA LOLOS. Nol error, nol gimmick.
