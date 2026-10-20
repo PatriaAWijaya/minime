@@ -1271,3 +1271,24 @@ TODO/console.log = 0. Build debug MacBook sukses, relaunch PID 55548 fresh,
 CPU idle 0,2–0,9%, RAM 93 MB. Uji klik visual menunggu Patria.
 
 **Push:** lokal f4d3bb2 ↔ remote 3067ca4 (tree identik).
+
+## 20 Okt 2026 ~19:10 — Mimi = agen utama (perintah Patria)
+
+**Mimi tidak lagi bisa dimasukkan ke folder** — dia agen utama yang
+mendelegasikan tugas. Guard di `folderAddAgent`/`canvasAddAgent`, Mimi
+dikecualikan dari menu tambah-agen folder & picker node Koneksi, dan entri
+"mimi" lama di folder dibersihkan saat load.
+
+**Koneksi otomatis:** Mimi selalu node PERTAMA sebagai parent — kanvas
+auto kini berbentuk star: Mimi di atas, satu edge ke tiap agen folder.
+Run berurutan Mimi dulu baru tim. Kanvas linear lama (format pra-Mimi)
+termigrasi otomatis ke star saat dibuka (fingerprint posisi+edge persis;
+kanvas manual tidak disentuh).
+
+**Verifikasi:** vite lolos, TODO/console.log = 0, i18n paritas. **Build
+MacBook TERTUNDA:** SSH ke MacBook gagal 3x (~19:05–19:10, proxy broken
+pipe — kemungkinan MacBook sleep / Tailscale putus). Kode sudah terpush
+(lokal 5a36db8 ↔ remote d73dd9e, tree identik); build + relaunch MacBook
+menyusul setelah mesin terjangkau.
+
+**Push:** lokal 5a36db8 ↔ remote d73dd9e (tree identik).
