@@ -1156,3 +1156,33 @@ sukses (54 MB), relaunch PID 51515 terverifikasi fresh, CPU idle 1,2–1,8%,
 RAM 104 MB, skills 30+ di bundle. Uji klik visual tetap menunggu Patria.
 
 **Push:** lokal 1a3f642 ↔ remote e745c12 (tree identik).
+
+## 20 Okt 2026 ~17:30 — Model agen aktif (perintah Patria)
+
+**Aturan baru Patria:** list Agen hanya memuat agen AKTIF. User menambah agen
+dari bawaan Minime (atau buat baru); agen baru otomatis muncul di Tugas+Tools.
+Satu agen boleh di beberapa folder/project, tapi tidak 2x dalam satu folder.
+Nonaktifkan → hilang dari list Agen, TETAP di Tools, TETAP di Tugas (kartu
+tidak hilang) — hanya fungsinya yang dimatikan.
+
+**Implementasi:**
+- `addAgentToProject`: hapus eksklusivitas lintas-folder; dedup per folder
+  saja; otomatis aktifkan agen.
+- `activateAgent`/`deactivateAgent` di store; folder membership dipertahankan
+  saat nonaktif (reaktivasi mengembalikan ke foldernya).
+- Menu "+": seksi "Tambah dari bawaan Minime" berisi agen registry yang belum
+  aktif (bawaan + custom yang dinonaktifkan) → klik = aktif + buka detail.
+- Toggle "Aktif" di panel detail (Mimi selalu aktif, toggle disembunyikan);
+  setelah nonaktif, panel pindah ke Mimi.
+- Menu "+" tiap folder: agen AKTIF yang belum ada di folder itu (boleh dari
+  folder lain).
+- Tugas: kartu agen nonaktif tampil badge "Nonaktif" + tombol "Jalankan tool"
+  disabled; `runToolTask` menolak di level store (`agent_inactive`) agar tak
+  bisa diakali via UI. Dropdown agen kartu baru & Brief hanya agen aktif.
+
+**Verifikasi:** cargo 0/0, test 30/30, vite lolos, IPC 20/20, i18n 739×3
+paritas, TODO/console.log/dbg! = 0. Build debug MacBook sukses (54 MB),
+relaunch PID 52775 fresh, CPU idle 0,1–0,2%, RAM 79 MB. Uji klik visual
+menunggu Patria.
+
+**Push:** lokal 808f500 ↔ remote ff96978 (tree identik).
