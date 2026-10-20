@@ -975,3 +975,17 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   rerun dipakai); bridge HTTP satu utas → pekerjaan panjang wajib
   proses lepas + polling.
 - Status gate: menunggu vonis Patria atas hasil uji.
+
+## 20 Okt 2026 (sore) — Pengaturan lengkap + audit penuh
+- Empat halaman pengaturan terakhir ditulis ulang mengikuti referensi
+  dan berfungsi nyata: Profil (identitas/foto/sesi perangkat asli via
+  `device_info`), Tagihan (Tambah server memanggil `addServer()`),
+  Koneksi Mobile (QR asli via `qrcode`, kode sekali-pakai 2 menit,
+  tautan permanen bisa dicabut), Pembaruan (cek rilis GitHub via
+  `check_update` + banding semver, mulai ulang nyata `restart_app`).
+- Audit penuh atas permintaan pemilik: cargo check 0 error/0 warning,
+  cargo test 5/5, IPC 24 terdaftar/23 terpakai/0 yatim, i18n 672 kunci
+  × 3 bahasa paritas penuh, TODO/FIXME/debug 0, git bersih.
+- Performa build debug di MacBook: CPU idle 0,6%, RAM ±115 MB,
+  app 52 MB, DMG 13,7 MB. Belum ada rilis GitHub yang diterbitkan —
+  halaman Pembaruan menampilkannya secara jujur.
