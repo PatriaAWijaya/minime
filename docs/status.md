@@ -1125,3 +1125,34 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   lolos, `tauri build --debug` sukses (Minime.app 53,75 MiB + DMG 14,25 MiB),
   bundle-skills.sh dijalankan. Smoke-test launch GUI via SSH tidak konklusif
   (tanpa display); uji klik visual tetap menunggu Patria.
+
+## 20 Okt 2026 ~17:15 — Audit gimmick + sinkronisasi agen (perintah Patria)
+
+**Perintah:** "cek ulang pastikan fungsi benar2 bekerja bukan sekedar gimmick" →
+ditemukan & dihapus data dummy yang masih lolos: 4 jadwal terjadwal
+(`schedule.mock1-4`), 8 item Library (`library.mock1-8`), 8 kartu Kanban
+(`seedKanban`), statistik agen karangan (`agentFacts`: memories/skills/files/
+tables/routines per agen). Semua kini kosong default — hanya data nyata user.
+
+**Perintah:** "sinkronisasi jumlah agen list Agen ↔ Tools; deskripsi berubah di
+satu tempat otomatis berubah di tempat lain":
+- Helper tunggal `agentDisplayName`/`agentDisplayRole` di `lib/agents.ts`
+  (override user menang) — dipakai di AgentsView, ToolsView, BriefPanel,
+  TasksView. ToolsView sebelumnya mengabaikan override judul (`agentTitles`)
+  → kini sinkron dua arah.
+- Jumlah sinkron: list Agen kini tampilkan SEMUA agen nyata (6 bawaan +
+  custom), sama seperti tab Tools > Agen. Agen nonaktif tampil redup.
+- Toggle "Aktif" di panel detail agen (fungsi `setAgentEnabled` sebelumnya
+  tidak punya UI sama sekali — 5 agen tak terlihat & tak bisa diaktifkan user).
+- Bug sampingan: 3 toggle di AgentsView pakai class `slider` tanpa CSS
+  (invisible) → diganti `track` sesuai app.css.
+- Statistik panel detail kini data nyata: jumlah skill dari katalog backend,
+  jumlah file dari lampiran agen (memories/tables/routines tanpa backing
+  nyata dihapus dari tampilan).
+
+**Verifikasi:** cargo check 0/0, cargo test 30/30, vite build lolos, paritas
+IPC 20/20, i18n paritas penuh, TODO/console.log/dbg! = 0. Build debug MacBook
+sukses (54 MB), relaunch PID 51515 terverifikasi fresh, CPU idle 1,2–1,8%,
+RAM 104 MB, skills 30+ di bundle. Uji klik visual tetap menunggu Patria.
+
+**Push:** lokal 1a3f642 ↔ remote e745c12 (tree identik).
