@@ -704,18 +704,20 @@ pub struct PireelStatus {
 }
 
 #[tauri::command]
-pub async fn pireel_status(state: tauri::State<'_, PireelState>) -> PireelStatus {
+pub async fn pireel_status(
+    state: tauri::State<'_, PireelState>,
+) -> Result<PireelStatus, String> {
     let s = state.inner().clone();
     let token = match valid_access_token(&s).await {
         Ok(t) => t,
         Err(code) => {
-            return PireelStatus {
+            return Ok(PireelStatus {
                 connected: false,
                 detail: code,
-            }
+            })
         }
     };
-    match get_state_text(&token).await {
+    Ok(match get_state_text(&token).await {
         Ok(text) => PireelStatus {
             connected: true,
             detail: classify_state(&text).to_string(),
@@ -728,7 +730,7 @@ pub async fn pireel_status(state: tauri::State<'_, PireelState>) -> PireelStatus
                 "network_error".to_string()
             },
         },
-    }
+    })
 }
 
 /// Disconnect: remove tokens from the keychain.
