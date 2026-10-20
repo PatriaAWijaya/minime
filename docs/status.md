@@ -999,3 +999,24 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   2,0–2,3 dtk (21–24 token/dtk).
 - Tersisa di 4.5: latensi IPC formal, beban aktif, Lighthouse CI,
   audit independen pra-rilis.
+
+## 20 Okt 2026 ~15:20 — Marketplace di tab Tools (perintah Patria 14:49)
+- ToolsView ditulis ulang jadi Marketplace 3 sub-tab (Agen | Apps | Skills) persis
+  struktur referensi OpenBot: segmented tabs kiri, Search + Filter kanan, grid kartu
+  (tile 40px + nama + tombol kanan, deskripsi clamp, footer).
+- Tab Agen: 15 template (Product Design Lead ... Hiring Partner). "+ Tambah" membuat
+  agen NYATA & persisten (warna, deskripsi peran, instruksi persona) + skill asli
+  dari `skills/` dipasang ke agen itu; tombol jadi "✓ Ditambahkan". Agen custom kini
+  persisten di localStorage (bug lama: hilang saat restart — diperbaiki).
+- Tab Apps: 12 tool registry backend NYATA (Hubungkan/Terhubung via `set_tool_connected`);
+  form kredensial RuangAPI dipertahankan di kartunya; 17 app referensi di luar registry
+  tampil jujur sebagai "Segera hadir" (nonaktif, bukan dummy).
+- Tab Skills: katalog NYATA dari 29 SKILL.md (`list_skill_catalog`), tombol per kartu
+  "Pasang" / "✓ <Agen> ∨" membuka dialog pilih agen (checkbox) → `set_agent_skills`
+  per agen (override SQLite, berlaku di chat berikutnya); "Buat skill baru" menulis
+  SKILL.md sungguhan via `create_skill`. **Nama judul: "Tools" (perintah Patria 15:08).**
+- Backend: katalog baca SKILL.md + override per agen + create_skill (commit c37814f);
+  frontend marketplace (fccbcad). Build debug MacBook lolos (cargo 0/0, test 8/8,
+  IPC 28/28, i18n 721 kunci ×3 paritas penuh, TODO/console.log 0).
+- Pelajaran build: folder `skills/` TIDAK ikut terbawa `tauri build` — skrip baru
+  `app/scripts/bundle-skills.sh` menyalinnya ke `Contents/Resources/skills` setiap build.
