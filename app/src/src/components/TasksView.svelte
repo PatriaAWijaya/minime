@@ -721,8 +721,8 @@
     background: var(--panel, #121419);
     border: 1px solid var(--border, #262a32);
     border-radius: 14px;
-    padding: 12px;
-    gap: 10px;
+    padding: 8px;
+    gap: 8px;
   }
   .col-head {
     display: flex;

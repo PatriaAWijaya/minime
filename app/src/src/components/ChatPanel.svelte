@@ -410,13 +410,13 @@
     background: var(--bg);
   }
   .chat-head {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 20px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px;
     border-bottom: 1px solid var(--border);
     background: var(--panel);
   }
   .badge {
-    width: 44px; height: 44px; border-radius: 50%;
+    width: 36px; height: 36px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     color: #0a1f33; font-size: 20px; font-weight: 800; flex: none;
   }
@@ -449,15 +449,15 @@
   .time { display: block; font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: right; }
   .thinking { font-style: italic; color: var(--dim); animation: pulse 1.2s infinite; }
   .composer {
-    display: flex; gap: 10px; align-items: flex-end;
-    padding: 12px 20px 16px;
+    display: flex; gap: 8px; align-items: flex-end;
+    padding: 8px 16px 10px;
     border-top: 1px solid var(--border);
     background: var(--panel);
   }
   .composer .field { flex: 1; }
   .composer textarea { resize: none; }
   .btn-mic {
-    min-width: 44px; min-height: 44px;
+    min-width: 38px; min-height: 38px;
     display: flex; align-items: center; justify-content: center;
     border: 1px solid var(--border);
     border-radius: var(--radius);
