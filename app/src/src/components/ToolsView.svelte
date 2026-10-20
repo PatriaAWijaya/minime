@@ -261,34 +261,22 @@
       <p class="mkt-empty">{$t("mkt.noResults")}</p>
     {:else}
       <div class="mkt-grid">
-        {#each filteredAgents as tpl (tpl.slug)}
-          {@const added = addedTplIds.has(`tpl-${tpl.slug}`)}
+        {#each filteredAgents as a (a.id)}
           <article class="mkt-card">
             <div class="mkt-top">
-              <span class="mkt-tile sh-{tpl.shape}" style:background={tpl.color} aria-hidden="true">
-                <span class="eye"></span><span class="eye"></span>
+              <span class="mkt-tile sh-squircle" style:background={a.color} aria-hidden="true">
+                <span class="glyph">{a.badge}</span>
               </span>
-              <h3>{tpl.name}</h3>
-              <button
-                class="mkt-add"
-                class:added
-                onclick={() => onAddTemplate(tpl)}
-                disabled={added || adding === tpl.slug}
-              >
-                {#if added}
-                  {$t("mkt.added")}
-                {:else if adding === tpl.slug}
-                  {$t("mkt.adding")}
-                {:else}
-                  {$t("mkt.add")}
-                {/if}
+              <h3>{agentDisplayName(a)}</h3>
+              <button class="mkt-add" onclick={openAgent}>
+                {$t("mkt.open")}
               </button>
             </div>
-            <p class="mkt-desc">{tpl.desc}</p>
+            <p class="mkt-desc">{$t(a.roleKey)}</p>
             <footer class="mkt-foot">
               <span>Minime</span>
               <span class="dot">·</span>
-              <span>{$t("mkt.footer.skillsN", { n: tpl.skills.length })}</span>
+              <span>{$t("mkt.footer.skillsN", { n: agentSkillCounts[a.id] ?? 0 })}</span>
             </footer>
           </article>
         {/each}

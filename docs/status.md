@@ -1020,3 +1020,13 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   IPC 28/28, i18n 721 kunci ×3 paritas penuh, TODO/console.log 0).
 - Pelajaran build: folder `skills/` TIDAK ikut terbawa `tauri build` — skrip baru
   `app/scripts/bundle-skills.sh` menyalinnya ke `Contents/Resources/skills` setiap build.
+
+## 20 Okt 2026 ~15:35 — Tab Agen Tools: 6 agen bawaan (perintah Patria 15:19)
+- Patria: "daftar agen di menu Tools masih banyak dan fiktif. Gunakan default
+  6 agen bawaan minime" — 15 template dihapus total dari kode (marketplace.ts,
+  addAgentFromTemplate, kunci i18n mkt.add/added/adding/agent.template).
+- Tab Agen kini kartu 6 agen nyata (Mimi, Kreatif, Riset, Finance, Bisnis
+  Strategis, Code Builder): tile warna+inisial asli, nama, deskripsi peran,
+  footer "Minime · N skill" dari katalog backend LANGSUNG, tombol "Buka" →
+  pindah ke tab Agen. Search + Filter (A–Z/Z–A) tetap jalan.
+- Subtitle tab: "Agen, aplikasi, dan skill yang benar-benar bekerja di Minime."

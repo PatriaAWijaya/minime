@@ -2,7 +2,6 @@
 
 import { writable, get, derived, type Writable, type Readable } from "svelte/store";
 import { agents } from "./agents";
-import type { AgentTemplateDef } from "./marketplace";
 import type {
   Agent,
   AgentFile,
@@ -647,42 +646,6 @@ export async function createSkillFile(
   } catch {
     return null;
   }
-}
-
-/* ---------- Marketplace > Agents (real agents from templates) ---------- */
-
-/** Add a real, persistent agent from a Marketplace template.
- *  The agent gets the template's color, its role description and persona
- *  instructions, and its real skills (persisted in the backend gateway).
- *  New agents start disabled, per the "only Mimi active by default" rule. */
-export async function addAgentFromTemplate(
-  tpl: AgentTemplateDef,
-): Promise<string | null> {
-  const id = `tpl-${tpl.slug}`;
-  if (get(customAgents).some((a) => a.id === id)) return null;
-  const initials = tpl.name
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  customAgents.update((list) => [
-    ...list,
-    {
-      id,
-      name: tpl.name,
-      roleKey: "mkt.agent.template",
-      model: "Ollama",
-      badge: initials,
-      color: tpl.color,
-    },
-  ]);
-  agentNames.update((m) => ({ ...m, [id]: tpl.name }));
-  agentTitles.update((m) => ({ ...m, [id]: tpl.desc }));
-  agentInstructions.update((m) => ({ ...m, [id]: tpl.prompt }));
-  agentEnabled.update((m) => ({ ...m, [id]: false }));
-  await saveAgentSkills(id, tpl.skills);
-  return id;
 }
 
 /* ---------- Native notifications (Phase 3.2: approval gate) ---------- */
