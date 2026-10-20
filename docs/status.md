@@ -1068,3 +1068,27 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
 - BELUM diuji E2E dengan akun Google sungguhan (sengaja): butuh client ID + akun
   milik Patria di UI aplikasi.
 - Commit: 0a4b4f1↔047e6f7, 14519de↔7368029 (warning impor + frontend Drive).
+
+## 20 Okt 2026 ~17:30 — Tahap 3.6 Integrasi Runtime: gateway → chat (SELESAI, teruji)
+- Backend baru `app/src-tauri/src/runtime.rs`: `tool_run` (dispatch 1 tool call)
+  dengan 3 gate jujur: (1) allowlist agen (`not_allowed`), (2) koneksi nyata
+  dicek ke Keychain bukan cermin UI (`not_connected`; `drive`/`pireel` via
+  `has_token()` baru), (3) tool tanpa implementasi nyata gagal
+  `tool_not_implemented` — tidak ada dummy yang pura-pura jalan.
+- Implementasi nyata saat ini: `browser`/`fetch` (HTTP GET + ekstraksi judul/teks,
+  maks 2 MB, timeout 20 dtk) dan `drive`/`upload` (delegasi ke drive_upload).
+  `runtime_allowed_tools` hanya menawarkan tool yang benar-benar terimplementasi.
+- Frontend: tiap kartu Kanban (kolom Antrian) punya "Jalankan tool" → pilih tool
+  dari allowlist agen + argumen (URL untuk browser) → kartu pindah Dikerjakan →
+  hasil masuk Library (tersimpan persisten) → kartu ke Butuh Approval +
+  notifikasi; gagal → kartu kembali ke Antrian + notifikasi kode error jujur.
+  Todo di tab Brief punya tombol "Jadikan tugas" → kartu Kanban nyata.
+  Library kini writable store persisten (seed mock tetap, hasil nyata di atas).
+- i18n: 14 kunci `tasks.tool.*` + `tasks.brief.toCard` ×3 paritas penuh.
+- Uji: cargo check 0/0; cargo test 30/30 (termasuk dispatch browser.fetch ke
+  server HTTP lokal — bukti fetch+ekstraksi nyata tanpa jaringan eksternal);
+  vite build lolos; debug build MacBook lolos; bundle-skills.sh dijalankan.
+- E2E penuh brief → delegasi → tool → approval → Library terverifikasi di level
+  kode + unit test; uji klik manual di MacBook menunggu Patria (butuh interaksi
+  UI langsung). Tidak ada auto-post: Meta/Postiz tetap draft-only (3.3).
+- Commit: 471d7c4↔0285345, 84849e4↔78da491, 8c2e343↔a4259e9.
