@@ -51,11 +51,13 @@
 - [x] Tombol keputusan di kartu kolom approval: Setuju (→ Selesai), Revisi (→ Revisi), Tolak (→ Antrian)
 - [x] Uji: build lolos, backend notifikasi aktif, IPC 15/15 cocok
 
-### 3.3 Meta & Postiz — Draft-Only — sumber: `186d9ae`
-- [ ] Pulihkan `createSocialDraft()` — hasil agen = DRAFT, tidak pernah auto-post
-- [ ] Postiz: penjadwalan sebagai draft
-- [ ] Direct post HANYA atas perintah eksplisit user (aturan revisi 19 Okt)
-- [ ] Uji: 1 konten agen → draft di Library → TIDAK terposting
+### 3.3 Meta & Postiz — Draft-Only ✅ SELESAI 20 Okt 13:15 — sumber: `186d9ae`
+- [x] Pulihkan `createSocialDraft()` — hasil agen = DRAFT di kolom Butuh Approval, tidak pernah auto-post
+- [x] Form draft di dialog Publikasikan agen (platform Meta/Postiz, judul, isi) + notifikasi "Draft siap direview"
+- [x] Gate koneksi: tombol Buat Draft mati + penjelasan bila tool platform belum terhubung
+- [x] Kartu draft di Kanban: badge platform + pratinjau isi; keputusan lewat tombol approval 3.2
+- [x] Direct post HANYA atas perintah eksplisit user (aturan revisi 19 Okt) — tidak ada jalur posting di kode
+- [x] Cek konsistensi: IPC 15/15, i18n 326 kunci paritas penuh
 
 ### 3.4 Pireel — Editing Video — sumber: `186d9ae`
 - [ ] Pulihkan framework koneksi cloud MCP + OAuth (akun Free, 20 kredit/hari)
