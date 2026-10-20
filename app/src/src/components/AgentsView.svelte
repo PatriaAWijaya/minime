@@ -120,9 +120,13 @@
     panelOpen = true;
   }
 
-  function pickServer(kind: ServerKind) {
+  /** Click on a server row: select it AND open its detail flyout, keeping
+      the menu open (bug fix 20 Oct: previously the row closed the whole
+      menu, so the flyout blinked and vanished on click). */
+  function openServerRow(kind: ServerKind) {
     activeServer.set(kind);
-    closeAll();
+    flyout = `srv:${kind}`;
+    subFly = null;
   }
 
   function serverName(kind: ServerKind): string {
@@ -495,7 +499,7 @@
             <span class="menu-label">{$t("server.title")}</span>
             {#each $serverList as kind (kind)}
               <div class="menu-wrap-sub" onmouseenter={() => { flyout = `srv:${kind}`; subFly = null; }}>
-                <button class="menu-item" role="menuitemradio" aria-checked={$activeServer === kind} onclick={() => pickServer(kind)}>
+                <button class="menu-item" role="menuitemradio" aria-checked={$activeServer === kind} onclick={() => openServerRow(kind)}>
                   <span class="check" aria-hidden="true">{#if $activeServer === kind}✓{/if}</span>
                   {#if kind === "local"}
                     <svg class="srv-kind-icon local" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -519,7 +523,7 @@
                   <div class="menu sub" role="menu" aria-label={serverName(kind)}>
                     <span class="menu-label">{serverName(kind)}</span>
                     <div class="menu-wrap-sub" onmouseenter={() => (subFly = "mute")}>
-                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "mute"}>
+                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "mute"} onclick={() => (subFly = "mute")}>
                         <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                           <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 0 0 3.4 0" />
                           <path d="M3 3l18 18" />
@@ -552,7 +556,7 @@
                       {/if}
                     </div>
                     <div class="menu-wrap-sub" onmouseenter={() => (subFly = "notif")}>
-                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "notif"}>
+                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "notif"} onclick={() => (subFly = "notif")}>
                         <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                           <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 0 0 3.4 0" />
                         </svg>
@@ -587,7 +591,7 @@
               </div>
             {/each}
             <div class="menu-wrap-sub" onmouseenter={() => { flyout = "add"; subFly = null; }}>
-              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "add"}>
+              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "add"} onclick={() => { flyout = "add"; subFly = null; }}>
                 <span class="check" aria-hidden="true"></span>
                 <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                   <circle cx="12" cy="12" r="9" stroke-dasharray="4 3" />
@@ -618,7 +622,7 @@
               <span>{$t("server.settings")}</span>
             </button>
             <div class="menu-wrap-sub" onmouseenter={() => { flyout = "layout"; subFly = null; }}>
-              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "layout"}>
+              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "layout"} onclick={() => { flyout = "layout"; subFly = null; }}>
                 <span class="check" aria-hidden="true"></span>
                 <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                   <rect x="3" y="4" width="18" height="16" rx="2" />
