@@ -98,6 +98,11 @@ fn delete_bundle() -> Result<(), String> {
     }
 }
 
+/// True when the user has connected their Pireel account (for the runtime gate).
+pub(crate) fn has_token() -> bool {
+    read_bundle().is_some()
+}
+
 // ---------------------------------------------------------------------------
 // OAuth metadata + dynamic client registration
 // ---------------------------------------------------------------------------

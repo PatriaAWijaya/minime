@@ -7,6 +7,7 @@ mod island;
 mod oauth_local;
 mod pireel;
 mod providers;
+mod runtime;
 mod secrets;
 mod skills;
 mod tools;
@@ -528,6 +529,8 @@ fn main() {
             drive::drive_status,
             drive::drive_upload,
             drive::drive_disconnect,
+            runtime::tool_run,
+            runtime::runtime_allowed_tools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

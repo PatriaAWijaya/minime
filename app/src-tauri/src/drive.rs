@@ -74,6 +74,11 @@ fn delete_bundle() -> Result<(), String> {
     }
 }
 
+/// True when the user has connected their Google account (for the runtime gate).
+pub(crate) fn has_token() -> bool {
+    read_bundle().is_some()
+}
+
 #[derive(Debug, Clone)]
 struct PendingOAuth {
     verifier: String,

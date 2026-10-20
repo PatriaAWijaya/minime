@@ -40,6 +40,45 @@ impl ToolRegistry {
             allowlists: Mutex::new(default_allowlists()),
         }
     }
+
+    /// Allowlist gate for the runtime dispatcher.
+    pub(crate) fn can_use(&self, agent_id: &str, tool_id: &str) -> bool {
+        let allowlists = self.allowlists.lock().unwrap();
+        can_use(&allowlists, agent_id, tool_id)
+    }
+
+    /// Allowed tool ids for an agent (for the UI tool picker).
+    pub(crate) fn allowed_tools(&self, agent_id: &str) -> Vec<String> {
+        self.allowlists
+            .lock()
+            .unwrap()
+            .get(agent_id)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Whether a tool id is in the known registry.
+    pub(crate) fn is_known(&self, tool_id: &str) -> bool {
+        known_tools().iter().any(|(id, ..)| id == tool_id)
+    }
+
+    /// Whether the tool requires an authenticated connection.
+    pub(crate) fn requires_auth(&self, tool_id: &str) -> bool {
+        known_tools()
+            .iter()
+            .find(|(id, ..)| id == tool_id)
+            .map(|(_, _, _, requires_auth, _)| *requires_auth)
+            .unwrap_or(false)
+    }
+}
+
+impl Clone for ToolRegistry {
+    fn clone(&self) -> Self {
+        Self {
+            status: Mutex::new(self.status.lock().unwrap().clone()),
+            allowlists: Mutex::new(self.allowlists.lock().unwrap().clone()),
+        }
+    }
 }
 
 /// Allowlist default per agen (keputusan Patria 19 Okt):
