@@ -1342,7 +1342,7 @@
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+                      <path d="M6 6l12 12M18 6L6 18" />
                     </svg>
                   </button>
                 {/if}
