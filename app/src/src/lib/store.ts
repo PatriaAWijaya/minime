@@ -490,6 +490,89 @@ export async function fetchToolStatus(toolId: string): Promise<boolean | null> {
   return await tauriInvoke<boolean>("get_tool_status", { toolId });
 }
 
+/* ---------- Pireel (Tahap 3.4 — real OAuth, not the generic toggle) ---------- */
+
+export type PireelOAuthPhase = "idle" | "pending" | "connected";
+
+export interface PireelConnStatus {
+  connected: boolean;
+  /** "not_connected" | "live" | "offline" | "fresh" | "unknown" |
+   *  "reauth_needed" | "network_error" */
+  detail: string;
+}
+
+/** Last known Pireel status (null = not checked yet). */
+export const pireelStatus = writable<PireelConnStatus | null>(null);
+/** OAuth flow phase for the card UI. */
+export const pireelOAuth = writable<PireelOAuthPhase>("idle");
+/** Authorization URL of the in-flight flow (fallback reopen link). */
+export const pireelAuthUrl = writable<string | null>(null);
+
+/** Start OAuth: backend registers a client, opens the system browser. */
+export async function pireelConnect(): Promise<void> {
+  try {
+    const url = await tauriInvoke<string>("pireel_connect_url");
+    if (url) {
+      pireelAuthUrl.set(url);
+      pireelOAuth.set("pending");
+    } else {
+      pireelOAuth.set("idle");
+    }
+  } catch {
+    pireelOAuth.set("idle");
+  }
+}
+
+/** Poll the in-flight OAuth flow; refresh status once connected. */
+export async function pireelPollOAuth(): Promise<void> {
+  try {
+    const s = await tauriInvoke<{ state: string }>("pireel_oauth_poll");
+    if (!s) return;
+    if (s.state === "connected") {
+      pireelOAuth.set("connected");
+      await pireelRefreshStatus();
+    } else if (s.state === "idle") {
+      pireelOAuth.set("idle");
+    }
+  } catch {
+    /* keep polling */
+  }
+}
+
+/** Refresh Pireel status from the backend (free get_state check). */
+export async function pireelRefreshStatus(): Promise<void> {
+  try {
+    const s = await tauriInvoke<PireelConnStatus>("pireel_status");
+    if (s) {
+      pireelStatus.set(s);
+      pireelOAuth.set(s.connected ? "connected" : "idle");
+      // Mirror into the tools registry so the Apps tab + allowlists agree.
+      void tauriInvoke("set_tool_connected", {
+        toolId: "pireel",
+        connected: s.connected,
+      }).catch(() => undefined);
+    }
+  } catch {
+    /* backend unreachable (browser preview) */
+  }
+}
+
+/** Disconnect: tokens removed from the OS keychain. */
+export async function pireelDisconnect(): Promise<void> {
+  try {
+    await tauriInvoke("pireel_disconnect");
+  } catch {
+    /* ignore */
+  }
+  pireelStatus.set({ connected: false, detail: "not_connected" });
+  pireelOAuth.set("idle");
+  pireelAuthUrl.set(null);
+  void tauriInvoke("set_tool_connected", {
+    toolId: "pireel",
+    connected: false,
+  }).catch(() => undefined);
+}
+
 /** Agent tool allowlist from the backend. */
 export async function fetchAgentTools(agentId: string): Promise<string[] | null> {
   return await tauriInvoke<string[]>("get_agent_tools", { agentId });

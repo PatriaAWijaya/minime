@@ -14,11 +14,18 @@
     refreshSkillCatalog,
     saveAgentSkills,
     createSkillFile,
-    addAgentFromTemplate,
+    activeView,
+    pireelStatus,
+    pireelOAuth,
+    pireelAuthUrl,
+    pireelConnect,
+    pireelPollOAuth,
+    pireelRefreshStatus,
+    pireelDisconnect,
     type SkillCatalogEntry,
   } from "../lib/store";
   import { agents as seedList } from "../lib/agents";
-  import { AGENT_TEMPLATES, SOON_APPS, APP_TILES, APP_CAT_KEYS, appDescKey, type AgentTemplateDef } from "../lib/marketplace";
+  import { SOON_APPS, APP_TILES, APP_CAT_KEYS, appDescKey } from "../lib/marketplace";
   import { t } from "../lib/i18n";
 
   type Tab = "agents" | "apps" | "skills";
@@ -30,6 +37,11 @@
   onMount(() => {
     void refreshTools();
     void refreshSkillCatalog();
+    void pireelRefreshStatus();
+    const timer = setInterval(() => {
+      if ($pireelOAuth === "pending") void pireelPollOAuth();
+    }, 2000);
+    return () => clearInterval(timer);
   });
   $effect(() => {
     // Load the skill catalog the first time the Skills tab opens.
@@ -43,28 +55,36 @@
     return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name);
   }
 
-  /* ---------------- Agents tab ---------------- */
-  const addedTplIds = $derived(new Set($customAgents.map((a) => a.id)));
-  let adding = $state<string | null>(null);
-  async function onAddTemplate(tpl: AgentTemplateDef) {
-    if (adding) return;
-    adding = tpl.slug;
-    try {
-      await addAgentFromTemplate(tpl);
-    } finally {
-      adding = null;
+  /* ---------------- Agents tab: the 6 built-in Minime agents --------------
+     Patria 20 Okt: no fictitious templates — only the real agents with
+     their real skills from the backend catalog. */
+  const agentSkillCounts = $derived.by(() => {
+    const counts: Record<string, number> = {};
+    for (const s of $skillCatalog ?? []) {
+      for (const id of s.agents) counts[id] = (counts[id] ?? 0) + 1;
     }
+    return counts;
+  });
+  function agentDisplayName(a: { id: string; name: string; nameKey?: string }): string {
+    return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name);
   }
   const filteredAgents = $derived(
-    AGENT_TEMPLATES.filter(
-      (tpl) =>
-        !query ||
-        tpl.name.toLowerCase().includes(query.toLowerCase()) ||
-        tpl.desc.toLowerCase().includes(query.toLowerCase()),
-    ).sort((a, b) =>
-      filter === "za" ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name),
-    ),
+    seedList
+      .filter(
+        (a) =>
+          !query ||
+          agentDisplayName(a).toLowerCase().includes(query.toLowerCase()) ||
+          $t(a.roleKey).toLowerCase().includes(query.toLowerCase()),
+      )
+      .sort((a, b) =>
+        filter === "za"
+          ? agentDisplayName(b).localeCompare(agentDisplayName(a))
+          : agentDisplayName(a).localeCompare(agentDisplayName(b)),
+      ),
   );
+  function openAgent() {
+    activeView.set("agents");
+  }
 
   /* ---------------- Apps tab ---------------- */
   const apps = $derived(
@@ -286,6 +306,17 @@
                 <span class="glyph">{app.tile.glyph}</span>
               </span>
               <h3>{app.name}</h3>
+              {#if app.id === "pireel"}
+                {#if $pireelStatus?.connected}
+                  <span class="mkt-add added" role="status">{$t("mkt.connected")}</span>
+                {:else if $pireelOAuth === "pending"}
+                  <button class="mkt-add" disabled>…</button>
+                {:else}
+                  <button class="mkt-add" onclick={pireelConnect}>
+                    {$t("mkt.pireel.connect")}
+                  </button>
+                {/if}
+              {:else}
               <button
                 class="mkt-add"
                 class:added={app.connected}
@@ -297,8 +328,36 @@
                   {$t("mkt.connect")}
                 {/if}
               </button>
+              {/if}
             </div>
             <p class="mkt-desc">{$t(appDescKey(app.id))}</p>
+            {#if app.id === "pireel"}
+              <div class="pireel-box">
+                {#if $pireelStatus?.connected}
+                  <span class="ok-note" role="status">
+                    {$t(`mkt.pireel.status.${$pireelStatus.detail}`)}
+                  </span>
+                  <div class="ra-actions">
+                    <button class="btn-ghost" onclick={pireelDisconnect}>
+                      {$t("mkt.pireel.disconnect")}
+                    </button>
+                  </div>
+                {:else if $pireelOAuth === "pending"}
+                  <span class="warn-note" role="status">{$t("mkt.pireel.waiting")}</span>
+                  <div class="ra-actions">
+                    {#if $pireelAuthUrl}
+                      <a class="link" href={$pireelAuthUrl} target="_blank" rel="noopener">
+                        {$t("mkt.pireel.openAgain")}
+                      </a>
+                    {/if}
+                    <button class="btn-ghost" onclick={() => pireelOAuth.set("idle")}>
+                      {$t("mkt.pireel.cancel")}
+                    </button>
+                  </div>
+                {/if}
+                <p class="pireel-note">{$t("mkt.pireel.freeNote")}</p>
+              </div>
+            {/if}
             {#if app.id === "ruangapi"}
               <div class="ra-form">
                 <div class="field">
@@ -678,6 +737,15 @@
   .ra-actions { display: flex; gap: 10px; align-items: center; }
   .link { color: var(--accent); font-size: 13px; }
   .ok-note { color: var(--success); font-size: 12px; }
+  .warn-note { color: var(--warning, #f59e0b); font-size: 12px; }
+  .pireel-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+  }
+  .pireel-note { margin: 0; font-size: 12px; color: var(--dim); }
   .mkt-backdrop {
     position: fixed;
     inset: 0;
