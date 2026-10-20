@@ -21,7 +21,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::oauth_local::{
-    accept_callback, bind_callback, now_epoch, open_browser, pkce_challenge, random_b64url,
+    bind_callback, now_epoch, open_browser, pkce_challenge, random_b64url,
     url_encode,
 };
 
@@ -155,6 +155,8 @@ struct PendingOAuth {
 pub struct PireelState {
     meta: std::sync::Arc<Mutex<Option<ServerMeta>>>,
     pending: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
+    /// Last OAuth failure reason, surfaced to the UI (Patria 20 Okt).
+    last_error: std::sync::Arc<Mutex<Option<String>>>,
 }
 
 impl PireelState {
@@ -162,11 +164,16 @@ impl PireelState {
         Self {
             meta: std::sync::Arc::new(Mutex::new(None)),
             pending: std::sync::Arc::new(Mutex::new(None)),
+            last_error: std::sync::Arc::new(Mutex::new(None)),
         }
     }
 
     fn pending_arc(&self) -> std::sync::Arc<Mutex<Option<PendingOAuth>>> {
         std::sync::Arc::clone(&self.pending)
+    }
+
+    fn error_arc(&self) -> std::sync::Arc<Mutex<Option<String>>> {
+        std::sync::Arc::clone(&self.last_error)
     }
 }
 
@@ -357,22 +364,30 @@ fn serve_callback(
     listener: std::net::TcpListener,
     pending: PendingOAuth,
     pending_slot: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
+    error_slot: std::sync::Arc<Mutex<Option<String>>>,
 ) {
-    // accept_callback replies to the browser itself (HTML page).
+    // Patria 20 Okt: accept first, exchange the code, THEN reply — the page
+    // must reflect the real outcome, never a premature "connected".
+    let (stream, params) =
+        match crate::oauth_local::accept_callback_raw(&listener, Duration::from_secs(600)) {
+            Ok(v) => v,
+            Err(e) => {
+                *error_slot.lock().unwrap() = Some(e.clone());
+                *pending_slot.lock().unwrap() = Some(PendingOAuth {
+                    expires_at: 0,
+                    ..pending.clone()
+                });
+                return;
+            }
+        };
     let outcome: Result<(), String> = (|| {
-        let (params, ok) =
-            accept_callback(&listener, Duration::from_secs(600), "Pireel terhubung", "Pireel gagal terhubung")
-                .map_err(|e| e)?;
-        if !ok {
-            return Err(params
-                .get("error")
-                .cloned()
-                .unwrap_or_else(|| "authorization failed".to_string()));
-        }
         let code = params.get("code").cloned().unwrap_or_default();
         let cb_state = params.get("state").cloned().unwrap_or_default();
         if code.is_empty() {
-            return Err("missing code".to_string());
+            return Err(params
+                .get("error")
+                .cloned()
+                .unwrap_or_else(|| "tidak ada kode otorisasi".to_string()));
         }
         if cb_state != pending.state {
             return Err("state mismatch".to_string());
@@ -384,12 +399,26 @@ fn serve_callback(
             .map_err(|e| format!("runtime: {e}"))?;
         rt.block_on(exchange_code(&pending, &code))
     })();
+    let ok = outcome.is_ok();
+    let msg = match &outcome {
+        Ok(()) => "Otorisasi selesai — akun Pireel terhubung.".to_string(),
+        Err(e) => format!("Koneksi gagal: {e}"),
+    };
+    crate::oauth_local::reply_callback(
+        stream,
+        ok,
+        "Pireel terhubung",
+        "Pireel gagal terhubung",
+        &msg,
+    );
     // Publish the final state for the poller: success clears the slot
-    // (bundle is in the keychain); failure marks it expired.
+    // (bundle is in the keychain); failure marks it expired + records why.
     let mut slot = pending_slot.lock().unwrap();
-    if outcome.is_ok() {
+    if ok {
         *slot = None;
+        *error_slot.lock().unwrap() = None;
     } else {
+        *error_slot.lock().unwrap() = outcome.err();
         *slot = Some(PendingOAuth {
             expires_at: 0,
             ..pending.clone()
@@ -436,6 +465,8 @@ async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<(), String>
 pub struct PireelOAuthState {
     /// "pending" | "connected" | "idle"
     pub state: String,
+    /// Last failure reason, if the flow failed.
+    pub error: Option<String>,
 }
 
 /// Start the Pireel OAuth flow: register a client, open the system browser
@@ -501,8 +532,10 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
     );
 
     *s.pending.lock().unwrap() = Some(pending.clone());
+    *s.last_error.lock().unwrap() = None;
     let pending_slot = s.pending_arc();
-    std::thread::spawn(move || serve_callback(listener, pending, pending_slot));
+    let error_slot = s.error_arc();
+    std::thread::spawn(move || serve_callback(listener, pending, pending_slot, error_slot));
 
     // Best effort: also return the URL so the UI can show a fallback link.
     let _ = open_browser(&auth_url);
@@ -513,6 +546,7 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
 #[tauri::command]
 pub fn pireel_oauth_poll(state: tauri::State<'_, PireelState>) -> PireelOAuthState {
     let pending = state.pending.lock().unwrap().clone();
+    let error = state.last_error.lock().unwrap().clone();
     let st = match pending {
         None => {
             if read_bundle().is_some() {
@@ -526,6 +560,7 @@ pub fn pireel_oauth_poll(state: tauri::State<'_, PireelState>) -> PireelOAuthSta
     };
     PireelOAuthState {
         state: st.to_string(),
+        error,
     }
 }
 

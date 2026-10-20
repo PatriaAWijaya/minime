@@ -19,6 +19,7 @@
     activeView,
     pireelStatus,
     pireelOAuth,
+    pireelOAuthError,
     pireelAuthUrl,
     pireelConnect,
     pireelPollOAuth,
@@ -26,6 +27,7 @@
     pireelDisconnect,
     driveStatus,
     driveOAuth,
+    driveOAuthError,
     driveAuthUrl,
     driveClientId,
     driveConnect,
@@ -338,7 +340,7 @@
               <h3>{app.name}</h3>
               {#if app.id === "pireel"}
                 {#if $pireelStatus?.connected}
-                  <span class="mkt-add added" role="status">{$t("mkt.connected")}</span>
+                  <span class="mkt-add added" role="status">✓ {$t("mkt.connected")}</span>
                 {:else if $pireelOAuth === "pending"}
                   <button class="mkt-add" disabled>…</button>
                 {:else}
@@ -348,7 +350,7 @@
                 {/if}
               {:else if app.id === "drive"}
                 {#if $driveStatus?.connected}
-                  <span class="mkt-add added" role="status">{$t("mkt.connected")}</span>
+                  <span class="mkt-add added" role="status">✓ {$t("mkt.connected")}</span>
                 {:else if $driveOAuth === "pending"}
                   <button class="mkt-add" disabled>…</button>
                 {:else}
@@ -363,7 +365,7 @@
                 onclick={() => toggleAppInstalled(app.id)}
               >
                 {#if app.connected}
-                  {$t("mkt.connected")}
+                  ✓ {$t("mkt.connected")}
                 {:else}
                   {$t("mkt.connect")}
                 {/if}
@@ -394,6 +396,13 @@
                       {$t("mkt.pireel.cancel")}
                     </button>
                   </div>
+                {:else if $pireelOAuthError}
+                  <span class="err-note" role="alert">{$pireelOAuthError}</span>
+                  <div class="ra-actions">
+                    <button class="btn-ghost" onclick={pireelConnect}>
+                      {$t("mkt.pireel.retry")}
+                    </button>
+                  </div>
                 {/if}
                 <p class="pireel-note">{$t("mkt.pireel.freeNote")}</p>
               </div>
@@ -422,6 +431,9 @@
                     </button>
                   </div>
                 {:else}
+                  {#if $driveOAuthError}
+                    <span class="err-note" role="alert">{$driveOAuthError}</span>
+                  {/if}
                   <div class="field">
                     <label for="drive-client-id">{$t("mkt.drive.clientId")}</label>
                     <input
@@ -882,6 +894,7 @@
   .link { color: var(--accent); font-size: 13px; }
   .ok-note { color: var(--success); font-size: 12px; }
   .warn-note { color: var(--warning, #f59e0b); font-size: 12px; }
+  .err-note { color: var(--danger, #f87171); font-size: 12px; }
   .pireel-box {
     display: flex;
     flex-direction: column;

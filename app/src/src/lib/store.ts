@@ -569,11 +569,14 @@ export interface PireelConnStatus {
 export const pireelStatus = writable<PireelConnStatus | null>(null);
 /** OAuth flow phase for the card UI. */
 export const pireelOAuth = writable<PireelOAuthPhase>("idle");
+/** Last OAuth failure reason (null = none). Patria 20 Okt. */
+export const pireelOAuthError = writable<string | null>(null);
 /** Authorization URL of the in-flight flow (fallback reopen link). */
 export const pireelAuthUrl = writable<string | null>(null);
 
 /** Start OAuth: backend registers a client, opens the system browser. */
 export async function pireelConnect(): Promise<void> {
+  pireelOAuthError.set(null);
   try {
     const url = await tauriInvoke<string>("pireel_connect_url");
     if (url) {
@@ -590,13 +593,17 @@ export async function pireelConnect(): Promise<void> {
 /** Poll the in-flight OAuth flow; refresh status once connected. */
 export async function pireelPollOAuth(): Promise<void> {
   try {
-    const s = await tauriInvoke<{ state: string }>("pireel_oauth_poll");
+    const s = await tauriInvoke<{ state: string; error?: string | null }>(
+      "pireel_oauth_poll",
+    );
     if (!s) return;
     if (s.state === "connected") {
       pireelOAuth.set("connected");
+      pireelOAuthError.set(null);
       await pireelRefreshStatus();
     } else if (s.state === "idle") {
       pireelOAuth.set("idle");
+      pireelOAuthError.set(s.error ?? null);
     }
   } catch {
     /* keep polling */
@@ -653,6 +660,8 @@ export interface DriveConnStatus {
 export const driveStatus = writable<DriveConnStatus | null>(null);
 /** OAuth flow phase for the card UI. */
 export const driveOAuth = writable<DriveOAuthPhase>("idle");
+/** Last OAuth failure reason (null = none). Patria 20 Okt. */
+export const driveOAuthError = writable<string | null>(null);
 /** Authorization URL of the in-flight flow (fallback reopen link). */
 export const driveAuthUrl = writable<string | null>(null);
 /** The user's own Google OAuth client ID (Desktop app type). */
@@ -670,6 +679,7 @@ driveClientId.subscribe((v) => {
 /** Start OAuth with the user's own client ID (opens the system browser). */
 export async function driveConnect(): Promise<void> {
   const clientId = get(driveClientId).trim();
+  driveOAuthError.set(null);
   if (!clientId) {
     driveStatus.set({ connected: false, detail: "invalid_client_id", email: null });
     return;
@@ -692,13 +702,17 @@ export async function driveConnect(): Promise<void> {
 /** Poll the in-flight OAuth flow; refresh status once connected. */
 export async function drivePollOAuth(): Promise<void> {
   try {
-    const s = await tauriInvoke<{ state: string }>("drive_oauth_poll");
+    const s = await tauriInvoke<{ state: string; error?: string | null }>(
+      "drive_oauth_poll",
+    );
     if (!s) return;
     if (s.state === "connected") {
       driveOAuth.set("connected");
+      driveOAuthError.set(null);
       await driveRefreshStatus();
     } else if (s.state === "idle") {
       driveOAuth.set("idle");
+      driveOAuthError.set(s.error ?? null);
     }
   } catch {
     /* keep polling */

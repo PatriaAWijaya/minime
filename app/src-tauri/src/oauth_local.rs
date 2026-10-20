@@ -146,6 +146,62 @@ pub fn bind_callback() -> Result<(std::net::TcpListener, u16), String> {
 }
 
 /// Accept ONE callback connection (blocking, with deadline) and return the
+/// open stream plus parsed query params — WITHOUT replying yet, so the
+/// caller can finish the token exchange first and then serve a page that
+/// reflects the real outcome (Patria 20 Okt: the old flow showed "connected"
+/// before the exchange even ran).
+pub fn accept_callback_raw(
+    listener: &std::net::TcpListener,
+    timeout: Duration,
+) -> Result<
+    (
+        std::net::TcpStream,
+        std::collections::HashMap<String, String>,
+    ),
+    String,
+> {
+    let _ = listener.set_nonblocking(true);
+    let deadline = std::time::Instant::now() + timeout;
+    while std::time::Instant::now() < deadline {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
+                let mut head = vec![0u8; 8192];
+                let n = stream.read(&mut head).unwrap_or(0);
+                let head = String::from_utf8_lossy(&head[..n]).to_string();
+                let line = head.lines().next().unwrap_or("");
+                let path = line.split_whitespace().nth(1).unwrap_or("");
+                let query = path.split('?').nth(1).unwrap_or("");
+                let params = parse_query(query);
+                return Ok((stream, params));
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            Err(e) => return Err(format!("callback accept failed: {e}")),
+        }
+    }
+    Err("callback timed out".to_string())
+}
+
+/// Reply to an accepted callback stream with the result page.
+pub fn reply_callback(
+    mut stream: std::net::TcpStream,
+    ok: bool,
+    title_ok: &str,
+    title_err: &str,
+    msg: &str,
+) {
+    let body = callback_html(ok, title_ok, title_err, msg);
+    let resp = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let _ = stream.write_all(resp.as_bytes());
+}
+
+/// Accept ONE callback connection (blocking, with deadline) and return the
 /// raw query string. Replies with a small HTML page. `respond_ok` decides
 /// which title is shown.
 pub fn accept_callback(

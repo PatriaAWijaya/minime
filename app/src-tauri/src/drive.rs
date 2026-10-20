@@ -15,7 +15,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::oauth_local::{
-    accept_callback, bind_callback, now_epoch, open_browser, pkce_challenge, random_b64url,
+    bind_callback, now_epoch, open_browser, pkce_challenge, random_b64url,
     url_encode,
 };
 
@@ -91,12 +91,15 @@ struct PendingOAuth {
 #[derive(Clone)]
 pub struct DriveState {
     pending: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
+    /// Last OAuth failure reason, surfaced to the UI (Patria 20 Okt).
+    last_error: std::sync::Arc<Mutex<Option<String>>>,
 }
 
 impl DriveState {
     pub fn new() -> Self {
         Self {
             pending: std::sync::Arc::new(Mutex::new(None)),
+            last_error: std::sync::Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -193,24 +196,30 @@ fn serve_callback(
     listener: std::net::TcpListener,
     pending: PendingOAuth,
     pending_slot: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
+    error_slot: std::sync::Arc<Mutex<Option<String>>>,
 ) {
+    // Patria 20 Okt: accept first, exchange the code, THEN reply — the page
+    // must reflect the real outcome, never a premature "connected".
+    let (stream, params) =
+        match crate::oauth_local::accept_callback_raw(&listener, Duration::from_secs(600)) {
+            Ok(v) => v,
+            Err(e) => {
+                *error_slot.lock().unwrap() = Some(e.clone());
+                *pending_slot.lock().unwrap() = Some(PendingOAuth {
+                    expires_at: 0,
+                    ..pending.clone()
+                });
+                return;
+            }
+        };
     let outcome: Result<(), String> = (|| {
-        let (params, ok) = accept_callback(
-            &listener,
-            Duration::from_secs(600),
-            "Google Drive terhubung",
-            "Google Drive gagal terhubung",
-        )?;
-        if !ok {
-            return Err(params
-                .get("error")
-                .cloned()
-                .unwrap_or_else(|| "authorization failed".to_string()));
-        }
         let code = params.get("code").cloned().unwrap_or_default();
         let cb_state = params.get("state").cloned().unwrap_or_default();
         if code.is_empty() {
-            return Err("missing code".to_string());
+            return Err(params
+                .get("error")
+                .cloned()
+                .unwrap_or_else(|| "tidak ada kode otorisasi".to_string()));
         }
         if cb_state != pending.state {
             return Err("state mismatch".to_string());
@@ -227,10 +236,24 @@ fn serve_callback(
         ))?;
         write_bundle(&bundle)
     })();
+    let ok = outcome.is_ok();
+    let msg = match &outcome {
+        Ok(()) => "Otorisasi selesai — Google Drive terhubung.".to_string(),
+        Err(e) => format!("Koneksi gagal: {e}"),
+    };
+    crate::oauth_local::reply_callback(
+        stream,
+        ok,
+        "Google Drive terhubung",
+        "Google Drive gagal terhubung",
+        &msg,
+    );
     let mut slot = pending_slot.lock().unwrap();
-    if outcome.is_ok() {
+    if ok {
         *slot = None;
+        *error_slot.lock().unwrap() = None;
     } else {
+        *error_slot.lock().unwrap() = outcome.err();
         *slot = Some(PendingOAuth {
             expires_at: 0,
             ..pending.clone()
@@ -312,6 +335,8 @@ fn multipart_body(boundary: &str, metadata: &str, mime: &str, data: &[u8]) -> Ve
 pub struct DriveOAuthPhase {
     /// "pending" | "connected" | "idle"
     pub state: String,
+    /// Last failure reason, if the flow failed.
+    pub error: Option<String>,
 }
 
 /// Start Google OAuth with the user's own client ID. Opens the system
@@ -349,8 +374,10 @@ pub async fn drive_connect_url(
         cc = url_encode(&pkce_challenge(&verifier)),
     );
     *s.pending.lock().unwrap() = Some(pending.clone());
+    *s.last_error.lock().unwrap() = None;
     let slot = std::sync::Arc::clone(&s.pending);
-    std::thread::spawn(move || serve_callback(listener, pending, slot));
+    let error_slot = std::sync::Arc::clone(&s.last_error);
+    std::thread::spawn(move || serve_callback(listener, pending, slot, error_slot));
     let _ = open_browser(&auth_url);
     Ok(auth_url)
 }
@@ -358,6 +385,7 @@ pub async fn drive_connect_url(
 #[tauri::command]
 pub fn drive_oauth_poll(state: tauri::State<'_, DriveState>) -> DriveOAuthPhase {
     let pending = state.pending.lock().unwrap().clone();
+    let error = state.last_error.lock().unwrap().clone();
     let st = match pending {
         None => {
             if read_bundle().is_some() {
@@ -371,6 +399,7 @@ pub fn drive_oauth_poll(state: tauri::State<'_, DriveState>) -> DriveOAuthPhase 
     };
     DriveOAuthPhase {
         state: st.to_string(),
+        error,
     }
 }
 
