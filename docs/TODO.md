@@ -36,13 +36,13 @@
 > Metode: pulihkan dari git history → adaptasi ke kode saat ini → uji satu per satu.
 > MeHarness berlaku (framework §7). Tiap sub-fase ditutup cek konsistensi + performa.
 
-### 3.1 Tools Gateway (Rust) — sumber: `b34e4f2`
-- [ ] Pulihkan `app/src-tauri/src/tools.rs` (registry 12 tool + ToolInfo)
-- [ ] Daftarkan 6 command di main.rs: `list_tools`, `get_tool_status`, `set_tool_connected`, `get_agent_tools`, `set_agent_tools`, `agent_can_use_tool`
-- [ ] `cargo check` nol error/nol warning
-- [ ] Hubungkan ToolsView ke status koneksi nyata (gantikan status lokal)
-- [ ] Uji: status tool tampil di UI; toggle koneksi bekerja
-- [ ] Cek konsistensi: IPC baru cocok frontend↔backend
+### 3.1 Tools Gateway (Rust) ✅ SELESAI 20 Okt 13:00 — sumber: `b34e4f2`
+- [x] Pulihkan `app/src-tauri/src/tools.rs` (registry 12 tool + ToolInfo)
+- [x] Daftarkan 6 command di main.rs: `list_tools`, `get_tool_status`, `set_tool_connected`, `get_agent_tools`, `set_agent_tools`, `agent_can_use_tool`
+- [x] `cargo check` nol error/nol warning
+- [x] Hubungkan ToolsView ke status koneksi nyata (registry dimuat saat buka; toggle pasang/copot ter-mirror ke backend)
+- [x] Editor allowlist di menu Izin agen (checkbox 11 tool → `set_agent_tools`)
+- [x] Cek konsistensi: IPC 14/14 cocok frontend↔backend
 
 ### 3.2 Approval Gate + Notifikasi Native — sumber: `4ddc817`
 - [ ] Pulihkan permission `notification` di capabilities
