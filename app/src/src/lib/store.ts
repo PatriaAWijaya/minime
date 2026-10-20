@@ -32,7 +32,7 @@ export type View =
   | "settings";
 
 /** Which main view is visible. */
-export const activeView = writable<View>("tasks");
+export const activeView = writable<View>("agents");
 
 /** Selected agent (shared by the Agents detail panel and the Tasks chat). */
 export const activeAgentId = writable<string>("mimi");
@@ -668,7 +668,7 @@ export const customAgents = writable<Agent[]>([]);
 /** Tasks sub-view: Kanban board or connection canvas (mock). */
 export type TasksViewKind = "kanban" | "flow";
 
-export const tasksView = writable<TasksViewKind>("flow");
+export const tasksView = writable<TasksViewKind>("kanban");
 
 /** Small helper: load/persist a JSON list in localStorage. */
 function loadList<T>(key: string, seed: () => T[]): T[] {

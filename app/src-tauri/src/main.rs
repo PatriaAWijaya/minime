@@ -176,33 +176,6 @@ fn agent_send_stub(agent_id: String, _message: String) -> String {
     format!("ack:{agent_id}")
 }
 
-/// Temporary debug: log JS errors to a file for SSH diagnosis.
-#[tauri::command]
-fn debug_log_js_error(message: String, stack: String) -> Result<(), String> {
-    use std::io::Write;
-    let mut path = std::env::temp_dir();
-    path.push("minime_js_errors.log");
-    let mut f = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&path)
-        .map_err(|e| e.to_string())?;
-    writeln!(f, "=== {} ===", chrono_lite_now())
-        .map_err(|e| e.to_string())?;
-    writeln!(f, "MSG: {}", message).map_err(|e| e.to_string())?;
-    writeln!(f, "STACK: {}", stack).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-fn chrono_lite_now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let s = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("{}", s)
-}
-
 fn main() {
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
@@ -225,7 +198,6 @@ fn main() {
             provider_disconnect,
             routerku_set_base_url,
             agent_send_stub,
-            debug_log_js_error,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
