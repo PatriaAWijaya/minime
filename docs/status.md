@@ -1322,3 +1322,24 @@ tetap: dari folder atau dari Koneksi, keduanya terhapus.
 PID 58229 fresh, CPU idle 0,9–1,2%, RAM 98 MB.
 
 **Push:** lokal 9d116f9 ↔ remote c280c4b (tree identik).
+
+## 20 Okt 2026 ~19:50 — Default bersih: hanya Mimi (perintah Patria)
+
+**Default (fresh):** list Agen hanya Mimi, tanpa folder — sudah sesuai sejak
+model agen aktif (non-Mimi default nonaktif). Data lama pengguna tidak
+disentuh; semua bisa di-× manual.
+
+**× hapus agen:** tiap baris agen (lepas maupun dalam folder) kini punya ×
+kecuali Mimi — menghapus agen dari daftar (nonaktif; tetap bisa diaktifkan
+lagi via "Agent List", hapus permanen tetap hanya di Tools).
+
+**Nol project didukung:** hapus project terakhir tidak lagi membuatkan
+pengganti — Koneksi kembali ke default: canvas kosong tanpa nama project,
+hanya Mimi sebagai parent (node Mimi tidak bisa dihapus). Tambah node saat
+nol project otomatis buatkan project baru agar kerja tidak hilang.
+`saveActiveCanvas` dilewati saat nol project.
+
+**Verifikasi:** cargo 0/0, test 30/30, vite lolos, i18n paritas. Build debug
+MacBook sukses, relaunch PID 59261 fresh, CPU idle 0,2–0,3%, RAM 98 MB.
+
+**Push:** lokal ab37181 ↔ remote 6dcc2fb (tree identik).
