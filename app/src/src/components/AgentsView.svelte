@@ -5,6 +5,7 @@
     PROVIDERS,
     activeAgentId,
     activeServer,
+    activeView,
     addCustomAgent,
     addCustomModel,
     addAgentFile,
@@ -79,7 +80,7 @@
   let agentSearch = $state("");
   // Agent extras menu (+) + dialogs
   let agentMenuOpen = $state(false);
-  let agentDlg = $state<"browser" | "files" | "task" | null>(null);
+  let agentDlg = $state<"browser" | "files" | "task" | "memories" | "skills" | "tables" | "publish" | "advanced" | null>(null);
   let taskTitle = $state("");
   let taskProject = $state("");
   let taskAdded = $state(false);
@@ -313,8 +314,8 @@
   </button>
 {/snippet}
 
-{#snippet navRow(icon: string, label: string, valueText: string)}
-  <button class="row nav-row" onclick={closeAll}>
+{#snippet navRow(icon: string, label: string, valueText: string, onclick?: () => void)}
+  <button class="row nav-row" onclick={onclick ?? closeAll}>
     <span class="nav-left">
       <svg
         class="nav-icon"
@@ -714,6 +715,41 @@
         <div class="dlg-actions">
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
+      {:else if agentDlg === "memories"}
+        <h3>{$t("agents.memories")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.memories.n", { n: String(facts.memories) })}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else if agentDlg === "skills"}
+        <h3>{$t("agents.skills")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.skills.n", { n: String(facts.skills) })}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else if agentDlg === "tables"}
+        <h3>{$t("agents.tables")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.tables.n", { n: String(facts.tables) })}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else if agentDlg === "publish"}
+        <h3>{$t("agents.publish")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.publish.note")}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
+      {:else if agentDlg === "advanced"}
+        <h3>{$t("agents.advanced")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.advanced.note")}</p>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
       {:else}
         <h3>{$t("agents.task.title")}</h3>
         <p class="dlg-agent">{displayName}</p>
@@ -952,27 +988,27 @@
               {/each}
             </span>
           </div>
-          {@render navRow(ICONS.backup, $t("agents.backup"), $t("agents.backup.ask"))}
+          {@render navRow(ICONS.backup, $t("agents.backup"), $t("agents.backup.ask"), openModelPanel)}
         </div>
 
         <div class="section">
           <h3>{$t("agents.knows")}</h3>
-          {@render navRow(ICONS.memory, $t("agents.memories"), $t("agents.memories.n", { n: String(facts.memories) }))}
-          {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }))}
-          {@render navRow(ICONS.files, $t("agents.files"), facts.files)}
-          {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }))}
+          {@render navRow(ICONS.memory, $t("agents.memories"), $t("agents.memories.n", { n: String(facts.memories) }), () => (agentDlg = "memories"))}
+          {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }), () => (agentDlg = "skills"))}
+          {@render navRow(ICONS.files, $t("agents.files"), facts.files, () => activeView.set("library"))}
+          {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }), () => (agentDlg = "tables"))}
         </div>
 
         <div class="section">
           <h3>{$t("agents.does")}</h3>
-          {@render navRow(ICONS.routines, $t("agents.routines"), $t("agents.routines.n", { n: String(facts.routines) }))}
-          {@render navRow(ICONS.usage, $t("agents.usage"), "")}
-          {@render navRow(ICONS.publish, $t("agents.publish"), "")}
+          {@render navRow(ICONS.routines, $t("agents.routines"), $t("agents.routines.n", { n: String(facts.routines) }), () => activeView.set("schedule"))}
+          {@render navRow(ICONS.usage, $t("agents.usage"), "", () => activeView.set("cost"))}
+          {@render navRow(ICONS.publish, $t("agents.publish"), "", () => (agentDlg = "publish"))}
         </div>
 
         <div class="section">
           <h3>{$t("agents.rules")}</h3>
-          {@render navRow(ICONS.shield, $t("agents.permissions"), $t("agents.permissions.full"))}
+          {@render navRow(ICONS.shield, $t("agents.permissions"), $t("agents.permissions.full"), () => activeView.set("tools"))}
           <div class="row">
             <span class="label">{$t("agents.notifications")}</span>
             <label class="switch">
@@ -985,7 +1021,7 @@
               <span class="track" aria-hidden="true"></span>
             </label>
           </div>
-          {@render navRow(ICONS.sliders, $t("agents.advanced"), "")}
+          {@render navRow(ICONS.sliders, $t("agents.advanced"), "", () => (agentDlg = "advanced"))}
         </div>
 
         <div class="section">
