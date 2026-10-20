@@ -25,6 +25,7 @@
     kanbanFilterPeriod,
     projects,
     activeFlowProjectId,
+    canvasAddAgent,
     switchFlowProject,
     addFlowProject,
     removeFlowProject,
@@ -214,6 +215,9 @@
     const src = get(flowNodes).find((n) => n.id === sourceId);
     const id = addFlowNode(agentId, (src?.x ?? 80) + 320, src?.y ?? 120);
     addFlowEdge(sourceId, id);
+    // Patria 20 Okt — Koneksi → Folder: agent node on canvas joins the
+    // project folder roster (no chain regen: canvas was just edited manually).
+    canvasAddAgent(get(activeFlowProjectId), agentId);
     reloadFlow();
   }
 

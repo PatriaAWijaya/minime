@@ -34,6 +34,36 @@ export type View =
 /** Which main view is visible. */
 export const activeView = writable<View>("agents");
 
+/** Manually resizable Agents-view column widths (Patria 20 Okt): drag the
+ *  column edges with the mouse. Persisted per device. */
+export interface AgentColWidths {
+  list: number;
+  desc: number;
+}
+function loadColWidths(): AgentColWidths {
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(hi, Math.max(lo, v));
+  try {
+    const raw = JSON.parse(
+      localStorage.getItem("minime.agent-col-widths") ?? "{}",
+    );
+    return {
+      list: clamp(typeof raw.list === "number" ? raw.list : 262, 180, 480),
+      desc: clamp(typeof raw.desc === "number" ? raw.desc : 322, 240, 560),
+    };
+  } catch {
+    return { list: 262, desc: 322 };
+  }
+}
+export const agentColWidths = writable<AgentColWidths>(loadColWidths());
+agentColWidths.subscribe((w) => {
+  try {
+    localStorage.setItem("minime.agent-col-widths", JSON.stringify(w));
+  } catch {
+    /* ignore */
+  }
+});
+
 /** Selected agent (shared by the Agents detail panel and the Tasks chat). */
 export const activeAgentId = writable<string>("mimi");
 
@@ -1702,9 +1732,9 @@ export function renameProject(id: string, name: string): void {
 
 /** Agents assigned to a project = agents in its folder. An agent belongs to
     at most one folder; adding it to a project removes it from the others. */
-export function addAgentToProject(projectId: string, agentId: string): void {
-  // Patria 20 Okt: the same agent MAY serve several folders/projects, but it
-  // cannot appear twice inside one folder — dedup is per-folder only.
+/** Add an agent id to a folder's roster (dedup per folder). No canvas
+ *  side-effects — callers decide about regen. */
+function folderAddAgent(projectId: string, agentId: string): void {
   projects.update((list) =>
     list.map((p) =>
       p.id === projectId && !(p.agentIds ?? []).includes(agentId)
@@ -1712,11 +1742,50 @@ export function addAgentToProject(projectId: string, agentId: string): void {
         : p,
     ),
   );
+}
+
+export function addAgentToProject(projectId: string, agentId: string): void {
+  // Patria 20 Okt: the same agent MAY serve several folders/projects, but it
+  // cannot appear twice inside one folder — dedup is per-folder only.
+  const wasAuto = isCanvasAuto(projectId);
+  folderAddAgent(projectId, agentId);
   // An agent plotted for a project is meant to work: make it active.
+  setAgentEnabled(agentId, true);
+  if (wasAuto) regenChain(projectId);
+}
+
+/** Sync an agent node added on the Koneksi canvas back to the folder roster
+ *  (Patria 20 Okt): the folder appears with the project's agents. No chain
+ *  regen — the canvas was just edited manually. */
+export function canvasAddAgent(projectId: string, agentId: string): void {
+  folderAddAgent(projectId, agentId);
   setAgentEnabled(agentId, true);
 }
 
+/** Reorder an agent inside a folder (Patria 20 Okt): folder order = task
+ *  order reflected by the auto-generated Koneksi chain. */
+export function moveAgentInProject(
+  projectId: string,
+  agentId: string,
+  dir: -1 | 1,
+): void {
+  const wasAuto = isCanvasAuto(projectId);
+  projects.update((list) =>
+    list.map((p) => {
+      if (p.id !== projectId) return p;
+      const ids = [...(p.agentIds ?? [])];
+      const i = ids.indexOf(agentId);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= ids.length) return p;
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+      return { ...p, agentIds: ids };
+    }),
+  );
+  if (wasAuto) regenChain(projectId);
+}
+
 export function removeAgentFromProject(projectId: string, agentId: string): void {
+  const wasAuto = isCanvasAuto(projectId);
   projects.update((list) =>
     list.map((p) =>
       p.id === projectId
@@ -1724,6 +1793,7 @@ export function removeAgentFromProject(projectId: string, agentId: string): void
         : p,
     ),
   );
+  if (wasAuto) regenChain(projectId);
 }
 
 /** Agent ids assigned to a project (empty when the project has no folder team). */
@@ -1851,12 +1921,23 @@ function resolveProjectId(): string {
 }
 
 function loadActiveCanvas(): void {
-  const d = flowMap[resolveProjectId()];
+  const pid = resolveProjectId();
+  const d = flowMap[pid];
   // Defensive: old/corrupt localStorage may hold {} without nodes/edges.
   const nodes = Array.isArray(d?.nodes) ? d.nodes : [];
   const edges = Array.isArray(d?.edges) ? d.edges : [];
   flowNodes.set(nodes);
   flowEdges.set(edges);
+  // Patria 20 Okt — Folder → Koneksi: empty canvas + folder has agents ⇒
+  // auto-generate the agent chain in folder order.
+  if (nodes.length === 0) {
+    const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
+    if (ids.length > 0) {
+      const { nodes: cn, edges: ce } = buildChain(ids);
+      flowNodes.set(cn);
+      flowEdges.set(ce);
+    }
+  }
 }
 
 function saveActiveCanvas(): void {
@@ -1870,6 +1951,53 @@ function saveActiveCanvas(): void {
 flowNodes.subscribe(() => saveActiveCanvas());
 flowEdges.subscribe(() => saveActiveCanvas());
 loadActiveCanvas();
+
+/** Build a sequential agent chain (Patria 20 Okt): one node per agent in
+ *  folder order, linked source → target. */
+function buildChain(ids: string[]): { nodes: FlowNode[]; edges: FlowEdge[] } {
+  const nodes: FlowNode[] = ids.map((agentId, i) => ({
+    id: `node-${flowSeq++}-${Date.now() % 100000}`,
+    agentId,
+    x: 80 + i * 320,
+    y: 140,
+  }));
+  const edges: FlowEdge[] = [];
+  for (let i = 0; i + 1 < nodes.length; i++) {
+    edges.push({
+      id: `edge-${nodes[i].id}-${nodes[i + 1].id}`,
+      source: nodes[i].id,
+      target: nodes[i + 1].id,
+    });
+  }
+  return { nodes, edges };
+}
+
+/** True when the canvas is a pure reflection of the folder team (same agents,
+ *  each exactly once) — i.e. still auto-generated, not manually edited. */
+function isCanvasAuto(pid: string): boolean {
+  const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
+  const nodes =
+    pid === get(activeFlowProjectId) ? get(flowNodes) : (flowMap[pid]?.nodes ?? []);
+  if (nodes.length === 0 || nodes.length !== ids.length) return false;
+  const nodeAgents = nodes.map((n) => n.agentId);
+  return (
+    ids.every((id) => nodeAgents.includes(id)) &&
+    nodeAgents.every((id) => ids.includes(id))
+  );
+}
+
+/** Regenerate the auto-chain for a project from its current folder order. */
+function regenChain(pid: string): void {
+  const ids = get(projects).find((p) => p.id === pid)?.agentIds ?? [];
+  const { nodes, edges } = buildChain(ids);
+  if (pid === get(activeFlowProjectId)) {
+    flowNodes.set(nodes); // auto-saved via subscribe
+    flowEdges.set(edges);
+  } else {
+    flowMap[pid] = { nodes, edges };
+    saveFlowMap();
+  }
+}
 
 /** Switch the Connection canvas to another project. */
 export function switchFlowProject(id: string): void {
@@ -2002,6 +2130,28 @@ export async function deleteCustomAgent(id: string): Promise<void> {
       agentIds: (p.agentIds ?? []).filter((x) => x !== id),
     })),
   );
+  // Remove the agent's nodes from every Connection canvas (Patria 20 Okt:
+  // folder ↔ Koneksi stay in sync).
+  const stripNodes = (nodes: FlowNode[], edges: FlowEdge[]) => {
+    const dead = new Set(nodes.filter((n) => n.agentId === id).map((n) => n.id));
+    if (dead.size === 0) return null;
+    return {
+      nodes: nodes.filter((n) => !dead.has(n.id)),
+      edges: edges.filter((e) => !dead.has(e.source) && !dead.has(e.target)),
+    };
+  };
+  const active = stripNodes(get(flowNodes), get(flowEdges));
+  if (active) {
+    flowNodes.set(active.nodes);
+    flowEdges.set(active.edges);
+  }
+  for (const pid of Object.keys(flowMap)) {
+    const d = flowMap[pid];
+    if (!d) continue;
+    const clean = stripNodes(d.nodes ?? [], d.edges ?? []);
+    if (clean) flowMap[pid] = clean;
+  }
+  saveFlowMap();
   kanbanCards.update((list) =>
     list.map((c) => (c.agentId === id ? { ...c, agentId: "mimi" } : c)),
   );

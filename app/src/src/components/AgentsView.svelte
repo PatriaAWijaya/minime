@@ -56,6 +56,8 @@
     folderOpen,
     activateAgent,
     deactivateAgent,
+    moveAgentInProject,
+    agentColWidths,
     toggleFolder,
     isFolderOpen,
   } from "../lib/store";
@@ -307,6 +309,27 @@
     activeAgentId.set(id);
     detailOpen = true;
     closeAll();
+  }
+
+  // Manual column resize via mouse drag (Patria 20 Okt).
+  let resizing = $state<"list" | "desc" | null>(null);
+  let resizeStartX = 0;
+  let resizeStartW = 0;
+  function startResize(which: "list" | "desc", e: PointerEvent) {
+    resizing = which;
+    resizeStartX = e.clientX;
+    resizeStartW = $agentColWidths[which];
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  function onResizeMove(e: PointerEvent) {
+    if (!resizing) return;
+    const dx = e.clientX - resizeStartX;
+    const [lo, hi] = resizing === "list" ? [180, 480] : [240, 560];
+    const w = Math.min(hi, Math.max(lo, Math.round(resizeStartW + dx)));
+    agentColWidths.update((v) => ({ ...v, [resizing as "list" | "desc"]: w }));
+  }
+  function endResize() {
+    resizing = null;
   }
 
   // Agent-list search
@@ -1123,7 +1146,13 @@
     </div>
   {/if}
 
-  <div class="split" class:no-desc={!detailOpen}>
+  <div
+    class="split"
+    class:no-desc={!detailOpen}
+    style:grid-template-columns={detailOpen
+      ? `${$agentColWidths.list}px 8px minmax(0,1fr) 8px ${$agentColWidths.desc}px`
+      : `${$agentColWidths.list}px 8px minmax(0,1fr)`}
+  >
     <!-- Left column: agent list -->
     <div class="list-col">
       <div class="list-head">
@@ -1309,8 +1338,26 @@
             {/if}
             {#if open}
               <div class="folder-body">
-                {#each fAgents as a (a.id)}
-                  {@render agentRow(a)}
+                {#each fAgents as a, i (a.id)}
+                  <div class="folder-agent">
+                    {@render agentRow(a)}
+                    <div class="order-btns" role="group" aria-label={$t("agents.folder.order")}>
+                      <button
+                        class="order-btn"
+                        disabled={i === 0}
+                        onclick={() => moveAgentInProject(p.id, a.id, -1)}
+                        aria-label={$t("agents.folder.moveUp")}
+                        title={$t("agents.folder.moveUp")}
+                      >↑</button>
+                      <button
+                        class="order-btn"
+                        disabled={i === fAgents.length - 1}
+                        onclick={() => moveAgentInProject(p.id, a.id, 1)}
+                        aria-label={$t("agents.folder.moveDown")}
+                        title={$t("agents.folder.moveDown")}
+                      >↓</button>
+                    </div>
+                  </div>
                 {/each}
               </div>
             {/if}
@@ -1319,10 +1366,38 @@
       </div>
     </div>
 
+    <!-- Column resizer: list | chat -->
+    <div
+      class="col-resizer"
+      class:dragging={resizing === "list"}
+      onpointerdown={(e) => startResize("list", e)}
+      onpointermove={onResizeMove}
+      onpointerup={endResize}
+      onpointercancel={endResize}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={$t("agents.resizeList")}
+    ></div>
+
     <!-- Middle column: chat area (widest) -->
     <div class="chat-col">
       <ChatPanel agent={chatAgent} header={false} />
     </div>
+
+    {#if detailOpen}
+      <!-- Column resizer: chat | detail -->
+      <div
+        class="col-resizer"
+        class:dragging={resizing === "desc"}
+        onpointerdown={(e) => startResize("desc", e)}
+        onpointermove={onResizeMove}
+        onpointerup={endResize}
+        onpointercancel={endResize}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={$t("agents.resizeDesc")}
+      ></div>
+    {/if}
 
     <!-- Right column: agent description -->
     {#if detailOpen}
@@ -2535,6 +2610,54 @@
   }
   .folder-body {
     padding: 2px 6px 8px;
+  }
+  .folder-agent {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .folder-agent .agent-row {
+    flex: 1;
+    min-width: 0;
+  }
+  .order-btns {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+  }
+  .order-btn {
+    width: 22px;
+    height: 18px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--dim);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+  .order-btn:hover:not(:disabled) {
+    background: var(--panel-2);
+    color: var(--text);
+  }
+  .order-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+  /* Manually resizable column edges (Patria 20 Okt): drag with the mouse. */
+  .col-resizer {
+    width: 8px;
+    margin: 0 -4px;
+    cursor: col-resize;
+    z-index: 5;
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+  .col-resizer:hover,
+  .col-resizer.dragging {
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
   }
 
   @media (max-width: 1280px) {

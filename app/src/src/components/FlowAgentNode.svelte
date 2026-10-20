@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Handle, Position } from "@xyflow/svelte";
-  import { agents } from "../lib/agents";
-  import { activeFlowProjectId, agentStatus, customAgents, kanbanCards } from "../lib/store";
+  import { agents, agentDisplayName, agentDisplayRole } from "../lib/agents";
+  import { activeFlowProjectId, agentNames, agentStatus, agentTitles, customAgents, kanbanCards } from "../lib/store";
   import { t } from "../lib/i18n";
 
   interface Props {
@@ -86,8 +86,8 @@
   </div>
   <span class="badge" style:background={agent.color}>{agent.badge}</span>
   <span class="meta">
-    <span class="name">{agent.name}</span>
-    <span class="role">{$t(agent.roleKey)}</span>
+    <span class="name">{agentDisplayName(agent, $agentNames, $t)}</span>
+    <span class="role">{agentDisplayRole(agent, $agentTitles, $t)}</span>
   </span>
   <span class="dot {status}" aria-hidden="true"></span>
   {#if taskCount > 0}
@@ -114,7 +114,7 @@
       {#each allAgents as a (a.id)}
         <button role="menuitem" onclick={() => pickChild(a.id)}>
           <span class="badge sm" style:background={a.color}>{a.badge}</span>
-          <span class="name">{a.name}</span>
+          <span class="name">{agentDisplayName(a, $agentNames, $t)}</span>
         </button>
       {/each}
     </div>
