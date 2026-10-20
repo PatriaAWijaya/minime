@@ -58,6 +58,7 @@
 - [x] Kartu draft di Kanban: badge platform + pratinjau isi; keputusan lewat tombol approval 3.2
 - [x] Direct post HANYA atas perintah eksplisit user (aturan revisi 19 Okt) — tidak ada jalur posting di kode
 - [x] Cek konsistensi: IPC 15/15, i18n 326 kunci paritas penuh
+- [x] REVISI 13:20: mode posting per platform — DEFAULT draft; user boleh mengaktifkan AUTOPOSTING di dialog Publikasikan dengan peringatan risiko eksplisit (tanggung jawab user). Draft autopost langsung ke kolom Selesai + badge "autopost" + notifikasi "Terposting otomatis". Pengaturan tersimpan per platform.
 
 ### 3.4 Pireel — Editing Video — sumber: `186d9ae`
 - [ ] Pulihkan framework koneksi cloud MCP + OAuth (akun Free, 20 kredit/hari)

@@ -24,6 +24,8 @@
     createSocialDraft,
     fetchToolStatus,
     activeFlowProjectId,
+    socialMode,
+    setSocialMode,
     agentModel,
     agentNames,
     agentNotify,
@@ -876,6 +878,19 @@
             <option value="postiz">Postiz</option>
           </select>
         </label>
+        <label class="fld">
+          <span>{$t("agents.publish.mode")}</span>
+          <select
+            value={$socialMode[draftPlatform] ?? "draft"}
+            onchange={(e) => setSocialMode(draftPlatform, (e.currentTarget as HTMLSelectElement).value as "draft" | "autopost")}
+          >
+            <option value="draft">{$t("agents.publish.mode.draft")}</option>
+            <option value="autopost">{$t("agents.publish.mode.autopost")}</option>
+          </select>
+        </label>
+        {#if ($socialMode[draftPlatform] ?? "draft") === "autopost"}
+          <p class="note warn">{$t("agents.publish.autopost.warn")}</p>
+        {/if}
         <label class="fld">
           <span>{$t("agents.publish.title")}</span>
           <input type="text" bind:value={draftTitle} maxlength="120" />

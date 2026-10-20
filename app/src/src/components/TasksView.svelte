@@ -414,7 +414,7 @@
               >
                 <p class="card-title">{card.title}</p>
                 {#if card.draftPlatform}
-                  <span class="draft-badge">{card.draftPlatform === "meta" ? "Meta" : "Postiz"} · draft</span>
+                  <span class="draft-badge">{card.draftPlatform === "meta" ? "Meta" : "Postiz"} · {card.autoPosted ? "autopost" : "draft"}</span>
                   {#if card.draftContent}
                     <p class="draft-preview">{card.draftContent}</p>
                   {/if}

@@ -142,10 +142,13 @@ export interface KanbanCard {
   createdAt: string;
   /** Creation timestamp (ms) used by the period filter. */
   createdAtTs: number;
-  /** Social draft content (Phase 3.3: Meta/Postiz are draft-only). */
+  /** Social draft content (Phase 3.3: Meta/Postiz default to draft-only). */
   draftContent?: string;
   /** Target platform for social drafts: "meta" | "postiz". */
   draftPlatform?: string;
+  /** True when the user enabled autoposting for the platform and this
+      card skipped the approval column (Phase 3.3, user opt-in). */
+  autoPosted?: boolean;
 }
 
 /** A node on the connection canvas (mock). */

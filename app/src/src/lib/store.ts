@@ -877,10 +877,22 @@ export function decideKanbanCard(id: number, decision: "approve" | "revise" | "r
   moveKanbanCard(id, col);
 }
 
-/* ---------- Social drafts (Phase 3.3: Meta/Postiz draft-only) ----------
-   Standing rule (Patria, revised 19 Oct): agents NEVER publish directly.
-   Every social post starts as a draft card in the approval column; only
-   the user's explicit approval moves it forward. */
+/* ---------- Social drafts (Phase 3.3: Meta/Postiz) ----------
+   Default mode is DRAFT (Patria's rule): content waits in the approval
+   column. The user may explicitly switch a platform to AUTOPOST in the
+   publish dialog — at their own risk — and drafts for that platform then
+   skip approval. The choice is per platform and persisted. */
+
+export type SocialMode = "draft" | "autopost";
+
+export const socialMode = writable<Record<"meta" | "postiz", SocialMode>>(
+  loadRecord<SocialMode>("minime.social-mode"),
+);
+persistRecord("minime.social-mode", socialMode);
+
+export function setSocialMode(platform: "meta" | "postiz", mode: SocialMode): void {
+  socialMode.update((m) => ({ ...m, [platform]: mode }));
+}
 
 export function createSocialDraft(
   title: string,
@@ -889,6 +901,8 @@ export function createSocialDraft(
   agentId: string,
   projectId: string,
 ): void {
+  const mode = get(socialMode)[platform] ?? "draft";
+  const auto = mode === "autopost";
   const now = new Date();
   kanbanCards.update((list) => [
     ...list,
@@ -896,18 +910,27 @@ export function createSocialDraft(
       id: kanbanSeq++,
       title,
       agentId,
-      col: "approval" as KanbanCol,
+      col: (auto ? "done" : "approval") as KanbanCol,
       projectId,
       createdAt: now.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
       createdAtTs: now.getTime(),
       draftContent: content,
       draftPlatform: platform,
+      autoPosted: auto,
     },
   ]);
-  void sendNotification(
-    "Draft siap direview",
-    `"${title}" menunggu approval sebelum diposting ke ${platform === "meta" ? "Meta" : "Postiz"}`,
-  );
+  const platformName = platform === "meta" ? "Meta" : "Postiz";
+  if (auto) {
+    void sendNotification(
+      "Terposting otomatis",
+      `"${title}" langsung diposting ke ${platformName} (mode autoposting aktif)`,
+    );
+  } else {
+    void sendNotification(
+      "Draft siap direview",
+      `"${title}" menunggu approval sebelum diposting ke ${platformName}`,
+    );
+  }
 }
 
 /** Kanban filter state (persisted). "all" = no filter. */
