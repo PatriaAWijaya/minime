@@ -1331,21 +1331,19 @@
                     <path d="M17 3a2.8 2.8 0 1 1 4 4L8 20l-5 1 1-5z" />
                   </svg>
                 </button>
-                {#if $projects.length > 1}
-                  <button
+                <button
                     class="icon-btn sm danger"
                     aria-label={$t("agents.folder.delete")}
                     title={$t("agents.folder.delete")}
                     onclick={(e) => {
                       e.stopPropagation();
-                      removeFlowProject(p.id);
+                      removeFlowProject(p.id, $t("tasks.flow.newProject"));
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <path d="M6 6l12 12M18 6L6 18" />
                     </svg>
                   </button>
-                {/if}
               </div>
             </div>
             {#if addAgentMenuFor === p.id}

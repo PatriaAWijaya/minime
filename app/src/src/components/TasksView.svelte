@@ -325,7 +325,7 @@
     stopRun();
     // Kanban filter pointing at the deleted project falls back to "all".
     if (get(kanbanFilterProject) === delProjId) kanbanFilterProject.set("all");
-    removeFlowProject(delProjId);
+    removeFlowProject(delProjId, $t("tasks.flow.newProject"));
     delProjId = null;
     reloadFlow();
   }
@@ -598,21 +598,19 @@
             >
               {p.name}
             </button>
-            {#if $projects.length > 1}
-              <button
-                class="proj-del"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  delProjId = p.id;
-                }}
-                aria-label={$t("tasks.flow.deleteProject")}
-                title={$t("tasks.flow.deleteProject")}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            {/if}
+            <button
+              class="proj-del"
+              onclick={(e) => {
+                e.stopPropagation();
+                delProjId = p.id;
+              }}
+              aria-label={$t("tasks.flow.deleteProject")}
+              title={$t("tasks.flow.deleteProject")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
           </div>
         {/each}
         <button class="btn-ghost add-proj" onclick={() => (projDialogOpen = true)}>

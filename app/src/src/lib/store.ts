@@ -2064,19 +2064,20 @@ export function addFlowProject(name: string): string {
 }
 
 /**
- * Delete a project and its whole connection canvas. At least one project
- * must remain (callers hide/disable the delete affordance when only one is
- * left). If the deleted project was active, switch to the first remaining.
+ * Delete a project and its whole connection canvas (Patria 20 Okt: the folder
+ * IS the project — one delete removes both, from either view). Deleting the
+ * last remaining project replaces it with a fresh empty one, so the app
+ * never ends up with zero projects.
  */
-export function removeFlowProject(id: string): void {
+export function removeFlowProject(id: string, fallbackName = "Project baru"): void {
   const list = get(projects);
-  if (list.length <= 1) return;
-  const rest = list.filter((p) => p.id !== id);
-  if (rest.length === list.length) return;
-  projects.set(rest);
+  if (!list.some((p) => p.id === id)) return;
+  if (list.length <= 1) addFlowProject(fallbackName);
+  projects.update((cur) => cur.filter((p) => p.id !== id));
   delete flowMap[id];
   saveFlowMap();
   if (get(activeFlowProjectId) === id) {
+    const rest = get(projects);
     activeFlowProjectId.set(rest[0].id);
     loadActiveCanvas();
   }
