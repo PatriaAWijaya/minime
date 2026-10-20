@@ -122,19 +122,21 @@ Ditulis ulang mengikuti referensi, semua berfungsi (audit 20 Okt):
 - 🟡 **4.1 Logo + Avatar** — logo/ikon aplikasi selesai; avatar 3D
   agen PERLU REBUILD (file lama di commit `8525762`).
 - 🟡 **4.2 Build** — build DEBUG stabil & terverifikasi berkali-kali
-  (app 52 MB + DMG 13,7 MB). Build RELEASE: ⏳ SEDANG BERJALAN
-  (dieksekusi 20 Okt sore). Installer Windows `.exe` (GH Actions)
-  ⏳ belum.
+  (app 52 MB + DMG 13,7 MB). Build RELEASE ✅ SELESAI 20 Okt sore:
+  app 16,14 MB + DMG 6,91 MB (aarch64). Installer Windows `.exe`
+  (GH Actions) ⏳ belum.
 - ⏳ **4.3 Security Audit** — belum di-rebuild; CSP masih `null`;
   audit keamanan penuh menunggu.
 - ⏳ **Installer UX + uji instalasi bersih** (Mac & Windows) — belum.
 
-## Tahap 4.5 — Scoring Kinerja ⏳ BELUM DIMULAI (resmi)
+## Tahap 4.5 — Scoring Kinerja 🟡 BENCHMARK INTERNAL SELESAI
 
-- Angka parsial sudah terukur saat audit 20 Okt: CPU idle 0,6%,
-  RAM ±115 MB (build debug), bundle app 52 MB, DMG 13,7 MB.
-- ⏳ Benchmark resmi (startup `hyperfine`, RAM/CPU idle & aktif,
-  latensi IPC, waktu respons chat) — setelah build release.
+- ✅ Benchmark internal di build RELEASE (20 Okt sore, dokumen
+  `docs/SCORING-TAHAP-4.5.md`): startup tampil 0,13–0,15 dtk, siap
+  0,2–3,3 dtk; CPU idle 0,3–0,7%; RAM idle 106–115 MB; chat Ollama
+  qwen2.5:3b total 2,0–2,3 dtk (21–24 token/dtk); bundel release
+  app 16,14 MB, DMG 6,91 MB.
+- ⏳ Latensi IPC formal + CPU/RAM saat agen aktif bekerja.
 - ⏳ Lighthouse CI sebagai gate tiap rilis.
 - ⏳ Audit konsultan performa independen (satu kali, pra-rilis publik).
 
@@ -186,16 +188,17 @@ Ditulis ulang mengikuti referensi, semua berfungsi (audit 20 Okt):
 
 ## Rencana Pengerjaan Berikutnya (urutan)
 
-1. **Selesaikan build release** (sedang berjalan) → verifikasi hasil
-   bundel release di MacBook.
+1. ✅ **Build release selesai** (20 Okt sore) — app 16,14 MB,
+   DMG 6,91 MB; benchmark internal Tahap 4.5 sudah terukur
+   (`docs/SCORING-TAHAP-4.5.md`).
 2. **Tahap 3.4 Pireel** → **3.5 Drive folder MIMI** → **3.6 Integrasi
    Runtime** → uji pipeline E2E → **Gate Tahap 3 (vonis Patria)**.
 3. **Rebuild Tahap 4**: avatar 3D (4.1) → security audit + CSP (4.3)
    → installer Windows `.exe` via GH Actions → uji instalasi bersih.
 4. **Eksekusi delegasi multi-agen otonom** (sisa Tahap 2) sebagai
    bagian 3.6 — chat → delegasi → hasil, tanpa campur tangan manual.
-5. **Tahap 4.5 scoring resmi** di atas build release (benchmark +
-   Lighthouse CI gate).
+5. **Tahap 4.5 scoring penuh** (benchmark internal ✅; tersisa
+   latensi IPC formal, Lighthouse CI, audit independen).
 6. **Tinjau ulang semua tahap** (keputusan 11:59) → **uji project
    asli pertama oleh Patria** → vonis launching.
 7. **Fase 6 komersil** (OTP, lisensi/Stripe, Account API, kupon,

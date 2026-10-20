@@ -989,3 +989,13 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
 - Performa build debug di MacBook: CPU idle 0,6%, RAM ±115 MB,
   app 52 MB, DMG 13,7 MB. Belum ada rilis GitHub yang diterbitkan —
   halaman Pembaruan menampilkannya secara jujur.
+
+## 20 Okt 2026 (sore) — Build RELEASE berhasil + benchmark internal 4.5
+- Build release pertama yang tuntas: Minime.app 16,14 MB +
+  DMG 6,91 MB (aarch64) — vs debug 52 MB / 13,7 MB.
+- Benchmark internal (dokumen: `docs/SCORING-TAHAP-4.5.md`):
+  startup tampil 0,13–0,15 dtk, siap 0,2–3,3 dtk; CPU idle
+  0,3–0,7%; RAM idle 106–115 MB; chat Ollama qwen2.5:3b
+  2,0–2,3 dtk (21–24 token/dtk).
+- Tersisa di 4.5: latensi IPC formal, beban aktif, Lighthouse CI,
+  audit independen pra-rilis.
