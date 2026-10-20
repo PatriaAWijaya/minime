@@ -2076,6 +2076,53 @@ export function disconnectFlowNode(id: string) {
   );
 }
 
+/** A project workflow run (Patria 20 Okt): the folder's agent chain runs in
+ *  order — agent status dots animate working → idle, visible in every view.
+ *  Runs at store level so it can start from the Agents folder or Koneksi. */
+export const flowRunning = writable(false);
+export const runningProjectId = writable<string | null>(null);
+let runTimers: ReturnType<typeof setTimeout>[] = [];
+let runPrevStatuses: Record<string, AgentStatus> | null = null;
+
+export function startFlowRun(projectId: string): boolean {
+  const d =
+    projectId === get(activeFlowProjectId)
+      ? { nodes: get(flowNodes) }
+      : flowMap[projectId];
+  const nodes = d?.nodes ?? [];
+  if (get(flowRunning) || nodes.length === 0) return false;
+  stopFlowRun();
+  flowRunning.set(true);
+  runningProjectId.set(projectId);
+  runPrevStatuses = { ...get(agentStatus) };
+  const step = 900;
+  nodes.forEach((n, i) => {
+    runTimers.push(
+      setTimeout(() => {
+        agentStatus.update((s) => {
+          const next = { ...s };
+          for (const m of nodes) next[m.agentId] = "idle";
+          next[n.agentId] = "working";
+          return next;
+        });
+      }, i * step),
+    );
+  });
+  runTimers.push(setTimeout(() => stopFlowRun(), nodes.length * step + 700));
+  return true;
+}
+
+export function stopFlowRun(): void {
+  for (const t of runTimers) clearTimeout(t);
+  runTimers = [];
+  flowRunning.set(false);
+  runningProjectId.set(null);
+  if (runPrevStatuses) {
+    agentStatus.set(runPrevStatuses);
+    runPrevStatuses = null;
+  }
+}
+
 /** Add a user-created agent. Returns the new id. The agent is enabled right
     away (Patria 20 Okt): clicking "Agen baru" must visibly add the agent to
     the list — the "only Mimi by default" rule covers the initial roster,

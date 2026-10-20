@@ -58,6 +58,10 @@
     deactivateAgent,
     moveAgentInProject,
     agentColWidths,
+    flowRunning,
+    runningProjectId,
+    startFlowRun,
+    stopFlowRun,
     toggleFolder,
     isFolderOpen,
   } from "../lib/store";
@@ -1270,6 +1274,37 @@
                 >
               </button>
               <div class="folder-actions">
+                {#if $flowRunning && $runningProjectId === p.id}
+                  <button
+                    class="icon-btn sm"
+                    aria-label={$t("agents.folder.pause")}
+                    title={$t("agents.folder.pause")}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      stopFlowRun();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="7" y="5" width="3.4" height="14" rx="1" fill="currentColor" stroke="none" />
+                      <rect x="13.6" y="5" width="3.4" height="14" rx="1" fill="currentColor" stroke="none" />
+                    </svg>
+                  </button>
+                {:else}
+                  <button
+                    class="icon-btn sm"
+                    disabled={fAgents.length === 0 || $flowRunning}
+                    aria-label={$t("agents.folder.play")}
+                    title={$t("agents.folder.play")}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      startFlowRun(p.id);
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />
+                    </svg>
+                  </button>
+                {/if}
                 <button
                   class="icon-btn sm"
                   aria-label={$t("agents.folder.addAgent")}

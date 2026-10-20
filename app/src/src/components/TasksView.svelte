@@ -36,6 +36,10 @@
     moveKanbanCard,
     addFlowNode,
     addFlowEdge,
+    flowRunning,
+    runningProjectId,
+    startFlowRun,
+    stopFlowRun,
     moveFlowNode,
     removeFlowNode,
     disconnectFlowNode,
@@ -156,56 +160,25 @@
     if (!Number.isNaN(id)) moveKanbanCard(id, col);
   }
 
-  // ---------- Flow: run / stop (mock) ----------
-  let flowRunning = $state(false);
-  let runTimers: ReturnType<typeof setTimeout>[] = [];
-  let prevStatuses: Record<string, "idle" | "working" | "attention"> | null =
-    $state(null);
-
-  function clearRunTimers() {
-    for (const id of runTimers) clearTimeout(id);
-    runTimers = [];
-  }
-
-  function restoreStatuses() {
-    if (prevStatuses) agentStatus.set(prevStatuses);
-    prevStatuses = null;
-  }
-
-  /** Mock run: edges animate, nodes turn "working" one by one, then idle. */
+  // ---------- Flow: run / stop (store-level, shared with Agents folders) ----------
   function runProject() {
-    const nodes = get(flowNodes);
-    if (flowRunning || nodes.length === 0) return;
-    flowRunning = true;
-    prevStatuses = { ...get(agentStatus) };
-    sfEdges.update((list) => list.map((e) => ({ ...e, animated: true })));
-    const step = 900;
-    nodes.forEach((n, i) => {
-      runTimers.push(
-        setTimeout(() => {
-          agentStatus.update((s) => {
-            const next = { ...s };
-            for (const m of nodes) next[agentOf(m.agentId).id] = "idle";
-            next[agentOf(n.agentId).id] = "working";
-            return next;
-          });
-        }, i * step),
-      );
-    });
-    runTimers.push(
-      setTimeout(() => stopRun(), nodes.length * step + 700),
-    );
+    startFlowRun(get(activeFlowProjectId));
   }
-
   function stopRun() {
-    clearRunTimers();
-    flowRunning = false;
-    sfEdges.update((list) => list.map((e) => ({ ...e, animated: false })));
-    restoreStatuses();
+    stopFlowRun();
   }
+  // Edge animation follows the global run state — but only for the project
+  // the run belongs to (Patria 20 Okt: folder run affects Koneksi view).
+  function runAnimatesHere(): boolean {
+    return $flowRunning && $runningProjectId === get(activeFlowProjectId);
+  }
+  $effect(() => {
+    const running = runAnimatesHere();
+    sfEdges.update((list) => list.map((e) => ({ ...e, animated: running })));
+  });
 
   onDestroy(() => {
-    clearRunTimers();
+    stopFlowRun();
   });
 
   // ---------- Flow canvas ----------
@@ -248,7 +221,7 @@
       id: e.id,
       source: e.source,
       target: e.target,
-      animated: flowRunning,
+      animated: runAnimatesHere(),
     })),
   );
 
@@ -259,7 +232,7 @@
         id: e.id,
         source: e.source,
         target: e.target,
-        animated: flowRunning,
+        animated: runAnimatesHere(),
       })),
     );
   }
@@ -277,7 +250,7 @@
               id,
               source: conn.source as string,
               target: conn.target as string,
-              animated: flowRunning,
+              animated: runAnimatesHere(),
             },
           ],
     );
@@ -644,9 +617,9 @@
         <button
           class="btn-primary run-btn icon-only"
           onclick={runProject}
-          disabled={flowRunning || $flowNodes.length === 0}
-          aria-label={flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
-          title={flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
+          disabled={$flowRunning || $flowNodes.length === 0}
+          aria-label={$flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
+          title={$flowRunning ? $t("tasks.flow.running") : $t("tasks.flow.run")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M8 5v14l11-7z" fill="currentColor" stroke="none" />
@@ -655,7 +628,7 @@
         <button
           class="btn-ghost icon-only"
           onclick={() => stopRun()}
-          disabled={!flowRunning}
+          disabled={!$flowRunning}
           aria-label={$t("tasks.flow.stop")}
           title={$t("tasks.flow.stop")}
         >
