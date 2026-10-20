@@ -198,6 +198,73 @@ fn send_notification(
         .map_err(|e| format!("Gagal kirim notifikasi: {}", e))
 }
 
+/// macOS privacy permissions relevant to Computer Use (Settings page).
+/// Checked with the official preflight APIs — they never prompt; the
+/// user grants access in macOS Settings (see `open_privacy_settings`).
+#[derive(Serialize)]
+struct SystemPermissions {
+    screen_recording: bool,
+    accessibility: bool,
+    /// False on platforms without this permission model (Windows/Linux).
+    supported: bool,
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    fn CGPreflightScreenCaptureAccess() -> bool;
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "ApplicationServices", kind = "framework")]
+extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+#[tauri::command]
+fn system_permissions() -> SystemPermissions {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        SystemPermissions {
+            screen_recording: CGPreflightScreenCaptureAccess(),
+            accessibility: AXIsProcessTrusted(),
+            supported: true,
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    SystemPermissions {
+        screen_recording: false,
+        accessibility: false,
+        supported: false,
+    }
+}
+
+/// Open the macOS Privacy & Security pane for one permission kind
+/// ("screen" | "accessibility").
+#[tauri::command]
+fn open_privacy_settings(kind: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let pane = match kind.as_str() {
+            "screen" => "Privacy_ScreenCapture",
+            _ => "Privacy_Accessibility",
+        };
+        let url = format!(
+            "x-apple.systempreferences:com.apple.preference.security?{pane}"
+        );
+        std::process::Command::new("open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| format!("Gagal membuka Pengaturan macOS: {e}"))?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = kind;
+        Err("Hanya tersedia di macOS".to_string())
+    }
+}
+
 fn main() {
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
@@ -234,6 +301,8 @@ fn main() {
             island::island_sync,
             island::island_get_state,
             island::island_haptic,
+            system_permissions,
+            open_privacy_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

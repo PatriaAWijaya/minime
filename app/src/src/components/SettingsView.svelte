@@ -21,6 +21,9 @@
     profileStore,
     serverList,
     islandStatus,
+    fetchSystemPermissions,
+    openPrivacySettings,
+    type SystemPermissions,
     theme,
     toggleCustomProvider,
     toggleProvider,
@@ -101,6 +104,15 @@
       elevenBusy = false;
     }
   }
+
+  /* ---------- Computer Use: real macOS permission status ---------- */
+  let sysPerms = $state<SystemPermissions | null>(null);
+  async function refreshPerms() {
+    sysPerms = await fetchSystemPermissions();
+  }
+  $effect(() => {
+    if (category === "computer") void refreshPerms();
+  });
 
   /* ---------- Mobile Connect pairing code ---------- */
   let pairCode = $state("");
@@ -656,6 +668,53 @@
       </div>
     {:else if category === "computer"}
       <h2>{$t("set.cat.computer")}</h2>
+
+      <h3 class="sec-title">{$t("comp.sec.permissions")}</h3>
+      <p class="lede">{$t("comp.permissions.desc")}</p>
+      <div class="card">
+        <div class="perm-row">
+          <span class="perm-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+          </span>
+          <div class="srow-meta">
+            <span class="srow-label">{$t("comp.screen")}</span>
+            <span class="srow-desc">{$t("comp.screen.desc")}</span>
+          </div>
+          {#if sysPerms && !sysPerms.supported}
+            <span class="perm-badge neutral">{$t("comp.notneeded")}</span>
+          {:else if sysPerms?.screen_recording}
+            <span class="perm-badge granted">✓ {$t("comp.granted")}</span>
+          {:else}
+            <span class="perm-badge denied">{$t("comp.notgranted")}</span>
+          {/if}
+          <button class="btn-ghost" onclick={() => openPrivacySettings("screen")}>
+            {$t("comp.manage")}
+          </button>
+        </div>
+        <div class="perm-row">
+          <span class="perm-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /><path d="M13 13l6 6" /></svg>
+          </span>
+          <div class="srow-meta">
+            <span class="srow-label">{$t("comp.access")}</span>
+            <span class="srow-desc">{$t("comp.access.desc")}</span>
+          </div>
+          {#if sysPerms && !sysPerms.supported}
+            <span class="perm-badge neutral">{$t("comp.notneeded")}</span>
+          {:else if sysPerms?.accessibility}
+            <span class="perm-badge granted">✓ {$t("comp.granted")}</span>
+          {:else}
+            <span class="perm-badge denied">{$t("comp.notgranted")}</span>
+          {/if}
+          <button class="btn-ghost" onclick={() => openPrivacySettings("accessibility")}>
+            {$t("comp.manage")}
+          </button>
+        </div>
+      </div>
+      <div class="check-row">
+        <button class="btn-ghost" onclick={refreshPerms}>↻ {$t("comp.check")}</button>
+      </div>
+
       <h3 class="sec-title">{$t("set.sec.computer")}</h3>
       <div class="card">
         {@render switchRow("computerBrowser", "set.comp.browser", "set.comp.browser.desc")}
@@ -1381,6 +1440,41 @@
 .pos-pill.top { top: 6px; }
 .pos-pill.bottom { bottom: 6px; }
 .pos-label { font-size: 13.5px; font-weight: 600; }
+/* ---------- Computer Use: permission rows ---------- */
+.perm-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+}
+.perm-row + .perm-row { border-top: 1px solid var(--border); }
+.perm-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2f6fd0, #4fa6f0);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex: none;
+}
+.perm-icon svg { width: 20px; height: 20px; }
+.perm-badge {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  flex: none;
+  white-space: nowrap;
+}
+.perm-badge.granted { background: rgba(46, 160, 90, 0.18); color: #3ecf7a; }
+.perm-badge.denied { background: rgba(220, 80, 70, 0.16); color: #ff7a70; }
+.perm-badge.neutral { background: var(--panel-2); color: var(--dim); }
+.check-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
 .lede.ok { color: var(--ok); }
 @media (max-width: 900px) {
   .settings-layout { grid-template-columns: 230px minmax(0, 1fr); }

@@ -575,6 +575,33 @@ export async function fetchIslandState(): Promise<IslandPayload | null> {
   }
 }
 
+/* ---------- macOS system permissions (Settings > Computer Use) ---------- */
+
+export interface SystemPermissions {
+  screen_recording: boolean;
+  accessibility: boolean;
+  /** False on platforms without this permission model. */
+  supported: boolean;
+}
+
+/** Real preflight check (never prompts). Null outside the desktop app. */
+export async function fetchSystemPermissions(): Promise<SystemPermissions | null> {
+  try {
+    return await tauriInvoke<SystemPermissions>("system_permissions");
+  } catch {
+    return null;
+  }
+}
+
+/** Open the macOS Privacy & Security pane for one permission kind. */
+export async function openPrivacySettings(kind: "screen" | "accessibility"): Promise<void> {
+  try {
+    await tauriInvoke<void>("open_privacy_settings", { kind });
+  } catch {
+    /* non-macOS or open failed — the settings page explains the state */
+  }
+}
+
 export async function sendNotification(title: string, body: string): Promise<void> {
   try {
     await tauriInvoke("send_notification", { title, body });
