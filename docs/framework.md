@@ -89,3 +89,28 @@ Kerangka umumnya:
 - **Kepatuhan:** tidak melanggar aturan berdiri (no auto-post, no live-trading).
 
 Detail per agen ditetapkan saat Tahap 2 dan divonis Patria.
+
+## 7. MeHarness — framework peningkatan performa agen
+
+MeHarness adalah framework resmi Minime untuk **menaikkan mutu
+konfigurasi agen secara terukur** (nama resmi dari Patria, 20 Okt 2026).
+Dokumen lengkap: `docs/meharness.md`; library pelajaran:
+`docs/meharness-lessons.md`.
+
+- **Sumber metode:** loop Propose–Probe–Compose dari Harness² (Google,
+  Apache 2.0) + konten terkurasi ECC (MIT). Kode benchmark Harness²
+  TIDAK menjadi dependensi runtime — yang diadopsi metodenya.
+- **Permukaan tuning:** 8 komponen yang boleh disunting loop —
+  system prompt, guardrails, memory, tool guidance, subagents, skills,
+  scripts, plugins. Semua permukaan ini sudah ada di Minime (§2–§6).
+- **Cara kerja:** kumpulkan bukti dari tugas nyata + rubrik QC →
+  usulkan 2 edit kandidat → uji pada set tugas yang sama → adopsi yang
+  unggul → catat pelajaran. Pelajaran terbukti ≥3 putaran dipromosikan
+  jadi aturan tetap.
+- **Posisi di framework:** MeHarness adalah lapisan *peningkatan mutu*
+  di atas kontrak agen senior (§2) — kontrak menetapkan standar, loop
+  MeHarness membuktikan dan menaikkannya dari waktu ke waktu.
+- **Pagar:** hasil loop untuk build publik tetap lewat **gate vonis
+  Patria**; konfigurasi milik pengguna aplikasi publik tidak pernah
+  diubah loop ini. Proses DEV, bukan fitur runtime.
+- **Pilot:** putaran #1 pada Code Builder LULUS uji (20 Okt ~12:45).

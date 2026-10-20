@@ -64,6 +64,7 @@ Cara pulih: `git show <commit>:<path>` per file, lalu adaptasi manual — BUKAN 
 4. **Vonis Patria**
 
 ## RISIKO & CATATAN
+- **MeHarness berlaku** (framework agen §7): permukaan tuning Tahap 3 (tool guidance/allowlist, guardrails approval gate, skills) mengikuti `docs/meharness.md`. Perubahan konfigurasi agen hasil loop MeHarness tetap lewat gate vonis Patria.
 - Kode lama ditulis sebelum fitur 20 Okt (Brief, agentEnabled, glass) → adaptasi wajib, jangan timpa file utuh
 - Rollback 19 Okt dipicu state corrupt MacBook, BUKAN kode Tahap 3 — tapi tetap rebuild bertahap + monitor CPU tiap sub-fase (pelajaran bug blinking)
 - Meta/Postiz butuh kredensial user — untuk uji cukup sampai draft lokal bila akun belum terhubung

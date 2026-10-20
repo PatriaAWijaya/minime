@@ -46,6 +46,7 @@
 
 ## MeHarness — Adopsi Harness (20 Okt 2026)
 > Framework lengkap: `docs/meharness.md`. Proses DEV, bukan fitur runtime.
+> Status framework: resmi menjadi bagian framework agen — `docs/framework.md` §7 (20 Okt 12:38). Berlaku juga untuk rebuild Tahap 3.
 - [x] Set tugas uji (benchmark mini) di `tests/harness/` — pilot Code Builder (3 tugas + verifikasi mesin); agen lain menyusul
 - [x] `docs/meharness-lessons.md` — library pelajaran loop tuning (putaran #1 tercatat)
 - [x] Putaran tuning pilot: Code Builder (Propose–Probe–Compose, k=1, executor OpenCode) — kandidat-umum diadopsi ke playbook
