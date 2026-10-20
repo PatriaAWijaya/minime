@@ -32,7 +32,7 @@ export type View =
   | "settings";
 
 /** Which main view is visible. */
-export const activeView = writable<View>("agents");
+export const activeView = writable<View>("tasks");
 
 /** Selected agent (shared by the Agents detail panel and the Tasks chat). */
 export const activeAgentId = writable<string>("mimi");
