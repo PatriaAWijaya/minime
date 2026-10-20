@@ -18,6 +18,7 @@ import type {
   ScheduledItem,
   ServerKind,
   ServerLayout,
+  ToolInfo,
   Skill,
   TaskFolder,
 } from "./types";
@@ -485,6 +486,44 @@ persistRecord("minime.installed-apps", installedApps);
 
 export function toggleAppInstalled(id: string) {
   installedApps.update((m) => ({ ...m, [id]: !m[id] }));
+  // Mirror the install state into the Rust tools gateway (Phase 3.1) so
+  // the backend registry stays the source of truth. Fire-and-forget.
+  const now = get(installedApps)[id] ?? false;
+  void tauriInvoke("set_tool_connected", { toolId: id, connected: now }).catch(
+    () => undefined,
+  );
+}
+
+/* ---------- Tools gateway (Phase 3.1, Rust registry) ---------- */
+
+/** Tool registry snapshot from the Rust gateway (null = not loaded / browser). */
+export const toolInfos = writable<ToolInfo[] | null>(null);
+
+/** Refresh the tool registry from the backend. Returns the list or null. */
+export async function refreshTools(): Promise<ToolInfo[] | null> {
+  const list = await tauriInvoke<ToolInfo[]>("list_tools");
+  if (list) toolInfos.set(list);
+  return list;
+}
+
+/** Is a tool connected in the backend registry? */
+export async function fetchToolStatus(toolId: string): Promise<boolean | null> {
+  return await tauriInvoke<boolean>("get_tool_status", { toolId });
+}
+
+/** Agent tool allowlist from the backend. */
+export async function fetchAgentTools(agentId: string): Promise<string[] | null> {
+  return await tauriInvoke<string[]>("get_agent_tools", { agentId });
+}
+
+/** Replace an agent's tool allowlist in the backend. */
+export async function saveAgentTools(agentId: string, toolIds: string[]): Promise<void> {
+  await tauriInvoke("set_agent_tools", { agentId, toolIds });
+}
+
+/** Gate check: may this agent use this tool? */
+export async function fetchAgentCanUseTool(agentId: string, toolId: string): Promise<boolean | null> {
+  return await tauriInvoke<boolean>("agent_can_use_tool", { agentId, toolId });
 }
 
 export function addSkill(name: string) {

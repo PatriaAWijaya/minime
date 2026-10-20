@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { addSkill, skills, templates, installedApps, toggleAppInstalled } from "../lib/store";
+  import { onMount } from "svelte";
+  import { addSkill, skills, templates, installedApps, toggleAppInstalled, refreshTools, toolInfos } from "../lib/store";
   import {
     connectRuangapi,
     ruangapiConnected,
@@ -10,6 +11,12 @@
 
   // View tabs ala Kanban/Koneksi: Terpasang vs Jelajahi
   let toolsTab = $state<"installed" | "explore">("installed");
+
+  // Phase 3.1: load the backend tool registry so connection status comes
+  // from the Rust gateway, not local state alone.
+  onMount(() => {
+    void refreshTools();
+  });
 
   // Apps stay disabled until Phase 3; the note under each card says so.
   // Exception: RuangAPI has a mock key/MCP-URL form (Patria 19 Okt).

@@ -24,6 +24,16 @@ export interface AttachmentMeta {
   size: string;
 }
 
+/** Tool registry entry from the Rust tools gateway (Phase 3.1). */
+export interface ToolInfo {
+  id: string;
+  name: string;
+  category: string;
+  connected: boolean;
+  requires_auth: boolean;
+  draft_only: boolean;
+}
+
 export interface Message {
   id: number;
   role: "user" | "agent";

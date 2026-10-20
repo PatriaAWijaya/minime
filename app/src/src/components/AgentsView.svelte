@@ -19,6 +19,8 @@
     agentHobbies,
     agentInstructions,
     agentEnabled,
+    fetchAgentTools,
+    saveAgentTools,
     agentModel,
     agentNames,
     agentNotify,
@@ -81,7 +83,7 @@
   let agentSearch = $state("");
   // Agent extras menu (+) + dialogs
   let agentMenuOpen = $state(false);
-  let agentDlg = $state<"browser" | "files" | "task" | "memories" | "skills" | "tables" | "publish" | "advanced" | null>(null);
+  let agentDlg = $state<"browser" | "files" | "task" | "memories" | "skills" | "tables" | "publish" | "advanced" | "permissions" | null>(null);
   let taskTitle = $state("");
   let taskProject = $state("");
   let taskAdded = $state(false);
@@ -119,6 +121,47 @@
     agentMenuOpen = false;
     taskAdded = false;
     agentDlg = kind;
+  }
+
+  // Tool permissions (Phase 3.1): allowlist editor backed by the Rust
+  // tools gateway. KNOWN_TOOLS mirrors the backend registry (browser is
+  // internal and not offered here).
+  const KNOWN_TOOLS: { id: string; name: string; draft_only?: boolean }[] = [
+    { id: "meta", name: "Meta", draft_only: true },
+    { id: "postiz", name: "Postiz", draft_only: true },
+    { id: "pireel", name: "Pireel" },
+    { id: "drive", name: "Google Drive" },
+    { id: "slack", name: "Slack" },
+    { id: "discord", name: "Discord" },
+    { id: "telegram", name: "Telegram" },
+    { id: "github", name: "GitHub" },
+    { id: "notion", name: "Notion" },
+    { id: "canva", name: "Canva" },
+    { id: "ruangapi", name: "RuangAPI" },
+  ];
+  let permAllow = $state<string[]>([]);
+  let permLoadedFor = $state("");
+
+  $effect(() => {
+    if (agentDlg === "permissions" && permLoadedFor !== agent.id) {
+      permLoadedFor = agent.id;
+      void fetchAgentTools(agent.id).then((list) => {
+        if (list) permAllow = list;
+      });
+    }
+  });
+
+  function togglePerm(toolId: string) {
+    const next = permAllow.includes(toolId)
+      ? permAllow.filter((x) => x !== toolId)
+      : [...permAllow, toolId];
+    permAllow = next;
+    void saveAgentTools(agent.id, next);
+  }
+
+  function openPermissions() {
+    permLoadedFor = "";
+    agentDlg = "permissions";
   }
 
   function addFile() {
@@ -750,6 +793,27 @@
         <div class="dlg-actions">
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
+      {:else if agentDlg === "permissions"}
+        <h3>{$t("agents.permissions")}</h3>
+        <p class="dlg-agent">{displayName}</p>
+        <p class="note">{$t("agents.permissions.note")}</p>
+        <div class="perm-list">
+          {#each KNOWN_TOOLS as tool (tool.id)}
+            <label class="perm-item">
+              <input
+                type="checkbox"
+                checked={permAllow.includes(tool.id) || permAllow.includes("*")}
+                disabled={permAllow.includes("*")}
+                onchange={() => togglePerm(tool.id)}
+              />
+              <span>{tool.name}</span>
+              {#if tool.draft_only}<span class="perm-badge">draft</span>{/if}
+            </label>
+          {/each}
+        </div>
+        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
+        </div>
       {:else if agentDlg === "skills"}
         <h3>{$t("agents.skills")}</h3>
         <p class="dlg-agent">{displayName}</p>
@@ -1036,7 +1100,7 @@
 
         <div class="section">
           <h3>{$t("agents.rules")}</h3>
-          {@render navRow(ICONS.shield, $t("agents.permissions"), $t("agents.permissions.full"), () => activeView.set("tools"))}
+          {@render navRow(ICONS.shield, $t("agents.permissions"), $t("agents.permissions.full"), openPermissions)}
           <div class="row">
             <span class="label">{$t("agents.notifications")}</span>
             <label class="switch">
@@ -1718,6 +1782,32 @@
     cursor: pointer;
   }
   .panel-x:hover { background: var(--panel-2); color: var(--text); }
+  .perm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0;
+  }
+  .perm-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .perm-item:hover { background: var(--panel-2); }
+  .perm-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1px 6px;
+  }
   .model-panel .field-search { margin-right: 40px; }
   .model-panel .field {    margin-bottom: 4px;
   }
