@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addSkill, skills, templates } from "../lib/store";
+  import { addSkill, skills, templates, installedApps, toggleAppInstalled } from "../lib/store";
   import {
     connectRuangapi,
     ruangapiConnected,
@@ -8,20 +8,23 @@
   } from "../lib/store";
   import { t } from "../lib/i18n";
 
+  // View tabs ala Kanban/Koneksi: Terpasang vs Jelajahi
+  let toolsTab = $state<"installed" | "explore">("installed");
+
   // Apps stay disabled until Phase 3; the note under each card says so.
   // Exception: RuangAPI has a mock key/MCP-URL form (Patria 19 Okt).
-  const apps: { nameKey: string; descKey: string; badge: string; color: string; custom?: string }[] = [
-    { nameKey: "tools.meta", descKey: "tools.metaDesc", badge: "M", color: "#2563eb" },
-    { nameKey: "tools.postiz", descKey: "tools.postizDesc", badge: "P", color: "#7c3aed" },
-    { nameKey: "tools.pireel", descKey: "tools.pireelDesc", badge: "P", color: "#e11d48" },
-    { nameKey: "tools.drive", descKey: "tools.driveDesc", badge: "D", color: "#059669" },
-    { nameKey: "tools.slack", descKey: "tools.slackDesc", badge: "S", color: "#d97706" },
-    { nameKey: "tools.discord", descKey: "tools.discordDesc", badge: "D", color: "#5865F2" },
-    { nameKey: "tools.telegram", descKey: "tools.telegramDesc", badge: "T", color: "#0891b2" },
-    { nameKey: "tools.github", descKey: "tools.githubDesc", badge: "G", color: "#6b7280" },
-    { nameKey: "tools.notion", descKey: "tools.notionDesc", badge: "N", color: "#a3a3a3" },
-    { nameKey: "tools.canva", descKey: "tools.canvaDesc", badge: "C", color: "#0ea5e9" },
-    { nameKey: "tools.ruangapi", descKey: "tools.ruangapiDesc", badge: "R", color: "#0ea5e9", custom: "ruangapi" },
+  const apps: { id: string; nameKey: string; descKey: string; badge: string; color: string; custom?: string }[] = [
+    { id: "meta", nameKey: "tools.meta", descKey: "tools.metaDesc", badge: "M", color: "#2563eb" },
+    { id: "postiz", nameKey: "tools.postiz", descKey: "tools.postizDesc", badge: "P", color: "#7c3aed" },
+    { id: "pireel", nameKey: "tools.pireel", descKey: "tools.pireelDesc", badge: "P", color: "#e11d48" },
+    { id: "drive", nameKey: "tools.drive", descKey: "tools.driveDesc", badge: "D", color: "#059669" },
+    { id: "slack", nameKey: "tools.slack", descKey: "tools.slackDesc", badge: "S", color: "#d97706" },
+    { id: "discord", nameKey: "tools.discord", descKey: "tools.discordDesc", badge: "D", color: "#5865F2" },
+    { id: "telegram", nameKey: "tools.telegram", descKey: "tools.telegramDesc", badge: "T", color: "#0891b2" },
+    { id: "github", nameKey: "tools.github", descKey: "tools.githubDesc", badge: "G", color: "#6b7280" },
+    { id: "notion", nameKey: "tools.notion", descKey: "tools.notionDesc", badge: "N", color: "#a3a3a3" },
+    { id: "canva", nameKey: "tools.canva", descKey: "tools.canvaDesc", badge: "C", color: "#0ea5e9" },
+    { id: "ruangapi", nameKey: "tools.ruangapi", descKey: "tools.ruangapiDesc", badge: "R", color: "#0ea5e9", custom: "ruangapi" },
   ];
 
   // RuangAPI credentials (mock, local only — real connection in Phase 3)
@@ -68,19 +71,88 @@
 <div class="page">
   <div class="page-head">
     <h2>{$t("tools.title")}</h2>
+    <div class="view-tabs" role="tablist" aria-label={$t("tools.title")}>
+      <button
+        role="tab"
+        aria-selected={toolsTab === "installed"}
+        class:active={toolsTab === "installed"}
+        onclick={() => (toolsTab = "installed")}
+      >{$t("tools.installed")}</button>
+      <button
+        role="tab"
+        aria-selected={toolsTab === "explore"}
+        class:active={toolsTab === "explore"}
+        onclick={() => (toolsTab = "explore")}
+      >{$t("tools.explore")}</button>
+    </div>
   </div>
 
+  {#if toolsTab === "installed"}
   <div class="section">
     <h3>{$t("tools.agents")}</h3>
-    <p class="lede">{$t("tools.agents.desc")}</p>
     <div class="grid">
-      {#each $templates as tpl (tpl.id)}
+      {#each $templates.filter((tpl) => tpl.enabled) as tpl (tpl.id)}
         <div class="card">
           <h4>{$t(tpl.nameKey)}</h4>
           <p>{$t(tpl.descKey)}</p>
           <div class="actions">
             <button class="btn-ghost" onclick={() => toggleTemplate(tpl.id)}>
-              {tpl.enabled ? $t("tools.deactivate") : $t("tools.activate")}
+              {$t("tools.uninstall")}
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>{$t("tools.apps")}</h3>
+    <div class="grid">
+      {#each apps.filter((a) => $installedApps[a.id]) as app (app.id)}
+        <div class="card">
+          <div class="top">
+            <span class="mini-badge" style:background={app.color}>{app.badge}</span>
+            <h4>{$t(app.nameKey)}</h4>
+          </div>
+          <p>{$t(app.descKey)}</p>
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleAppInstalled(app.id)}>
+              {$t("tools.uninstall")}
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>{$t("tools.skills")}</h3>
+    <div class="grid">
+      {#each $skills.filter((s) => s.installed) as skill (skill.id)}
+        <div class="card">
+          <h4>{skillNameOf(skill)}</h4>
+          {#if skill.descKey}<p>{$t(skill.descKey)}</p>{/if}
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleSkill(skill.id)}>
+              {$t("tools.uninstall")}
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+  {:else}
+  <div class="section">
+    <h3>{$t("tools.agents")}</h3>
+    <p class="lede">{$t("tools.agents.desc")}</p>
+    <div class="grid">
+      {#each $templates.filter((tpl) => !tpl.enabled) as tpl (tpl.id)}
+        <div class="card">
+          <h4>{$t(tpl.nameKey)}</h4>
+          <p>{$t(tpl.descKey)}</p>
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleTemplate(tpl.id)}>
+              {$t("tools.install")}
             </button>
           </div>
         </div>
@@ -92,7 +164,7 @@
     <h3>{$t("tools.apps")}</h3>
     <p class="lede">{$t("tools.apps.desc")}</p>
     <div class="grid">
-      {#each apps as app}
+      {#each apps.filter((a) => !$installedApps[a.id]) as app (app.id)}
         <div class="card">
           <div class="top">
             <span class="mini-badge" style:background={app.color}>{app.badge}</span>
@@ -136,14 +208,12 @@
                 <span class="ok-note" role="status">{$t("tools.ruangapi.connected")}</span>
               {/if}
             </div>
-          {:else}
-            <div class="actions">
-              <button class="btn-ghost" disabled title={$t("tools.soon")}>
-                {$t("tools.connect")}
-              </button>
-            </div>
-            <span class="soon-note">{$t("tools.soon")}</span>
           {/if}
+          <div class="actions">
+            <button class="btn-ghost" onclick={() => toggleAppInstalled(app.id)}>
+              {$t("tools.install")}
+            </button>
+          </div>
         </div>
       {/each}
     </div>
@@ -160,19 +230,20 @@
       </button>
     </div>
     <div class="grid">
-      {#each $skills as skill (skill.id)}
+      {#each $skills.filter((s) => !s.installed) as skill (skill.id)}
         <div class="card">
           <h4>{skillNameOf(skill)}</h4>
           {#if skill.descKey}<p>{$t(skill.descKey)}</p>{/if}
           <div class="actions">
             <button class="btn-ghost" onclick={() => toggleSkill(skill.id)}>
-              {skill.installed ? $t("tools.installed") : $t("tools.install")}
+              {$t("tools.install")}
             </button>
           </div>
         </div>
       {/each}
     </div>
   </div>
+  {/if}
 </div>
 
 {#if showDialog}

@@ -437,6 +437,16 @@ export const skills = writable<Skill[]>([
   { id: 6, nameKey: "tools.skill6.name", descKey: "tools.skill6.desc", installed: false },
 ]);
 
+/** Installed apps (by app id). RuangAPI connects separately via credentials. */
+export const installedApps = writable<Record<string, boolean>>(
+  loadRecord<boolean>("minime.installed-apps"),
+);
+persistRecord("minime.installed-apps", installedApps);
+
+export function toggleAppInstalled(id: string) {
+  installedApps.update((m) => ({ ...m, [id]: !m[id] }));
+}
+
 export function addSkill(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return;
