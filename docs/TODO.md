@@ -37,6 +37,7 @@
 - [ ] Approval gate + notifikasi native
 - [ ] Upload deliverable → folder MIMI (Google Drive)
 - [ ] Gate: 1 pipeline end-to-end + vonis Patria
+- Rencana rebuild rinci: `docs/RENCANA-REBUILD-TAHAP-3.md` (disiapkan 20 Okt 12:31) — sumber kode lama: commit b34e4f2, 4ddc817, 186d9ae, 28674c5
 
 ## Tahap 4 — Rilis macOS + Windows
 - [ ] Build dmg + exe; installer mudah & intuitif
