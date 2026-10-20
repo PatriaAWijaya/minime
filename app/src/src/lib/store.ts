@@ -295,7 +295,7 @@ export function defaultModelFor(agentId: string): string {
     if (chat) return chat.id;
     if (ollama.models.length > 0) return ollama.models[0].id;
   }
-  return "ollama:glm-5.3-flash";
+  return "ollama:qwen2.5:3b";
 }
 
 /** Reasoning effort per agent (mock, persisted). */
