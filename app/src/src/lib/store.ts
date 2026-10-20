@@ -877,6 +877,39 @@ export function decideKanbanCard(id: number, decision: "approve" | "revise" | "r
   moveKanbanCard(id, col);
 }
 
+/* ---------- Social drafts (Phase 3.3: Meta/Postiz draft-only) ----------
+   Standing rule (Patria, revised 19 Oct): agents NEVER publish directly.
+   Every social post starts as a draft card in the approval column; only
+   the user's explicit approval moves it forward. */
+
+export function createSocialDraft(
+  title: string,
+  content: string,
+  platform: "meta" | "postiz",
+  agentId: string,
+  projectId: string,
+): void {
+  const now = new Date();
+  kanbanCards.update((list) => [
+    ...list,
+    {
+      id: kanbanSeq++,
+      title,
+      agentId,
+      col: "approval" as KanbanCol,
+      projectId,
+      createdAt: now.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+      createdAtTs: now.getTime(),
+      draftContent: content,
+      draftPlatform: platform,
+    },
+  ]);
+  void sendNotification(
+    "Draft siap direview",
+    `"${title}" menunggu approval sebelum diposting ke ${platform === "meta" ? "Meta" : "Postiz"}`,
+  );
+}
+
 /** Kanban filter state (persisted). "all" = no filter. */
 export const kanbanFilterProject = writable<string>(
   loadString("minime.kanban-fproj", "all"),

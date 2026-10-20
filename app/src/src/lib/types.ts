@@ -142,6 +142,10 @@ export interface KanbanCard {
   createdAt: string;
   /** Creation timestamp (ms) used by the period filter. */
   createdAtTs: number;
+  /** Social draft content (Phase 3.3: Meta/Postiz are draft-only). */
+  draftContent?: string;
+  /** Target platform for social drafts: "meta" | "postiz". */
+  draftPlatform?: string;
 }
 
 /** A node on the connection canvas (mock). */

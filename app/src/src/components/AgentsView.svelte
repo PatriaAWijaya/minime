@@ -21,6 +21,9 @@
     agentEnabled,
     fetchAgentTools,
     saveAgentTools,
+    createSocialDraft,
+    fetchToolStatus,
+    activeFlowProjectId,
     agentModel,
     agentNames,
     agentNotify,
@@ -162,6 +165,36 @@
   function openPermissions() {
     permLoadedFor = "";
     agentDlg = "permissions";
+  }
+
+  // Social draft form (Phase 3.3): Meta/Postiz are draft-only. The create
+  // button stays disabled until the platform tool is connected.
+  let draftPlatform = $state<"meta" | "postiz">("meta");
+  let draftTitle = $state("");
+  let draftContent = $state("");
+  let draftToolConnected = $state(false);
+
+  function checkDraftTool() {
+    void fetchToolStatus(draftPlatform).then((v) => {
+      draftToolConnected = v ?? false;
+    });
+  }
+
+  $effect(() => {
+    if (agentDlg === "publish") checkDraftTool();
+  });
+
+  function submitSocialDraft() {
+    createSocialDraft(
+      draftTitle.trim(),
+      draftContent.trim(),
+      draftPlatform,
+      agent.id,
+      $activeFlowProjectId || "inbox",
+    );
+    draftTitle = "";
+    draftContent = "";
+    agentDlg = null;
   }
 
   function addFile() {
@@ -832,7 +865,34 @@
         <h3>{$t("agents.publish")}</h3>
         <p class="dlg-agent">{displayName}</p>
         <p class="note">{$t("agents.publish.note")}</p>
+        <p class="note draft-rule">{$t("agents.publish.draftrule")}</p>
+        <label class="fld">
+          <span>{$t("agents.publish.platform")}</span>
+          <select
+            bind:value={draftPlatform}
+            onchange={() => checkDraftTool()}
+          >
+            <option value="meta">Meta</option>
+            <option value="postiz">Postiz</option>
+          </select>
+        </label>
+        <label class="fld">
+          <span>{$t("agents.publish.title")}</span>
+          <input type="text" bind:value={draftTitle} maxlength="120" />
+        </label>
+        <label class="fld">
+          <span>{$t("agents.publish.content")}</span>
+          <textarea bind:value={draftContent} rows="4" maxlength="2000"></textarea>
+        </label>
+        {#if !draftToolConnected}
+          <p class="note warn">{$t("agents.publish.notconnected", { platform: draftPlatform === "meta" ? "Meta" : "Postiz" })}</p>
+        {/if}
         <div class="dlg-actions">
+          <button
+            class="btn-primary"
+            disabled={!draftToolConnected || !draftTitle.trim() || !draftContent.trim()}
+            onclick={submitSocialDraft}
+          >{$t("agents.publish.create")}</button>
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
       {:else if agentDlg === "advanced"}
@@ -1344,6 +1404,28 @@
     color: var(--danger);
     border-color: var(--danger);
   }
+  .fld {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .fld input, .fld select, .fld textarea {
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-weight: 400;
+  }
+  .fld textarea { resize: vertical; }
+  .note.warn { color: var(--danger); }
+  .note.draft-rule { color: var(--accent); font-weight: 600; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
   .dlg-actions {
     display: flex;
     justify-content: flex-end;

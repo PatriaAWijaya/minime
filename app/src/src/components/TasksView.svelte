@@ -413,6 +413,12 @@
                 ondragstart={(e) => onDragStart(e, card.id)}
               >
                 <p class="card-title">{card.title}</p>
+                {#if card.draftPlatform}
+                  <span class="draft-badge">{card.draftPlatform === "meta" ? "Meta" : "Postiz"} · draft</span>
+                  {#if card.draftContent}
+                    <p class="draft-preview">{card.draftContent}</p>
+                  {/if}
+                {/if}
                 <div class="card-agent">
                   <span class="badge" style:background={a.color}>{a.badge}</span>
                   <span class="name">{a.name}</span>
@@ -820,6 +826,25 @@
   .card-actions .mini-btn:hover { border-color: var(--accent); }
   .card-actions .mini-btn.ok { color: var(--ok); border-color: var(--ok); }
   .card-actions .mini-btn.danger { color: var(--danger); }
+  .draft-badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 1px 7px;
+  }
+  .draft-preview {
+    margin: 6px 0 0;
+    font-size: 12.5px;
+    color: var(--text-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .card-date {
     font-size: 12px;
     color: var(--muted, #9aa0aa);
