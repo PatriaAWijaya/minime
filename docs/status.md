@@ -1343,3 +1343,38 @@ nol project otomatis buatkan project baru agar kerja tidak hilang.
 MacBook sukses, relaunch PID 59261 fresh, CPU idle 0,2–0,3%, RAM 98 MB.
 
 **Push:** lokal ab37181 ↔ remote 6dcc2fb (tree identik).
+
+## 20 Okt 2026 ~20:00 — AUDIT PENUH (perintah Patria: bukan gimmick, nol error)
+
+**Statis — LOLOS SEMUA:**
+- cargo check (MacBook): 0 error, 0 warning; cargo test: 30/30 lolos.
+- vite build: bersih. TODO/FIXME: 0; console.log: 0; dbg!: 0.
+- IPC: 37 invoke frontend ↔ 37 command backend terdaftar — semua cocok, tidak
+  ada yatim. 2 command mati DIHAPUS: `agent_send_stub` (tak pernah dipakai —
+  chat memakai `agent_chat`) dan `get_agent_skills` (tak pernah dipanggil).
+- i18n: 752 kunci × 3 bahasa (ID/EN/ZH), paritas penuh.
+- Data dummy: nihil (seedKanban=[]; mockTranscript hanya fallback preview
+  STT browser — legitimate).
+
+**Konsistensi — DIPERBAIKI 6 titik:** nama/role agen yang dioverride user kini
+tampil konsisten di semua view via helper bersama (sebelumnya ChatPanel,
+CostView, LibraryView, FlowAgentNode, topbar AgentsView masih pakai nama
+mentah). Guard Mimi konsisten: tak bisa masuk folder (guard+menu+picker),
+node canvas-nya tak bisa dihapus, selalu aktif.
+
+**Fungsional (trace kode, bukan gimmick):**
+- × agen → deactivate → hilang dari list (Mimi diproteksi di 2 lapis).
+- × folder ↔ × tab Koneksi → satu `removeFlowProject` — hapus dua arah;
+  project terakhir bisa dihapus → canvas default (Mimi saja).
+- Nol project: load→canvas Mimi, save dilewati, tambah node→auto-buat project.
+- Run: satu state global; stop otomatis saat ganti/hapus project & unmount.
+- agentStatus tidak persisten → restart selalu kembali idle bersih.
+
+**Performa (MacBook, build debug):** app 54 MB; CPU idle 0,9–1,3%; RAM 107 MB;
+30 skills terbundel; relaunch PID 60203 fresh terverifikasi.
+
+**Catatan jujur:** cargo check lokal Linux gagal (butuh lib GTK sistem —
+lingkungan, bukan error kode); yang sahih hasil MacBook di atas. Uji klik
+visual tetap menunggu Patria (tak ada akses GUI via SSH).
+
+**Push:** lokal bbc570d ↔ remote 8147299 (tree identik).
