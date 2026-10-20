@@ -15,11 +15,15 @@
 //! consumes credits.
 
 use std::collections::HashMap;
-use std::io::Read;
 use std::sync::Mutex;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+
+use crate::oauth_local::{
+    accept_callback, bind_callback, now_epoch, open_browser, parse_query,
+    pkce_challenge, random_b64url, url_encode,
+};
 
 const MCP_URL: &str = "https://pireel.com/api/studio/mcp";
 const RESOURCE_META_URL: &str = "https://pireel.com/.well-known/oauth-protected-resource";
@@ -35,51 +39,6 @@ const RFC7636_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 // Small helpers (pure, unit-tested)
 // ---------------------------------------------------------------------------
 
-/// URL-safe base64 without padding.
-fn b64url(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut out = String::with_capacity((bytes.len() * 4 + 2) / 3);
-    for chunk in bytes.chunks(3) {
-        let n = (chunk[0] as u32) << 16
-            | (chunk.get(1).copied().unwrap_or(0) as u32) << 8
-            | chunk.get(2).copied().unwrap_or(0) as u32;
-        out.push(ALPHABET[((n >> 18) & 63) as usize] as char);
-        out.push(ALPHABET[((n >> 12) & 63) as usize] as char);
-        if chunk.len() > 1 {
-            out.push(ALPHABET[((n >> 6) & 63) as usize] as char);
-        }
-        if chunk.len() > 2 {
-            out.push(ALPHABET[(n & 63) as usize] as char);
-        }
-    }
-    out
-}
-
-fn random_b64url(nbytes: usize) -> Result<String, String> {
-    let mut buf = vec![0u8; nbytes];
-    getrandom::getrandom(&mut buf).map_err(|e| format!("random failed: {e}"))?;
-    Ok(b64url(&buf))
-}
-
-fn sha256_b64url(input: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let digest = Sha256::digest(input.as_bytes());
-    b64url(&digest)
-}
-
-/// PKCE S256 code challenge for a verifier.
-fn pkce_challenge(verifier: &str) -> String {
-    sha256_b64url(verifier)
-}
-
-fn now_epoch() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
 /// Classify a `get_state` text snapshot into a short status code.
 fn classify_state(text: &str) -> &'static str {
     if text.contains("OFFLINE MODE") {
@@ -90,64 +49,6 @@ fn classify_state(text: &str) -> &'static str {
         "live"
     } else {
         "unknown"
-    }
-}
-
-/// Extract `code` and `state` from a raw HTTP callback request head.
-fn parse_callback_query(head: &str) -> Option<(String, String)> {
-    let line = head.lines().next().unwrap_or("");
-    let path = line.split_whitespace().nth(1).unwrap_or("");
-    let query = path.split('?').nth(1).unwrap_or("");
-    let mut code = None;
-    let mut state = None;
-    for pair in query.split('&') {
-        let mut kv = pair.splitn(2, '=');
-        match (kv.next(), kv.next()) {
-            (Some("code"), Some(v)) => code = Some(url_decode(v)),
-            (Some("state"), Some(v)) => state = Some(url_decode(v)),
-            _ => {}
-        }
-    }
-    match (code, state) {
-        (Some(c), Some(s)) if !c.is_empty() => Some((c, s)),
-        _ => None,
-    }
-}
-
-fn url_decode(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let bytes = s.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'%' if i + 2 < bytes.len() => {
-                if let (Some(h), Some(l)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
-                    out.push((h * 16 + l) as char);
-                    i += 3;
-                    continue;
-                }
-                out.push('%');
-                i += 1;
-            }
-            b'+' => {
-                out.push(' ');
-                i += 1;
-            }
-            b => {
-                out.push(b as char);
-                i += 1;
-            }
-        }
-    }
-    out
-}
-
-fn hex_val(b: u8) -> Option<u8> {
-    match b {
-        b'0'..=b'9' => Some(b - b'0'),
-        b'a'..=b'f' => Some(b - b'a' + 10),
-        b'A'..=b'F' => Some(b - b'A' + 10),
-        _ => None,
     }
 }
 
@@ -446,104 +347,49 @@ async fn valid_access_token() -> Result<String, String> {
 // System browser + localhost OAuth callback
 // ---------------------------------------------------------------------------
 
-/// Open a URL in the user's default browser (cross-platform).
-fn open_browser(url: &str) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    let mut cmd = std::process::Command::new("open");
-    #[cfg(target_os = "windows")]
-    let mut cmd = {
-        let mut c = std::process::Command::new("cmd");
-        c.args(["/C", "start", "", url]);
-        c
-    };
-    #[cfg(target_os = "linux")]
-    let mut cmd = std::process::Command::new("xdg-open");
-    #[cfg(target_os = "macos")]
-    cmd.arg(url);
-    #[cfg(target_os = "linux")]
-    cmd.arg(url);
-    cmd.spawn()
-        .map(|_| ())
-        .map_err(|e| format!("could not open browser: {e}"))
-}
-
-fn callback_html(ok: bool, message: &str) -> String {
-    let title = if ok { "Pireel terhubung" } else { "Pireel gagal terhubung" };
-    format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>{title}</title></head>\
-         <body style=\"font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh\">\
-         <div><h2>{title}</h2><p>{message}</p><p>Kamu bisa menutup tab ini dan kembali ke Minime.</p></div>\
-         </body></html>",
-        title = title,
-        message = message
-    )
-}
-
 /// Handle one OAuth callback connection, exchange the code, store tokens.
 fn serve_callback(
     listener: std::net::TcpListener,
     pending: PendingOAuth,
     pending_slot: std::sync::Arc<Mutex<Option<PendingOAuth>>>,
 ) {
-    // Single attempt with a deadline; the frontend polls `pireel_oauth_poll`.
-    let deadline = std::time::Instant::now() + Duration::from_secs(600);
-    while std::time::Instant::now() < deadline {
-        let _ = listener.set_nonblocking(true);
-        match listener.accept() {
-            Ok((mut stream, _)) => {
-                let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
-                let mut head = vec![0u8; 8192];
-                let n = match stream.read(&mut head) {
-                    Ok(n) => n,
-                    Err(_) => continue,
-                };
-                let head = String::from_utf8_lossy(&head[..n]).to_string();
-                let outcome: Result<(), String> = (|| {
-                    let (code, cb_state) =
-                        parse_callback_query(&head).ok_or("missing code/state")?;
-                    if cb_state != pending.state {
-                        return Err("state mismatch".to_string());
-                    }
-                    // Synchronous token exchange inside a blocking thread.
-                    let rt = tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                        .map_err(|e| format!("runtime: {e}"))?;
-                    rt.block_on(exchange_code(&pending, &code))
-                })();
-                let (ok, msg) = match &outcome {
-                    Ok(_) => (true, "Akun Pireel-mu terhubung ke Minime.".to_string()),
-                    Err(e) => (false, format!("Gagal menukar kode otorisasi: {e}")),
-                };
-                let body = callback_html(ok, &msg);
-                let resp = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                    body.len(),
-                    body
-                );
-                use std::io::Write;
-                let _ = stream.write_all(resp.as_bytes());
-                // Publish the final state for the poller: success clears the
-                // slot (bundle is in the keychain); failure marks it expired.
-                let mut slot = pending_slot.lock().unwrap();
-                if outcome.is_ok() {
-                    *slot = None;
-                } else {
-                    *slot = Some(PendingOAuth {
-                        expires_at: 0,
-                        ..pending.clone()
-                    });
-                }
-                return;
-            }
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(200));
-            }
-            Err(_) => break,
+    // accept_callback replies to the browser itself (HTML page).
+    let outcome: Result<(), String> = (|| {
+        let (params, ok) =
+            accept_callback(&listener, Duration::from_secs(600), "Pireel terhubung", "Pireel gagal terhubung")
+                .map_err(|e| e)?;
+        if !ok {
+            return Err(params
+                .get("error")
+                .cloned()
+                .unwrap_or_else(|| "authorization failed".to_string()));
         }
+        let code = params.get("code").cloned().unwrap_or_default();
+        let cb_state = params.get("state").cloned().unwrap_or_default();
+        if code.is_empty() {
+            return Err("missing code".to_string());
+        }
+        if cb_state != pending.state {
+            return Err("state mismatch".to_string());
+        }
+        // Synchronous token exchange inside a blocking thread.
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| format!("runtime: {e}"))?;
+        rt.block_on(exchange_code(&pending, &code))
+    })();
+    // Publish the final state for the poller: success clears the slot
+    // (bundle is in the keychain); failure marks it expired.
+    let mut slot = pending_slot.lock().unwrap();
+    if outcome.is_ok() {
+        *slot = None;
+    } else {
+        *slot = Some(PendingOAuth {
+            expires_at: 0,
+            ..pending.clone()
+        });
     }
-    // Timeout: clear the pending flow so a new one can start.
-    *pending_slot.lock().unwrap() = None;
 }
 
 async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<(), String> {
@@ -604,12 +450,7 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
         .clone()
         .ok_or_else(|| "server does not support dynamic client registration".to_string())?;
 
-    let listener =
-        std::net::TcpListener::bind("127.0.0.1:0").map_err(|e| format!("localhost bind failed: {e}"))?;
-    let port = listener
-        .local_addr()
-        .map_err(|e| format!("localhost addr failed: {e}"))?
-        .port();
+    let (listener, port) = bind_callback()?;
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
 
     // Dynamic client registration (RFC 7591, public client).
@@ -661,17 +502,6 @@ pub async fn pireel_connect_url(state: tauri::State<'_, PireelState>) -> Result<
     // Best effort: also return the URL so the UI can show a fallback link.
     let _ = open_browser(&auth_url);
     Ok(auth_url)
-}
-
-fn url_encode(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
 }
 
 /// Poll the OAuth flow state.
@@ -743,21 +573,7 @@ pub fn pireel_disconnect() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn pkce_matches_rfc7636_vector() {
-        assert_eq!(pkce_challenge(RFC7636_VERIFIER), RFC7636_CHALLENGE);
-    }
-
-    #[test]
-    fn b64url_vectors() {
-        assert_eq!(b64url(b""), "");
-        assert_eq!(b64url(b"f"), "Zg");
-        assert_eq!(b64url(b"fo"), "Zm8");
-        assert_eq!(b64url(b"foo"), "Zm9v");
-        assert_eq!(b64url(&[0xfb, 0xff]), "-_8");
-        assert_eq!(b64url(&[0xff, 0xff, 0xff]), "____");
-    }
+    use crate::oauth_local::now_epoch;
 
     #[test]
     fn bundle_refresh_logic() {
@@ -785,20 +601,12 @@ mod tests {
     }
 
     #[test]
-    fn callback_query_parsing() {
-        let head = "GET /callback?code=abc123&state=xyz HTTP/1.1\r\nHost: x\r\n\r\n";
-        assert_eq!(
-            parse_callback_query(head),
-            Some(("abc123".to_string(), "xyz".to_string()))
-        );
-        let bad = "GET /callback?error=access_denied HTTP/1.1\r\n\r\n";
-        assert_eq!(parse_callback_query(bad), None);
-    }
-
-    #[test]
-    fn url_roundtrip() {
-        assert_eq!(url_decode("a+b%20c%2F"), "a b c/");
-        assert_eq!(url_encode("a b/c"), "a%20b%2Fc");
+    fn callback_params_parsing() {
+        let m = parse_query("code=abc123&state=xyz");
+        assert_eq!(m["code"], "abc123");
+        assert_eq!(m["state"], "xyz");
+        let m = parse_query("error=access_denied");
+        assert!(!m.contains_key("code"));
     }
 
     /// Without a keychain token the status must fail cleanly as

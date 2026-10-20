@@ -2,7 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod db;
+mod drive;
 mod island;
+mod oauth_local;
 mod pireel;
 mod providers;
 mod secrets;
@@ -487,6 +489,7 @@ fn main() {
         .manage(tools::ToolRegistry::new())
         .manage(island::IslandState(std::sync::Mutex::new(None)))
         .manage(pireel::PireelState::new())
+        .manage(drive::DriveState::new())
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
@@ -520,6 +523,11 @@ fn main() {
             pireel::pireel_oauth_poll,
             pireel::pireel_status,
             pireel::pireel_disconnect,
+            drive::drive_connect_url,
+            drive::drive_oauth_poll,
+            drive::drive_status,
+            drive::drive_upload,
+            drive::drive_disconnect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
