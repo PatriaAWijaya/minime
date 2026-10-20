@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agents } from "../lib/agents";
+  import { agents, agentDisplayName } from "../lib/agents";
   import {
     activeFlowProjectId,
     agentNames,
@@ -63,7 +63,7 @@
     return agents.find((a) => a.id === id)?.name ?? id;
   }
   function briefAgentName(a: { id: string; name: string; nameKey?: string }): string {
-    return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name) ?? a.id;
+    return agentDisplayName(a, $agentNames, $t);
   }
 </script>
 

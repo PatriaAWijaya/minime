@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agents } from "../lib/agents";
+  import { agents, agentDisplayName, agentDisplayRole } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
   import {
     PROVIDERS,
@@ -16,7 +16,6 @@
     removeFlowProject,
     addFlowProject,
     agentBrowserOn,
-    agentFacts,
     agentFiles,
     agentGender,
     agentAge,
@@ -36,6 +35,7 @@
     setServerMuted,
     serverNotif,
     setServerNotif,
+    skillCatalog,
     agentModel,
     agentNames,
     agentNotify,
@@ -54,6 +54,7 @@
     removeCustomModel,
     serverLayout,
     folderOpen,
+    setAgentEnabled,
     toggleFolder,
     isFolderOpen,
   } from "../lib/store";
@@ -67,7 +68,12 @@
   const agent = $derived(
     allAgents.find((a) => a.id === $activeAgentId) ?? allAgents[0],
   );
-  const facts = $derived(agentFacts[agent.id] ?? agentFacts.mimi);
+  /* Real per-agent stats (Patria 20 Okt): skill count from the backend
+     catalog, file count from the agent's own attachments. Nothing fabricated. */
+  const skillCount = $derived(
+    ($skillCatalog ?? []).filter((s) => s.agents.includes(agent.id)).length,
+  );
+  const fileCount = $derived(($agentFiles[agent.id] ?? []).length);
   const modelId = $derived($agentModel[agent.id] ?? defaultModelFor(agent.id));
   const model = $derived(getModel(modelId));
   const providerName = $derived(
@@ -83,9 +89,7 @@
   const hobbies = $derived($agentHobbies[agent.id] ?? "");
   const voiceOn = $derived($agentVoiceOn[agent.id] ?? false);
   const voiceChoice = $derived($agentVoice[agent.id] ?? "v1");
-  const displayName = $derived(
-    $agentNames[agent.id] ?? (agent.nameKey ? $t(agent.nameKey) : agent.name),
-  );
+  const displayName = $derived(agentDisplayName(agent, $agentNames, $t));
   const agentTitle = $derived($agentTitles[agent.id] ?? "");
   const chatAgent = $derived({ ...agent, name: displayName });
 
@@ -259,17 +263,18 @@
   // Project folders: agents grouped into collapsible folders. The folder IS
   // the project (Patria 20 Okt): agents in a folder are the agents assigned
   // to work on that project (Tasks, Kanban, Brief).
-  // Only enabled agents are listed (Patria 20 Okt): by default only the
-  // main agent (Mimi) appears; others appear once activated.
-  const isVisible = (a: Agent) => a.id === "mimi" || ($agentEnabled[a.id] ?? false);
+  // All real agents are listed (Patria 20 Okt): the count matches Tools.
+  // Only Mimi is enabled by default; disabled agents appear dimmed and can
+  // be activated from their detail panel.
+  const isEnabled = (a: Agent) => a.id === "mimi" || ($agentEnabled[a.id] ?? false);
   const groupedIds = $derived(
     new Set($projects.flatMap((p) => p.agentIds ?? [])),
   );
   const looseAgents = $derived(
-    allAgents.filter((a) => !groupedIds.has(a.id) && isVisible(a)),
+    allAgents.filter((a) => !groupedIds.has(a.id)),
   );
   function folderAgents(p: FlowProject): Agent[] {
-    return allAgents.filter((a) => (p.agentIds ?? []).includes(a.id) && isVisible(a));
+    return allAgents.filter((a) => (p.agentIds ?? []).includes(a.id));
   }
   const folderIsOpen = (id: string) => isFolderOpen(id, $folderOpen);
 
@@ -302,9 +307,9 @@
   const aq = $derived(agentSearch.trim().toLowerCase());
   const labelOf = (a: Agent) =>
     (
-      ($agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name)) +
+      agentDisplayName(a, $agentNames, $t) +
       " " +
-      $t(a.roleKey)
+      agentDisplayRole(a, $agentTitles, $t)
     ).toLowerCase();
   const filteredLoose = $derived(
     looseAgents.filter((a) => !aq || labelOf(a).includes(aq)),
@@ -460,17 +465,18 @@
 
 {#snippet agentRow(a: Agent)}
   {@const status = $agentStatus[a.id] ?? "idle"}
-  {@const baseName = a.nameKey ? $t(a.nameKey) : a.name}
-  {@const rowName = $agentNames[a.id] ?? baseName}
+  {@const rowName = agentDisplayName(a, $agentNames, $t)}
+  {@const rowRole = agentDisplayRole(a, $agentTitles, $t)}
   <button
     class="agent-row"
     class:active={$activeAgentId === a.id}
+    class:disabled={!isEnabled(a)}
     onclick={() => activeAgentId.set(a.id)}
   >
     <span class="badge" style:background={a.color}>{a.badge}</span>
     <span class="meta">
       <span class="name">{rowName}</span>
-      <span class="role">{$t(a.roleKey)}</span>
+      <span class="role">{rowRole}</span>
     </span>
     <span class="dot {status}" aria-hidden="true"></span>
   </button>
@@ -994,13 +1000,6 @@
         <div class="dlg-actions">
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
-      {:else if agentDlg === "memories"}
-        <h3>{$t("agents.memories")}</h3>
-        <p class="dlg-agent">{displayName}</p>
-        <p class="note">{$t("agents.memories.n", { n: String(facts.memories) })}</p>
-        <div class="dlg-actions">
-          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
-        </div>
       {:else if agentDlg === "permissions"}
         <h3>{$t("agents.permissions")}</h3>
         <p class="dlg-agent">{displayName}</p>
@@ -1025,15 +1024,9 @@
       {:else if agentDlg === "skills"}
         <h3>{$t("agents.skills")}</h3>
         <p class="dlg-agent">{displayName}</p>
-        <p class="note">{$t("agents.skills.n", { n: String(facts.skills) })}</p>
+        <p class="note">{$t("agents.skills.n", { n: String(skillCount) })}</p>
         <div class="dlg-actions">
-          <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
-        </div>
-      {:else if agentDlg === "tables"}
-        <h3>{$t("agents.tables")}</h3>
-        <p class="dlg-agent">{displayName}</p>
-        <p class="note">{$t("agents.tables.n", { n: String(facts.tables) })}</p>
-        <div class="dlg-actions">
+          <button class="btn-ghost" onclick={() => { agentDlg = null; activeView.set("tools"); }}>{$t("agents.skills.manage")}</button>
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
       {:else if agentDlg === "publish"}
@@ -1282,7 +1275,7 @@
                       }}
                     >
                       <span class="badge sm" style:background={a.color}>{a.badge}</span>
-                      <span>{$agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name)}</span>
+                      <span>{agentDisplayName(a, $agentNames, $t)}</span>
                     </button>
                   {/each}
                 {/if}
@@ -1330,6 +1323,19 @@
               <path d="M17 3a2.8 2.8 0 1 1 4 4L8 20l-5 1 1-5z" />
             </svg>
           </button>
+        </div>
+
+        <div class="row">
+          <span class="label">{$t("agents.enabled")}</span>
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={isEnabled(agent)}
+              onchange={(e) => setAgentEnabled(agent.id, e.currentTarget.checked)}
+              aria-label={$t("agents.enabled")}
+            />
+            <span class="track" aria-hidden="true"></span>
+          </label>
         </div>
 
         <div class="field">
@@ -1429,15 +1435,12 @@
 
         <div class="section">
           <h3>{$t("agents.knows")}</h3>
-          {@render navRow(ICONS.memory, $t("agents.memories"), $t("agents.memories.n", { n: String(facts.memories) }), () => (agentDlg = "memories"))}
-          {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(facts.skills) }), () => (agentDlg = "skills"))}
-          {@render navRow(ICONS.files, $t("agents.files"), facts.files, () => activeView.set("library"))}
-          {@render navRow(ICONS.tables, $t("agents.tables"), $t("agents.tables.n", { n: String(facts.tables) }), () => (agentDlg = "tables"))}
+          {@render navRow(ICONS.skills, $t("agents.skills"), $t("agents.skills.n", { n: String(skillCount) }), () => (agentDlg = "skills"))}
+          {@render navRow(ICONS.files, $t("agents.files"), $t("agents.files.n", { n: String(fileCount) }), () => activeView.set("library"))}
         </div>
 
         <div class="section">
           <h3>{$t("agents.does")}</h3>
-          {@render navRow(ICONS.routines, $t("agents.routines"), $t("agents.routines.n", { n: String(facts.routines) }), () => activeView.set("schedule"))}
           {@render navRow(ICONS.usage, $t("agents.usage"), "", () => activeView.set("cost"))}
           {@render navRow(ICONS.publish, $t("agents.publish"), "", () => (agentDlg = "publish"))}
         </div>

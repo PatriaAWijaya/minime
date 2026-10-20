@@ -18,3 +18,23 @@ export const agents: Agent[] = [
 export function getAgent(id: string): Agent {
   return agents.find((a) => a.id === id) ?? agents[0];
 }
+
+/** Single source of truth for agent display name (Patria 20 Okt): user
+ *  overrides win, so an edit in the Agents panel instantly reflects in
+ *  Tools, Tasks, Brief, Kanban — everywhere. */
+export function agentDisplayName(
+  a: Pick<Agent, "id" | "name" | "nameKey">,
+  names: Record<string, string>,
+  t: (key: string) => string,
+): string {
+  return names[a.id] ?? (a.nameKey ? t(a.nameKey) : a.name);
+}
+
+/** Single source of truth for agent display role (same sync rule). */
+export function agentDisplayRole(
+  a: Pick<Agent, "id" | "roleKey">,
+  titles: Record<string, string>,
+  t: (key: string) => string,
+): string {
+  return titles[a.id] ?? t(a.roleKey);
+}

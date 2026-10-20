@@ -12,9 +12,10 @@
     type Connection,
   } from "@xyflow/svelte";
   import "@xyflow/svelte/dist/style.css";
-  import { agents } from "../lib/agents";
+  import { agents, agentDisplayName } from "../lib/agents";
   import {
     agentStatus,
+    agentNames,
     customAgents,
     tasksView,
     kanbanCards,
@@ -47,6 +48,8 @@
 
   const cols: KanbanCol[] = ["queue", "doing", "approval", "revision", "done"];
   const allAgents = $derived([...agents, ...$customAgents]);
+  const dispName = (a: { id: string; name: string; nameKey?: string }): string =>
+    agentDisplayName(a, $agentNames, $t);
 
   function agentOf(id: string) {
     return allAgents.find((a) => a.id === id) ?? allAgents[0];
@@ -423,7 +426,7 @@
         <select bind:value={$kanbanFilterAgent}>
           <option value="all">{$t("tasks.allAgents")}</option>
           {#each allAgents as a (a.id)}
-            <option value={a.id}>{a.name}</option>
+            <option value={a.id}>{dispName(a)}</option>
           {/each}
         </select>
       </label>
@@ -469,7 +472,7 @@
                 {/if}
                 <div class="card-agent">
                   <span class="badge" style:background={a.color}>{a.badge}</span>
-                  <span class="name">{a.name}</span>
+                  <span class="name">{dispName(a)}</span>
                   <span class="dot {st}" aria-hidden="true"></span>
                 </div>
                 <span class="card-date">{card.createdAt}</span>
@@ -559,7 +562,7 @@
                 <span>{$t("tasks.agent")}</span>
                 <select bind:value={draftAgent}>
                   {#each allAgents as a (a.id)}
-                    <option value={a.id}>{a.name}</option>
+                    <option value={a.id}>{dispName(a)}</option>
                   {/each}
                 </select>
               </label>

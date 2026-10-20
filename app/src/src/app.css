@@ -234,6 +234,8 @@ input, select, textarea { font: inherit; color: var(--text); }
 }
 .agent-row:hover { background: var(--panel-2); }
 .agent-row.active { background: var(--panel-2); border-color: var(--accent); }
+.agent-row.disabled { opacity: 0.45; }
+.agent-row.disabled .badge { filter: grayscale(0.6); }
 .badge {
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

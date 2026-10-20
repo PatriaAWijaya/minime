@@ -10,6 +10,7 @@
     ruangapiKey,
     ruangapiMcpUrl,
     agentNames,
+    agentTitles,
     skillCatalog,
     refreshSkillCatalog,
     saveAgentSkills,
@@ -32,7 +33,7 @@
     driveDisconnect,
     type SkillCatalogEntry,
   } from "../lib/store";
-  import { agents as seedList } from "../lib/agents";
+  import { agents as seedList, agentDisplayName, agentDisplayRole } from "../lib/agents";
   import { SOON_APPS, APP_TILES, APP_CAT_KEYS, appDescKey } from "../lib/marketplace";
   import { t } from "../lib/i18n";
 
@@ -62,12 +63,13 @@
   function agentLabel(id: string): string {
     const a = allAgents.find((x) => x.id === id);
     if (!a) return id;
-    return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name);
+    return agentDisplayName(a, $agentNames, $t);
   }
 
   /* ---------------- Agents tab: the 6 built-in Minime agents --------------
      Patria 20 Okt: no fictitious templates — only the real agents with
-     their real skills from the backend catalog. */
+     their real skills from the backend catalog. Names/roles sync both ways
+     with the Agents view via the shared helpers in lib/agents. */
   const agentSkillCounts = $derived.by(() => {
     const counts: Record<string, number> = {};
     for (const s of $skillCatalog ?? []) {
@@ -75,9 +77,10 @@
     }
     return counts;
   });
-  function agentDisplayName(a: { id: string; name: string; nameKey?: string }): string {
-    return $agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name);
-  }
+  const agentName = (a: { id: string; name: string; nameKey?: string }): string =>
+    agentDisplayName(a, $agentNames, $t);
+  const agentRole = (a: { id: string; roleKey: string }): string =>
+    agentDisplayRole(a, $agentTitles, $t);
   /* Patria 20 Okt: tab Agen + dialog skill menampilkan SEMUA agen nyata —
      6 bawaan + agen custom buatan user ("Agen baru"). Tanpa template fiktif. */
   const toolsAgents = $derived([...seedList, ...$customAgents]);
@@ -86,13 +89,13 @@
       .filter(
         (a) =>
           !query ||
-          agentDisplayName(a).toLowerCase().includes(query.toLowerCase()) ||
-          $t(a.roleKey).toLowerCase().includes(query.toLowerCase()),
+          agentName(a).toLowerCase().includes(query.toLowerCase()) ||
+          agentRole(a).toLowerCase().includes(query.toLowerCase()),
       )
       .sort((a, b) =>
         filter === "za"
-          ? agentDisplayName(b).localeCompare(agentDisplayName(a))
-          : agentDisplayName(a).localeCompare(agentDisplayName(b)),
+          ? agentName(b).localeCompare(agentName(a))
+          : agentName(a).localeCompare(agentName(b)),
       ),
   );
   function openAgent() {
@@ -280,12 +283,12 @@
               <span class="mkt-tile sh-squircle" style:background={a.color} aria-hidden="true">
                 <span class="glyph">{a.badge}</span>
               </span>
-              <h3>{agentDisplayName(a)}</h3>
+              <h3>{agentName(a)}</h3>
               <button class="mkt-add" onclick={openAgent}>
                 {$t("mkt.open")}
               </button>
             </div>
-            <p class="mkt-desc">{$t(a.roleKey)}</p>
+            <p class="mkt-desc">{agentRole(a)}</p>
             <footer class="mkt-foot">
               <span>Minime</span>
               <span class="dot">·</span>
@@ -533,7 +536,7 @@
               checked={pickerSelection.includes(a.id)}
               onchange={() => togglePickerAgent(a.id)}
             />
-            <span>{$agentNames[a.id] ?? (a.nameKey ? $t(a.nameKey) : a.name)}</span>
+            <span>{agentName(a)}</span>
           </label>
         {/each}
       </div>

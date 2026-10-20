@@ -391,33 +391,22 @@ export function removeAgentFile(agentId: string, index: number) {
   }));
 }
 
-/** Mock facts shown in the Agents detail panel. */
-export const agentFacts: Record<
-  string,
-  { memories: number; skills: number; files: string; tables: number; routines: number }
-> = {
-  mimi: { memories: 24, skills: 5, files: "312 KB", tables: 3, routines: 2 },
-  kreatif: { memories: 12, skills: 4, files: "1.2 MB", tables: 1, routines: 1 },
-  riset: { memories: 18, skills: 3, files: "856 KB", tables: 4, routines: 2 },
-  finance: { memories: 9, skills: 3, files: "402 KB", tables: 5, routines: 1 },
-  strategis: { memories: 11, skills: 4, files: "230 KB", tables: 2, routines: 1 },
-  code: { memories: 7, skills: 6, files: "98 KB", tables: 0, routines: 0 },
-};
+/** Real per-agent stats for the detail panel (Patria 20 Okt: no fabricated
+    numbers). Skills come from the backend catalog; files from the agent's
+    own attachments. Memories/tables/routines have no real backing and are
+    not shown. */
+export function agentSkillCount(agentId: string): number {
+  return (get(skillCatalog) ?? []).filter((s) => s.agents.includes(agentId)).length;
+}
 
-/** Active-task indicator per agent (mock). */
-export const activeTaskByAgent: Record<string, { titleKey: string; progress: number }> = {
-  riset: { titleKey: "tasks.demo1", progress: 45 },
-  kreatif: { titleKey: "tasks.demo2", progress: 80 },
-};
+export function agentFileCount(agentId: string): number {
+  return (get(agentFiles)[agentId] ?? []).length;
+}
 
-/** Scheduled / recurring tasks (mock). */
-let scheduleSeq = 5;
-export const scheduleItems = writable<ScheduledItem[]>([
-  { id: 1, nameKey: "schedule.mock2.name", whenKey: "schedule.mock2.when", range: "day", active: true },
-  { id: 2, nameKey: "schedule.mock1.name", whenKey: "schedule.mock1.when", range: "week", active: true },
-  { id: 3, nameKey: "schedule.mock4.name", whenKey: "schedule.mock4.when", range: "week", active: false },
-  { id: 4, nameKey: "schedule.mock3.name", whenKey: "schedule.mock3.when", range: "month", active: true },
-]);
+/** Scheduled / recurring tasks. Empty by default (Patria 20 Okt): no dummy
+    items — the user creates their own via the Schedule view. */
+let scheduleSeq = 1;
+export const scheduleItems = writable<ScheduledItem[]>([]);
 
 export function addScheduleItem() {
   scheduleItems.update((items) => [
@@ -432,21 +421,12 @@ export function addScheduleItem() {
   ]);
 }
 
-/** Library outputs. Seeds are mock; real tool results are appended by
- *  addLibraryItem (Tahap 3.6) and persist across restarts. */
-const librarySeed: LibraryItem[] = [
-  { id: 1, titleKey: "library.mock1.title", dateKey: "library.mock1.date", daysAgo: 1, type: "doc", agentId: "kreatif", taskKey: "schedule.mock1.name" },
-  { id: 2, titleKey: "library.mock2.title", dateKey: "library.mock2.date", daysAgo: 2, type: "image", agentId: "kreatif", taskKey: "library.task.once" },
-  { id: 3, titleKey: "library.mock3.title", dateKey: "library.mock3.date", daysAgo: 4, type: "table", agentId: "riset", taskKey: "schedule.mock4.name" },
-  { id: 4, titleKey: "library.mock4.title", dateKey: "library.mock4.date", daysAgo: 7, type: "deck", agentId: "strategis", taskKey: "library.task.once" },
-  { id: 5, titleKey: "library.mock5.title", dateKey: "library.mock5.date", daysAgo: 9, type: "video", agentId: "kreatif", taskKey: "schedule.mock3.name" },
-  { id: 6, titleKey: "library.mock6.title", dateKey: "library.mock6.date", daysAgo: 14, type: "doc", agentId: "finance", taskKey: "library.task.once" },
-  { id: 7, titleKey: "library.mock7.title", dateKey: "library.mock7.date", daysAgo: 21, type: "app", agentId: "code", taskKey: "library.task.once" },
-  { id: 8, titleKey: "library.mock8.title", dateKey: "library.mock8.date", daysAgo: 17, type: "table", agentId: "finance", taskKey: "schedule.mock2.name" },
-];
+/** Library outputs. Empty by default (Patria 20 Okt): no dummy items — real
+ *  tool results are appended by addLibraryItem (Tahap 3.6) and persist
+ *  across restarts. */
 let librarySeq = 1000;
 export const libraryItems = writable<LibraryItem[]>(
-  loadList<LibraryItem>("minime.library", () => librarySeed.map((i) => ({ ...i }))),
+  loadList<LibraryItem>("minime.library", () => []),
 );
 persistList("minime.library", libraryItems);
 for (const i of get(libraryItems)) {
@@ -1387,20 +1367,10 @@ function persistList<T>(key: string, store: Writable<T[]>) {
 
 let kanbanSeq = 1;
 
+/** Kanban seed. Empty by default (Patria 20 Okt): no dummy cards — the user
+    creates real cards via Brief "Jadikan tugas" or the Kanban add button. */
 function seedKanban(): KanbanCard[] {
-  const day = 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const seed: KanbanCard[] = [
-    { id: kanbanSeq++, title: "Riset kompetitor kopi susu", agentId: "riset", col: "queue", projectId: "proj-a", createdAt: "18 Okt", createdAtTs: now - 1 * day },
-    { id: kanbanSeq++, title: "Draf kalender konten November", agentId: "kreatif", col: "queue", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
-    { id: kanbanSeq++, title: "Laporan arus kas Q3", agentId: "finance", col: "doing", projectId: "proj-a", createdAt: "9 Okt", createdAtTs: now - 10 * day },
-    { id: kanbanSeq++, title: "Naskah video profil perusahaan", agentId: "kreatif", col: "doing", projectId: "proj-b", createdAt: "18 Okt", createdAtTs: now - 1 * day },
-    { id: kanbanSeq++, title: "Materi kampanye Ramadhan", agentId: "kreatif", col: "approval", projectId: "proj-a", createdAt: "19 Okt", createdAtTs: now },
-    { id: kanbanSeq++, title: "Perbaiki headline brosur", agentId: "strategis", col: "revision", projectId: "proj-b", createdAt: "8 Sep", createdAtTs: now - 40 * day },
-    { id: kanbanSeq++, title: "Audit biaya iklan", agentId: "strategis", col: "done", projectId: "proj-a", createdAt: "15 Okt", createdAtTs: now - 4 * day },
-    { id: kanbanSeq++, title: "Evaluasi vendor cetak tahunan", agentId: "finance", col: "done", projectId: "proj-a", createdAt: "10 Jun", createdAtTs: now - 130 * day },
-  ];
-  return seed;
+  return [];
 }
 
 /** Backfill new card fields for cards persisted before they existed. */
@@ -1413,7 +1383,7 @@ function normalizeKanban(list: KanbanCard[]): KanbanCard[] {
   }));
 }
 
-/** Kanban cards (mock, persisted). */
+/** Kanban cards (persisted). Created by the user via Brief or the board. */
 export const kanbanCards = writable<KanbanCard[]>(
   normalizeKanban(loadList("minime.kanban", seedKanban)),
 );
@@ -1689,10 +1659,6 @@ function saveFlowMap(): void {
   } catch {
     /* ignore */
   }
-}
-
-function seedProject(id: string, name: string): FlowProject {
-  return { id, name };
 }
 
 /** All projects, shared by the Connection canvas, the Kanban filter, and
