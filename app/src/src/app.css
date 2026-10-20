@@ -83,10 +83,16 @@ body {
 
 /* Dropdowns & native selects stay SOLID (Patria 20 Okt): transparent
    backgrounds make their text unreadable. */
-select,
-.dropdown,
-.menu {
-  background: var(--panel-solid, var(--panel));
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] .dropdown,
+:root[data-theme="dark"] .menu,
+:root[data-theme="dark"] .model-panel,
+:root[data-theme="dark"] .msg-menu,
+:root[data-theme="dark"] .popover,
+:root[data-theme="dark"] .tooltip {
+  background: #1a1d22;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 h1, h2, h3 { margin: 0; font-weight: 700; }
