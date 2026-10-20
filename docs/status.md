@@ -1541,3 +1541,16 @@ evaluasi AgentShield ❌.
   error di UI (tidak lagi diam-diam).
 - Berlaku untuk Pireel dan Google Drive. cargo check 0, test 32/32.
 - Status: menunggu Patria klik "Hubungkan Pireel" sekali lagi dari aplikasi.
+
+## 21 Okt 2026 ~06:15 — FIX KEYCHAIN FALLBACK (security CLI)
+
+- Gejala lanjutan: setelah fix thread, UI menampilkan error jujur "keychain
+  tidak menyimpan token" — tulis via keyring tetap gagal.
+- Akar masalah: binary debug ad-hoc-signed → keyring crate fails closed
+  (sudah didokumentasikan di secrets.rs untuk provider keys).
+- Fix: `oauth_local.rs` + `security_cli_write`/`security_cli_read`;
+  `write_bundle` (Pireel + Drive) kini: coba keyring → verifikasi →
+  fallback `security add-generic-password` → verifikasi akhir. Tidak pernah
+  lapor sukses diam-diam.
+- cargo check 0, test 32/32, build debug + relaunch OK.
+- Status: menunggu Patria klik "Hubungkan Pireel" sekali lagi.
