@@ -877,12 +877,11 @@ function seedProject(id: string, name: string): FlowProject {
   return { id, name };
 }
 
-/** All projects, shared by the Connection canvas and the Kanban filter. */
+/** All projects, shared by the Connection canvas and the Kanban filter.
+    Empty by default (Patria 20 Okt): dummy projects removed; the user
+    creates the first real project themselves. */
 export const projects = writable<FlowProject[]>(
-  loadList("minime.projects", () => [
-    seedProject("proj-a", "Project A"),
-    seedProject("proj-b", "Project B"),
-  ]),
+  loadList("minime.projects", () => []),
 );
 persistList("minime.projects", projects);
 
@@ -946,7 +945,7 @@ export function initiateProject(projectId: string, assignments: { agentId: strin
 
 /** Active project on the Connection canvas. */
 export const activeFlowProjectId = writable<string>(
-  loadString("minime.flow-project-active", "proj-a"),
+  loadString("minime.flow-project-active", ""),
 );
 activeFlowProjectId.subscribe((v) => {
   try {

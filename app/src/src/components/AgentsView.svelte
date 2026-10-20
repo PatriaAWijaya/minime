@@ -18,6 +18,7 @@
     agentAge,
     agentHobbies,
     agentInstructions,
+    agentEnabled,
     agentModel,
     agentNames,
     agentNotify,
@@ -137,13 +138,18 @@
     taskAdded = true;
   }
 
-  // Task folders: agents grouped into collapsible folders
+  // Task folders: agents grouped into collapsible folders.
+  // Only enabled agents are listed (Patria 20 Okt): by default only the
+  // main agent (Mimi) appears; others appear once activated.
+  const isVisible = (a: Agent) => a.id === "mimi" || ($agentEnabled[a.id] ?? false);
   const groupedIds = $derived(
     new Set($taskFolders.flatMap((f) => f.agentIds)),
   );
-  const looseAgents = $derived(allAgents.filter((a) => !groupedIds.has(a.id)));
+  const looseAgents = $derived(
+    allAgents.filter((a) => !groupedIds.has(a.id) && isVisible(a)),
+  );
   function folderAgents(f: TaskFolder): Agent[] {
-    return allAgents.filter((a) => f.agentIds.includes(a.id));
+    return allAgents.filter((a) => f.agentIds.includes(a.id) && isVisible(a));
   }
   function folderName(f: TaskFolder): string {
     return f.num ? $t(f.nameKey, { n: String(f.num) }) : $t(f.nameKey);
