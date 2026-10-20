@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod db;
+mod island;
 mod providers;
 mod secrets;
 mod skills;
@@ -212,6 +213,7 @@ fn main() {
     builder
         .manage(database)
         .manage(tools::ToolRegistry::new())
+        .manage(island::IslandState(std::sync::Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
@@ -229,6 +231,9 @@ fn main() {
             tools::get_agent_tools,
             tools::set_agent_tools,
             tools::agent_can_use_tool,
+            island::island_sync,
+            island::island_get_state,
+            island::island_haptic,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

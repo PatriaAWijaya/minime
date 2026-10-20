@@ -7,7 +7,29 @@
   import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
   import SettingsView from "./components/SettingsView.svelte";
-  import { activeView, refreshProviders, theme, type Theme } from "./lib/store";
+  import IslandView from "./components/IslandView.svelte";
+  import {
+    activeServer,
+    activeView,
+    agentStatus,
+    isTauri,
+    kanbanCards,
+    profileStore,
+    refreshProviders,
+    settingsPrefs,
+    syncIsland,
+    theme,
+    type IslandPayload,
+    type Theme,
+  } from "./lib/store";
+  import { t } from "./lib/i18n";
+
+  /** The Dynamic Island window loads the same bundle with ?view=island. */
+  const isIsland =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("view") === "island";
+
+  let islandAttention = $state(0);
 
   /** Apply the effective theme to <html> as data-theme="dark"|"light". */
   function applyTheme(t: Theme) {
@@ -21,6 +43,62 @@
   // Re-apply whenever the theme setting changes.
   $effect(() => applyTheme($theme));
 
+  // Dynamic Island: compose the payload from the live stores and push it
+  // to the backend whenever agents, cards, prefs or the server change.
+  $effect(() => {
+    if (isIsland) return;
+    const prefs = $settingsPrefs;
+    const working = Object.values($agentStatus).filter(
+      (s) => s === "working",
+    ).length;
+    const attentionAgents = Object.values($agentStatus).filter(
+      (s) => s === "attention",
+    ).length;
+    const approvalCards = $kanbanCards.filter(
+      (c) => c.col === "approval",
+    ).length;
+    const attention = attentionAgents + approvalCards;
+    islandAttention = attention;
+    const serverShown =
+      prefs.islandServers[$activeServer] ?? prefs.islandFutureServers;
+    const hasStatus = serverShown && (working > 0 || attention > 0);
+    const mode = !prefs.islandNotch
+      ? "off"
+      : hasStatus
+        ? "status"
+        : prefs.islandIdle
+          ? "idle"
+          : "off";
+    const name = $profileStore.name.trim();
+    const firstName = name ? name.split(" ")[0] : "";
+    const serverKey =
+      $activeServer === "local"
+        ? "server.local"
+        : $activeServer === "cloud"
+          ? "server.cloud"
+          : "server.independent";
+    const payload: IslandPayload = {
+      notch: prefs.islandNotch,
+      idle: prefs.islandIdle,
+      extraDisplays: prefs.islandExtra,
+      haptics: prefs.islandHaptics,
+      position: prefs.islandPosition,
+      widthPct: prefs.islandWidth,
+      heightPct: prefs.islandHeight,
+      mode,
+      title:
+        mode === "status"
+          ? attention > 0
+            ? `${attention} ${$t("island.attention")}`
+            : `${working} ${$t("island.working")}`
+          : `${$t("island.hello")}${firstName ? `, ${firstName}` : ""}`,
+      sub: mode === "status" ? $t(serverKey) : $t("island.idle.sub"),
+      attention: attention > 0,
+      logoColor: prefs.logoColor,
+    };
+    void syncIsland(payload);
+  });
+
   onMount(() => {
     // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
     // model Ollama dinamis + status Penyedia Model).
@@ -31,10 +109,33 @@
       if ($theme === "system") applyTheme("system");
     };
     mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    // Clicking the Dynamic Island brings this window forward: to Tasks
+    // when something needs approval, otherwise to Agents.
+    let unlisten: (() => void) | undefined;
+    if (!isIsland) {
+      void (async () => {
+        if (!(await isTauri())) return;
+        const { listen } = await import("@tauri-apps/api/event");
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        unlisten = await listen("island-activated", async () => {
+          activeView.set(islandAttention > 0 ? "tasks" : "agents");
+          const win = getCurrentWindow();
+          await win.show().catch(() => {});
+          await win.unminimize().catch(() => {});
+          await win.setFocus().catch(() => {});
+        });
+      })();
+    }
+    return () => {
+      mq.removeEventListener("change", onChange);
+      unlisten?.();
+    };
   });
 </script>
 
+{#if isIsland}
+  <IslandView />
+{:else}
 <div class="layout">
   <IconSidebar />
   <main class="content">
@@ -55,6 +156,7 @@
     {/if}
   </main>
 </div>
+{/if}
 
 <style>
   .layout {

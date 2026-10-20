@@ -19,6 +19,8 @@
     settingsPrefs,
     setPref,
     profileStore,
+    serverList,
+    islandStatus,
     theme,
     toggleCustomProvider,
     toggleProvider,
@@ -500,23 +502,146 @@
       </div>
     {:else if category === "island"}
       <h2>{$t("set.cat.island")}</h2>
-      <h3 class="sec-title">{$t("set.sec.island")}</h3>
+
+      <h3 class="sec-title">{$t("island.sec.behavior")}</h3>
       <div class="card">
-        {@render switchRow("islandEnabled", "set.island.enabled", "set.island.enabled.desc")}
+        {@render switchRow("islandNotch", "island.notch", "island.notch.desc")}
+        {@render switchRow("islandIdle", "island.idle", "island.idle.desc")}
+        {@render switchRow("islandExtra", "island.extra", "island.extra.desc")}
+        {@render switchRow("islandHaptics", "island.haptics", "island.haptics.desc")}
         <div class="srow">
           <div class="srow-meta">
-            <span class="srow-label">{$t("set.island.position")}</span>
-            <span class="srow-desc">{$t("set.island.position.desc")}</span>
+            <span class="srow-label">{$t("island.position")}</span>
+            <span class="srow-desc">{$t("island.position.desc")}</span>
           </div>
           <select
             class="sselect"
             value={$settingsPrefs.islandPosition}
             onchange={(e) => setPref("islandPosition", (e.currentTarget as HTMLSelectElement).value as "top" | "bottom")}
-            aria-label={$t("set.island.position")}
+            aria-label={$t("island.position")}
           >
             <option value="top">{$t("set.pos.top")}</option>
             <option value="bottom">{$t("set.pos.bottom")}</option>
           </select>
+        </div>
+      </div>
+
+      <h3 class="sec-title">{$t("island.sec.servers")}</h3>
+      <p class="lede">{$t("island.servers.desc")}</p>
+      <div class="card">
+        {#each $serverList as kind (kind)}
+          <div class="srow">
+            <span
+              class="server-tile"
+              style:background={kind === "local"
+                ? "linear-gradient(135deg,#B7E33C,#3FA7D6)"
+                : kind === "cloud"
+                  ? "linear-gradient(135deg,#6CA8D9,#7A5FD0)"
+                  : "linear-gradient(135deg,#D98AB5,#7A5FD0)"}
+              aria-hidden="true"
+            ></span>
+            <div class="srow-meta">
+              <span class="srow-label">
+                {$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
+              </span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                checked={$settingsPrefs.islandServers[kind] ?? $settingsPrefs.islandFutureServers}
+                onchange={(e) =>
+                  setPref("islandServers", {
+                    ...$settingsPrefs.islandServers,
+                    [kind]: (e.currentTarget as HTMLInputElement).checked,
+                  })}
+                aria-label={$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
+              />
+              <span class="track" aria-hidden="true"></span>
+            </label>
+          </div>
+        {/each}
+        {@render switchRow("islandFutureServers", "island.future", "island.future.desc")}
+      </div>
+
+      <div class="sec-head">
+        <h3 class="sec-title">{$t("island.sec.size")}</h3>
+        <button
+          class="link-btn"
+          onclick={() => {
+            setPref("islandWidth", 100);
+            setPref("islandHeight", 100);
+          }}
+        >
+          {$t("island.reset")}
+        </button>
+      </div>
+      <p class="lede">{$t("island.size.desc")}</p>
+      <div class="card">
+        <div class="island-previews">
+          <div class="preview-box">
+            <div class="preview-pill">
+              <span class="ptile" style:background={$settingsPrefs.logoColor}>M</span>
+              <span class="pfill"></span>
+              <span aria-hidden="true">🙂</span>
+            </div>
+            <span class="preview-cap">{$t("island.display.builtin")}</span>
+          </div>
+          <div class="preview-box">
+            <div class="preview-pill">
+              <span class="ptile" style:background={$settingsPrefs.logoColor}>M</span>
+              <span class="pfill"></span>
+              <span aria-hidden="true">🙂</span>
+            </div>
+            <span class="preview-cap">{$t("island.display.external")}</span>
+          </div>
+        </div>
+        <div class="srow col">
+          <div class="slider-head">
+            <span class="srow-label">{$t("island.width")}</span>
+            <span class="slider-val">{$settingsPrefs.islandWidth}%</span>
+          </div>
+          <input
+            class="slider"
+            type="range"
+            min="60"
+            max="140"
+            step="5"
+            value={$settingsPrefs.islandWidth}
+            oninput={(e) => setPref("islandWidth", Number((e.currentTarget as HTMLInputElement).value))}
+            aria-label={$t("island.width")}
+          />
+        </div>
+        <div class="srow col">
+          <div class="slider-head">
+            <span class="srow-label">{$t("island.height")}</span>
+            <span class="slider-val">{$settingsPrefs.islandHeight}%</span>
+          </div>
+          <input
+            class="slider"
+            type="range"
+            min="60"
+            max="140"
+            step="5"
+            value={$settingsPrefs.islandHeight}
+            oninput={(e) => setPref("islandHeight", Number((e.currentTarget as HTMLInputElement).value))}
+            aria-label={$t("island.height")}
+          />
+        </div>
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">{$t("island.status")}</span>
+            <span class="srow-desc">
+              {#if $islandStatus}
+                {$islandStatus.mode === "off"
+                  ? $t("island.mode.off")
+                  : $islandStatus.mode === "idle"
+                    ? $t("island.mode.idle")
+                    : $t("island.mode.status")} · {$islandStatus.displays} {$t("island.displays")}
+              {:else}
+                —
+              {/if}
+            </span>
+          </div>
         </div>
       </div>
     {:else if category === "computer"}
@@ -1120,6 +1245,90 @@
   font-size: 14px;
 }
 .key-saved { flex: 1; font-size: 13.5px; color: var(--ok); }
+/* ---------- Dynamic Island settings ---------- */
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 22px;
+}
+.sec-head .sec-title { margin: 0; }
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--dim);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--text); }
+.server-tile {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  flex: none;
+}
+.island-previews {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px 0 6px;
+}
+.preview-box {
+  background: var(--panel-2);
+  border-radius: 12px;
+  padding: 18px 12px 10px;
+  text-align: center;
+}
+.preview-pill {
+  margin: 0 auto;
+  width: 82%;
+  height: 34px;
+  border-radius: 999px;
+  background: #0a0a0c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 6px;
+  box-sizing: border-box;
+}
+.preview-pill .ptile {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #14100e;
+  flex: none;
+}
+.preview-pill .pfill { flex: 1; }
+.preview-cap {
+  display: block;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.srow.col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.slider-val { font-size: 13.5px; color: var(--dim); font-weight: 600; }
+.slider {
+  width: 100%;
+  height: 28px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
 .lede.ok { color: var(--ok); }
 @media (max-width: 900px) {
   .settings-layout { grid-template-columns: 230px minmax(0, 1fr); }

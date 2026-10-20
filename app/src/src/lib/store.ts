@@ -529,6 +529,52 @@ export async function fetchAgentCanUseTool(agentId: string, toolId: string): Pro
 /* ---------- Native notifications (Phase 3.2: approval gate) ---------- */
 
 /** Send a native OS notification via the Rust backend. No-op in browser. */
+/* ---------- Dynamic Island sync (Settings > Dynamic Island) ----------
+   The main window composes the island payload (mode, texts, config) and
+   sends it to the Rust `island_sync` command, which shows/hides/positions
+   the real floating island window(s) and forwards the state to them. */
+
+/** Live island state reported back by the backend (for the settings page). */
+export const islandStatus = writable<{ mode: string; displays: number } | null>(
+  null,
+);
+
+export interface IslandPayload {
+  notch: boolean;
+  idle: boolean;
+  extraDisplays: boolean;
+  haptics: boolean;
+  position: string;
+  widthPct: number;
+  heightPct: number;
+  mode: string;
+  title: string;
+  sub: string;
+  attention: boolean;
+  logoColor: string;
+}
+
+export async function syncIsland(payload: IslandPayload): Promise<void> {
+  try {
+    const res = await tauriInvoke<{ mode: string; displays: number }>(
+      "island_sync",
+      { payload },
+    );
+    if (res) islandStatus.set(res);
+  } catch {
+    /* island unavailable — never block the app */
+  }
+}
+
+/** Fetch the last island payload (the island window asks on mount). */
+export async function fetchIslandState(): Promise<IslandPayload | null> {
+  try {
+    return await tauriInvoke<IslandPayload>("island_get_state");
+  } catch {
+    return null;
+  }
+}
+
 export async function sendNotification(title: string, body: string): Promise<void> {
   try {
     await tauriInvoke("send_notification", { title, body });
@@ -797,8 +843,15 @@ export interface SettingsPrefs {
   dictationLang: string;
   dictationDownloads: string[];
   elevenlabsKeySaved: boolean;
-  islandEnabled: boolean;
+  islandNotch: boolean;
+  islandIdle: boolean;
+  islandExtra: boolean;
+  islandHaptics: boolean;
   islandPosition: "top" | "bottom";
+  islandServers: Record<string, boolean>;
+  islandFutureServers: boolean;
+  islandWidth: number;
+  islandHeight: number;
   computerBrowser: boolean;
   computerHidden: boolean;
   computerMirror: boolean;
@@ -826,8 +879,15 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   dictationLang: "auto",
   dictationDownloads: [],
   elevenlabsKeySaved: false,
-  islandEnabled: false,
+  islandNotch: true,
+  islandIdle: true,
+  islandExtra: true,
+  islandHaptics: true,
   islandPosition: "top",
+  islandServers: {},
+  islandFutureServers: true,
+  islandWidth: 100,
+  islandHeight: 100,
   computerBrowser: true,
   computerHidden: false,
   computerMirror: true,

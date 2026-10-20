@@ -13,6 +13,20 @@
         "resizable": true,
         "title": "Minime",
         "width": 1280
+      },
+      {
+        "alwaysOnTop": true,
+        "decorations": false,
+        "height": 56,
+        "label": "island",
+        "resizable": false,
+        "shadow": false,
+        "skipTaskbar": true,
+        "title": "Minime Island",
+        "transparent": true,
+        "url": "index.html?view=island",
+        "visible": false,
+        "width": 400
       }
     ]
   },
