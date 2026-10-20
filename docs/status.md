@@ -1030,3 +1030,22 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
   footer "Minime · N skill" dari katalog backend LANGSUNG, tombol "Buka" →
   pindah ke tab Agen. Search + Filter (A–Z/Z–A) tetap jalan.
 - Subtitle tab: "Agen, aplikasi, dan skill yang benar-benar bekerja di Minime."
+
+## 20 Okt 2026 ~16:00 — Tahap 3.4 Pireel: koneksi NYATA via OAuth 2.1 (SELESAI, teruji)
+- Riset: endpoint `https://pireel.com/api/studio/mcp` mendukung OAuth 2.1 standar
+  (discovery `.well-known/oauth-authorization-server` + `oauth-protected-resource`
+  TERVERIFIKASI live; dynamic client registration + PKCE S256, bearer via header).
+  Tidak ada personal token untuk klien pihak ketiga — OAuth satu-satunya jalur resmi.
+- Backend baru `app/src-tauri/src/pireel.rs`: `pireel_connect_url` (registrasi klien
+  dinamis → buka browser sistem → callback localhost → tukar kode → simpan token di
+  OS Keychain), `pireel_oauth_poll`, `pireel_status` (cek GRATIS via `get_state` —
+  tidak memotong kredit; hasil: live/offline/fresh), `pireel_disconnect`.
+  Tiap user konek akun Pireel-nya sendiri; tanpa token status = "not_connected".
+- Frontend: kartu Pireel di Tools > Apps diganti alur nyata (Hubungkan → tunggu login
+  browser → badge status + info → Putuskan); 13 kunci i18n `mkt.pireel.*` ×3 paritas.
+- Uji MacBook: cargo check 0/0, test 15/15 (termasuk jalur tanpa-token gagal bersih),
+  vite build lolos, debug build lolos, app idle CPU 0,2% / RAM 114 MB.
+- BELUM diuji ujung-ke-ujung dengan akun sungguhan (sengaja): Patria perlu hubungkan
+  akun Free-nya sendiri lewat tombol "Hubungkan Pireel" di aplikasi.
+- Commit: fe5dfac↔c652c8e, 992c1c6↔d2e43c4, 08ebae6↔65fddc4, d40e860↔5d40d88,
+  21f354e↔96588e7, e3d85e6↔f9ae57f.
