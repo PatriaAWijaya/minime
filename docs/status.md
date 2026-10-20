@@ -1309,3 +1309,16 @@ store `projects` yang sama (folder = project).
 sukses, relaunch PID 57430 fresh, CPU idle 0,1–0,9%, RAM 105 MB.
 
 **Push:** lokal dd0793c ↔ remote ede2964 (tree identik).
+
+## 20 Okt 2026 ~19:40 — × hapus selalu tampil (perintah Patria)
+
+× penghapus folder (tab Agen) dan tab project (Koneksi) kini SELALU tampil —
+sebelumnya disembunyikan saat tinggal 1 project. `removeFlowProject`
+diperbarui: menghapus project terakhir otomatis membuatkan project kosong
+baru ("Project baru") agar aplikasi tidak pernah nol project. Hapus dua arah
+tetap: dari folder atau dari Koneksi, keduanya terhapus.
+
+**Verifikasi:** cargo 0/0, vite lolos. Build debug MacBook sukses, relaunch
+PID 58229 fresh, CPU idle 0,9–1,2%, RAM 98 MB.
+
+**Push:** lokal 9d116f9 ↔ remote c280c4b (tree identik).
