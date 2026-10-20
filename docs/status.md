@@ -1110,3 +1110,18 @@ Patria kirim 17 screenshot OpenBot + spesifikasi redesign; arah diterima penuh.
 - Tools: tab Agen + dialog skill kini menampilkan SEMUA agen nyata (6 bawaan +
   custom user) — revisi aturan "hanya 6" karena agen custom kini first-class;
   jumlah skill per kartu dari katalog backend langsung.
+
+## 20 Okt 2026 ~18:00 — Insiden tabrakan commit 3.6 × refactor folder (SELESAI)
+- Commit 3.6 `8c2e343` tanpa sengaja mengikutkan refactor folder milik sesi
+  paralel yang belum di-commit (taskFolders → folderOpen di store.ts), sementara
+  AgentsView.svelte versi lama (impor taskFolders) tidak ikut — remote master
+  sempat tidak bisa di-build (vite: "taskFolders is not exported").
+- Penyelesaian: sesi paralel me-rebase commitnya (folder = project, folderOpen)
+  di atas commit 3.6 dan push `9680cd2`; tree lokal f4b8f0a identik dengan
+  remote 9680cd2; vite build lolos lagi.
+- Pelajaran: sebelum `git add` file yang juga disentuh sesi paralel, cek
+  `git diff` dulu — jangan stage file utuh secara buta.
+- Verifikasi akhir 3.6 di MacBook: cargo check 0/0, cargo test 30/30, vite build
+  lolos, `tauri build --debug` sukses (Minime.app 53,75 MiB + DMG 14,25 MiB),
+  bundle-skills.sh dijalankan. Smoke-test launch GUI via SSH tidak konklusif
+  (tanpa display); uji klik visual tetap menunggu Patria.
