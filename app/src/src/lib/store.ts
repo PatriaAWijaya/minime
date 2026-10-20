@@ -628,6 +628,24 @@ export async function pireelRefreshStatus(): Promise<void> {
   }
 }
 
+/** Create a dummy Pireel project (Patria 21 Okt: end-to-end test). */
+export const pireelProjectResult = writable<string | null>(null);
+export const pireelProjectBusy = writable(false);
+export async function pireelCreateProject(): Promise<void> {
+  pireelProjectBusy.set(true);
+  pireelProjectResult.set(null);
+  try {
+    const r = await tauriInvoke<string>("pireel_create_project", {
+      title: "Minime Dummy Project",
+    });
+    pireelProjectResult.set(r ?? "ok");
+  } catch (e) {
+    pireelProjectResult.set(`gagal: ${e}`);
+  } finally {
+    pireelProjectBusy.set(false);
+  }
+}
+
 /** Disconnect: tokens removed from the OS keychain. */
 export async function pireelDisconnect(): Promise<void> {
   try {

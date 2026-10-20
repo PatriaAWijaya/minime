@@ -667,6 +667,49 @@ pub fn pireel_disconnect() -> Result<(), String> {
     delete_bundle()
 }
 
+/// Create a new Pireel cloud project via MCP `create_project` (Patria 21 Okt).
+#[tauri::command]
+pub async fn pireel_create_project(title: String) -> Result<String, String> {
+    let title = title.trim();
+    if title.is_empty() {
+        return Err("judul project kosong".to_string());
+    }
+    let token = valid_access_token().await?;
+    // MCP handshake first (stateless server).
+    let _ = rpc_call(
+        &token,
+        "initialize",
+        Some(serde_json::json!({
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": { "name": "minime", "version": "0.1.0" }
+        })),
+    )
+    .await?;
+    let result = rpc_call(
+        &token,
+        "tools/call",
+        Some(serde_json::json!({
+            "name": "create_project",
+            "arguments": { "title": title }
+        })),
+    )
+    .await?;
+    let text = result
+        .get("content")
+        .and_then(|c| c.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|b| b.get("text"))
+        .and_then(|t| t.as_str())
+        .unwrap_or("")
+        .to_string();
+    if text.is_empty() {
+        Ok(format!("project \"{title}\" dibuat"))
+    } else {
+        Ok(text.chars().take(300).collect())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Unit tests
 // ---------------------------------------------------------------------------

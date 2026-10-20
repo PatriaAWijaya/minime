@@ -167,6 +167,14 @@ async fn dispatch(
             let url = args.get("url").cloned().unwrap_or_default();
             browser_fetch(&url).await
         }
+        ("pireel", "create_project") => {
+            let title = args.get("title").cloned().unwrap_or_default();
+            let r = crate::pireel::pireel_create_project(title).await?;
+            Ok(ToolRunResult::ok(
+                format!("Project Pireel dibuat: {r}"),
+                serde_json::json!({ "result": r }),
+            ))
+        }
         ("drive", "upload") => {
             let file_name = args.get("file_name").cloned().unwrap_or_default();
             let content_base64 = args.get("content_base64").cloned().unwrap_or_default();
@@ -186,7 +194,7 @@ fn implemented_for(registry: &ToolRegistry, agent_id: &str) -> Vec<String> {
     registry
         .allowed_tools(agent_id)
         .into_iter()
-        .filter(|t| matches!(t.as_str(), "browser" | "drive"))
+        .filter(|t| matches!(t.as_str(), "browser" | "drive" | "pireel"))
         .collect()
 }
 

@@ -25,6 +25,9 @@
     pireelPollOAuth,
     pireelRefreshStatus,
     pireelDisconnect,
+    pireelCreateProject,
+    pireelProjectResult,
+    pireelProjectBusy,
     driveStatus,
     driveOAuth,
     driveOAuthError,
@@ -380,10 +383,20 @@
                     {$t(`mkt.pireel.status.${$pireelStatus.detail}`)}
                   </span>
                   <div class="ra-actions">
+                    <button
+                      class="btn-ghost"
+                      onclick={pireelCreateProject}
+                      disabled={$pireelProjectBusy}
+                    >
+                      {$pireelProjectBusy ? "..." : $t("mkt.pireel.dummy")}
+                    </button>
                     <button class="btn-ghost" onclick={pireelDisconnect}>
                       {$t("mkt.pireel.disconnect")}
                     </button>
                   </div>
+                  {#if $pireelProjectResult}
+                    <span class="ok-note" role="status">{$pireelProjectResult}</span>
+                  {/if}
                 {:else if $pireelOAuth === "pending"}
                   <span class="warn-note" role="status">{$t("mkt.pireel.waiting")}</span>
                   <div class="ra-actions">

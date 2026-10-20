@@ -511,6 +511,7 @@ fn main() {
             pireel::pireel_oauth_poll,
             pireel::pireel_status,
             pireel::pireel_disconnect,
+            pireel::pireel_create_project,
             drive::drive_connect_url,
             drive::drive_oauth_poll,
             drive::drive_status,
