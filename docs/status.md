@@ -1292,3 +1292,20 @@ pipe — kemungkinan MacBook sleep / Tailscale putus). Kode sudah terpush
 menyusul setelah mesin terjangkau.
 
 **Push:** lokal 5a36db8 ↔ remote d73dd9e (tree identik).
+
+## 20 Okt 2026 ~19:35 — Label "Agent List" + simbol × hapus folder
+
+Menu "+" tab Agen: seksi "Tambah dari bawaan Minime" diganti labelnya menjadi
+**"Agent List"** (3 bahasa). Icon hapus folder diganti dari tempat sampah
+menjadi **×** agar lebih jelas.
+
+Catatan: dua instruksi Patria berikut TERNYATA SUDAH ADA sejak sebelumnya
+(terverifikasi di kode, tanpa ubahan): (1) tiap tab project di Koneksi sudah
+punya tombol × (.proj-del); (2) hapus project di Koneksi otomatis menghapus
+folder di Agen dan sebaliknya — keduanya memanggil `removeFlowProject` pada
+store `projects` yang sama (folder = project).
+
+**Verifikasi:** cargo 0/0, vite lolos, i18n paritas. Build debug MacBook
+sukses, relaunch PID 57430 fresh, CPU idle 0,1–0,9%, RAM 105 MB.
+
+**Push:** lokal dd0793c ↔ remote ede2964 (tree identik).
