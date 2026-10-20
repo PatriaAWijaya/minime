@@ -24,6 +24,13 @@
     fetchSystemPermissions,
     openPrivacySettings,
     type SystemPermissions,
+    fetchDeviceInfo,
+    type DeviceInfo,
+    addServer,
+    agentStatus,
+    updateInfo,
+    checkForUpdate,
+    restartApp,
     theme,
     toggleCustomProvider,
     toggleProvider,
@@ -114,14 +121,199 @@
     if (category === "computer") void refreshPerms();
   });
 
-  /* ---------- Mobile Connect pairing code ---------- */
-  let pairCode = $state("");
-  function regenPairCode() {
-    pairCode = String(Math.floor(100000 + Math.random() * 900000));
-  }
-  regenPairCode();
+  /* ---------- Profile: photo, sign-out, device session ---------- */
+  let photoInput = $state<HTMLInputElement | null>(null);
+  let emailDraft = $state("");
+  let signOutArm = $state(false);
+  let deviceInfo = $state<DeviceInfo | null>(null);
+  let lastActive = $state(Date.now());
 
-  let checkedUpdates = $state(false);
+  const initials = $derived.by(() => {
+    const n = $profileStore.name.trim();
+    if (n) {
+      const parts = n.split(/\s+/);
+      return (
+        parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")
+      ).toUpperCase();
+    }
+    const e = $profileStore.email.trim();
+    return e ? e[0].toUpperCase() : "M";
+  });
+
+  // Pick a photo, downscale it to a 128px square JPEG data URL, store it.
+  function onPhotoChosen(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        profileStore.update((p) => ({
+          ...p,
+          photo: canvas.toDataURL("image/jpeg", 0.85),
+        }));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removePhoto() {
+    profileStore.update((p) => ({ ...p, photo: "" }));
+  }
+
+  function saveEmail() {
+    const v = emailDraft.trim();
+    if (!v) return;
+    profileStore.update((p) => ({ ...p, email: v }));
+    emailDraft = "";
+  }
+
+  // Two-step sign out: the first click arms, the second clears the local
+  // identity (name, email, photo) from this device.
+  function onSignOut() {
+    if (!signOutArm) {
+      signOutArm = true;
+      setTimeout(() => (signOutArm = false), 3000);
+      return;
+    }
+    signOutArm = false;
+    profileStore.update((p) => ({ ...p, name: "", email: "", photo: "" }));
+  }
+
+  async function refreshSession() {
+    lastActive = Date.now();
+    deviceInfo = await fetchDeviceInfo();
+  }
+  $effect(() => {
+    if (category === "profile") void refreshSession();
+  });
+
+  function fmtDate(ts: number): string {
+    if (!ts) return "—";
+    const loc = $lang === "zh" ? "zh-CN" : $lang === "en" ? "en-US" : "id-ID";
+    return new Intl.DateTimeFormat(loc, {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    }).format(new Date(ts));
+  }
+
+  /* ---------- Billing: add-server chooser ---------- */
+  let showAddServer = $state(false);
+
+  /* ---------- Updates: check on open, install when idle ---------- */
+  let showWhatsNew = $state(false);
+  let updNote = $state("");
+  $effect(() => {
+    if (category === "updates") void checkForUpdate();
+  });
+  function installWhenIdle() {
+    if (!$updateInfo?.update_available) {
+      updNote = $t("upd.note.noupdate");
+      return;
+    }
+    const anyWorking = Object.values($agentStatus).some((s) => s === "working");
+    if (anyWorking) {
+      updNote = $t("upd.note.busy");
+      return;
+    }
+    void restartApp();
+  }
+
+  /* ---------- Mobile Connect: QR, one-time codes, permanent link ---------- */
+  let mobilePlatform = $state<"ios" | "android">("ios");
+  let copiedWhich = $state<string | null>(null);
+
+  function randomToken(len: number): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const arr = new Uint32Array(len);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, (n) => chars[n % chars.length]).join("");
+  }
+
+  async function makeQr(text: string): Promise<string> {
+    if (!text) return "";
+    try {
+      const mod = await import("qrcode");
+      const qr = (mod as { default?: typeof mod }).default ?? mod;
+      return await qr.toDataURL(text, { width: 240, margin: 1 });
+    } catch {
+      return "";
+    }
+  }
+
+  async function copyText(text: string, which: string) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copiedWhich = which;
+      setTimeout(() => (copiedWhich = null), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  // The permanent link doubles as the install invite link (card 1).
+  const permanentLink = $derived(
+    $settingsPrefs.mobileLinkToken
+      ? `minime://connect?token=${$settingsPrefs.mobileLinkToken}`
+      : "",
+  );
+  let inviteQr = $state("");
+  $effect(() => {
+    if (category !== "mobile") return;
+    if (!$settingsPrefs.mobileLinkToken) {
+      setPref("mobileLinkToken", randomToken(24));
+      return;
+    }
+    void makeQr(permanentLink).then((u) => (inviteQr = u));
+  });
+
+  function generatePermanent() {
+    setPref("mobileLinkToken", randomToken(24));
+  }
+  function revokePermanent() {
+    setPref("mobileLinkToken", "");
+    inviteQr = "";
+  }
+
+  // One-time sign-in code: valid for two minutes, single use — generating
+  // a new one invalidates the previous code.
+  let oneTime = $state<{ code: string; expiresAt: number } | null>(null);
+  let oneTimeQr = $state("");
+  let oneTimeLeft = $state(0);
+  const oneTimeLink = $derived(
+    oneTime ? `minime://connect?code=${oneTime.code}` : "",
+  );
+  let oneTimeTimer: ReturnType<typeof setInterval> | undefined;
+  function generateOneTime() {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    oneTime = { code, expiresAt: Date.now() + 120_000 };
+    oneTimeLeft = 120;
+    void makeQr(`minime://connect?code=${code}`).then((u) => (oneTimeQr = u));
+    if (oneTimeTimer) clearInterval(oneTimeTimer);
+    oneTimeTimer = setInterval(() => {
+      if (!oneTime) return;
+      oneTimeLeft = Math.max(
+        0,
+        Math.round((oneTime.expiresAt - Date.now()) / 1000),
+      );
+      if (oneTimeLeft <= 0 && oneTimeTimer) clearInterval(oneTimeTimer);
+    }, 500);
+  }
+
   let scanning = $state(false);
   let showProvDialog = $state(false);
   let provName = $state("");
@@ -723,12 +915,13 @@
       </div>
     {:else if category === "profile"}
       <h2>{$t("set.cat.profile")}</h2>
-      <h3 class="sec-title">{$t("set.sec.profile")}</h3>
+
+      <h3 class="sec-title">{$t("prof.sec.identity")}</h3>
       <div class="card">
         <div class="srow">
           <div class="srow-meta">
-            <span class="srow-label">{$t("set.profile.name")}</span>
-            <span class="srow-desc">{$t("set.profile.name.desc")}</span>
+            <span class="srow-label">{$t("prof.display")}</span>
+            <span class="srow-desc">{$t("prof.display.desc")}</span>
           </div>
           <input
             class="sinput"
@@ -736,27 +929,136 @@
             value={$profileStore.name}
             oninput={(e) => profileStore.update((p) => ({ ...p, name: (e.currentTarget as HTMLInputElement).value }))}
             placeholder="Patria A. Wijaya"
-            aria-label={$t("set.profile.name")}
+            aria-label={$t("prof.display")}
           />
         </div>
         <div class="srow">
           <div class="srow-meta">
-            <span class="srow-label">{$t("set.profile.email")}</span>
-            <span class="srow-desc">{$t("set.profile.email.desc")}</span>
+            <span class="srow-label">{$t("prof.photo")}</span>
+            <span class="srow-desc">{$t("prof.photo.desc")}</span>
+          </div>
+          <div class="photo-actions">
+            {#if $profileStore.photo}
+              <button class="link-btn" onclick={removePhoto}>{$t("prof.photo.remove")}</button>
+            {/if}
+            <button
+              class="avatar-btn"
+              onclick={() => photoInput?.click()}
+              aria-label={$t("prof.photo.change")}
+              title={$t("prof.photo.change")}
+            >
+              {#if $profileStore.photo}
+                <img src={$profileStore.photo} alt="" />
+              {:else}
+                <span>{initials}</span>
+              {/if}
+            </button>
           </div>
           <input
-            class="sinput"
-            type="email"
-            value={$profileStore.email}
-            oninput={(e) => profileStore.update((p) => ({ ...p, email: (e.currentTarget as HTMLInputElement).value }))}
-            placeholder="nama@email.com"
-            aria-label={$t("set.profile.email")}
+            type="file"
+            accept="image/*"
+            bind:this={photoInput}
+            onchange={onPhotoChosen}
+            hidden
           />
+        </div>
+      </div>
+
+      <h3 class="sec-title">{$t("prof.sec.account")}</h3>
+      <div class="card">
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">Email</span>
+            <span class="srow-desc">{$t("prof.email.desc")}</span>
+          </div>
+          {#if $profileStore.email}
+            <span class="email-text">{$profileStore.email}</span>
+            <button class="btn-ghost" onclick={onSignOut}>
+              {signOutArm ? $t("prof.signout.confirm") : $t("prof.signout")}
+            </button>
+          {:else}
+            <input
+              class="sinput"
+              type="email"
+              bind:value={emailDraft}
+              placeholder="nama@email.com"
+              aria-label="Email"
+            />
+            <button class="btn-ghost" disabled={!emailDraft.trim()} onclick={saveEmail}>
+              {$t("prof.save")}
+            </button>
+          {/if}
+        </div>
+      </div>
+
+      <h3 class="sec-title">{$t("prof.sec.sessions")}</h3>
+      <p class="lede">{$t("prof.sessions.desc")}</p>
+      <button class="btn-ghost wide" onclick={refreshSession}>↻ {$t("prof.refresh")}</button>
+      <div class="card">
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">{$t("prof.desktop")} · {$t("prof.thisdevice")}</span>
+            <span class="srow-desc">
+              {deviceInfo?.name ?? "Desktop"}{deviceInfo ? ` (${deviceInfo.os})` : ""} · {$t("prof.signedin")} {fmtDate($profileStore.signedInAt)} · {$t("prof.lastactive")} {fmtDate(lastActive)}
+            </span>
+          </div>
+          <span class="perm-badge neutral">{$t("prof.thisdevice")}</span>
         </div>
       </div>
     {:else if category === "billing"}
       <h2>{$t("set.cat.billing")}</h2>
-      <h3 class="sec-title">{$t("set.sec.billing")}</h3>
+
+      <h3 class="sec-title">{$t("bill.sec.plans")}</h3>
+      <button class="btn-ghost wide" onclick={() => (showAddServer = !showAddServer)}>
+        ＋ {$t("bill.add")}
+      </button>
+      {#if showAddServer}
+        <div class="add-server-row">
+          {#each ["cloud", "independent"] as const as kind (kind)}
+            <button
+              class="btn-ghost"
+              disabled={$serverList.includes(kind)}
+              onclick={() => {
+                addServer(kind);
+                showAddServer = false;
+              }}
+            >
+              {$t(kind === "cloud" ? "server.cloud" : "server.independent")}
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <div class="card">
+        {#each $serverList as kind (kind)}
+          <div class="srow">
+            <span
+              class="server-tile"
+              style:background={kind === "local"
+                ? "linear-gradient(135deg,#B7E33C,#3FA7D6)"
+                : kind === "cloud"
+                  ? "linear-gradient(135deg,#6CA8D9,#7A5FD0)"
+                  : "linear-gradient(135deg,#D98AB5,#7A5FD0)"}
+              aria-hidden="true"
+            ></span>
+            <div class="srow-meta">
+              <span class="srow-label">
+                {$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
+              </span>
+              <span class="srow-desc">
+                {$t(kind === "local" ? "bill.local.desc" : kind === "cloud" ? "bill.cloud.desc" : "bill.independent.desc")}
+              </span>
+            </div>
+            <span class="perm-badge granted">{$t("bill.free")}</span>
+          </div>
+        {/each}
+      </div>
+      <div class="empty-box">{$t("bill.none")}</div>
+
+      <h3 class="sec-title">{$t("bill.sec.other")}</h3>
+      <p class="lede">{$t("bill.other.desc")}</p>
+      <p class="lede">{$t("bill.nohosted")}</p>
+
+      <h3 class="sec-title">{$t("bill.sec.plan")}</h3>
       <div class="card">
         <div class="srow">
           <div class="srow-meta">
@@ -768,42 +1070,207 @@
       </div>
     {:else if category === "mobile"}
       <h2>{$t("set.cat.mobile")}</h2>
-      <h3 class="sec-title">{$t("set.sec.mobile")}</h3>
+
+      <h3 class="sec-title">{$t("mob.sec.connect")}</h3>
+      <p class="lede">{$t("mob.connect.desc")}</p>
+
       <div class="card">
-        <div class="srow">
+        <div class="step-head">
+          <span class="step-badge">1</span>
           <div class="srow-meta">
-            <span class="srow-label">{$t("set.mobile.code")}</span>
-            <span class="srow-desc">{$t("set.mobile.code.desc")}</span>
+            <span class="srow-label">{$t("mob.install")}</span>
+            <span class="srow-desc">{$t("mob.install.desc")}</span>
           </div>
-          <span class="pair-code">{pairCode}</span>
+          <div class="seg-toggle" role="group" aria-label={$t("mob.install")}>
+            <button class:active={mobilePlatform === "ios"} onclick={() => (mobilePlatform = "ios")}>
+               iPhone
+            </button>
+            <button class:active={mobilePlatform === "android"} onclick={() => (mobilePlatform = "android")}>
+               Android
+            </button>
+          </div>
         </div>
-        <div class="srow">
-          <div class="srow-meta">
-            <span class="srow-label">{$t("set.mobile.regen")}</span>
-            <span class="srow-desc">{$t("set.mobile.regen.desc")}</span>
+        <div class="install-grid">
+          <div class="qr-box">
+            {#if inviteQr}
+              <img src={inviteQr} alt="QR" />
+            {/if}
           </div>
-          <button class="btn-ghost" onclick={regenPairCode}>{$t("set.mobile.regen")}</button>
+          <div class="install-info">
+            <div class="install-title">
+              <span class="srow-label">
+                {$t(mobilePlatform === "ios" ? "mob.for.iphone" : "mob.for.android")}
+              </span>
+              <span class="perm-badge neutral">{$t("mob.beta")}</span>
+            </div>
+            <p class="install-note">
+              {$t(mobilePlatform === "ios" ? "mob.ios.note" : "mob.android.note")}
+            </p>
+            <ol class="steps">
+              <li>{$t(mobilePlatform === "ios" ? "mob.step.ios1" : "mob.step.and1")}</li>
+              <li>{$t(mobilePlatform === "ios" ? "mob.step.ios2" : "mob.step.and2")}</li>
+              <li>{$t(mobilePlatform === "ios" ? "mob.step.ios3" : "mob.step.and3")}</li>
+            </ol>
+            <button class="btn-ghost" onclick={() => copyText(permanentLink, "invite")}>
+              ⧉ {copiedWhich === "invite" ? $t("mob.copied") : $t("mob.copylink")}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card step-card">
+        <div class="step-head">
+          <span class="step-badge">2.1</span>
+          <div class="srow-meta">
+            <span class="srow-label">{$t("mob.signin")}</span>
+            <span class="srow-desc">{$t("mob.signin.desc")}</span>
+          </div>
+          <button class="btn-primary" onclick={generateOneTime}>
+            {$t("mob.genqr")}
+          </button>
+        </div>
+        {#if oneTime}
+          <div class="install-grid">
+            <div class="qr-box">
+              {#if oneTimeQr}
+                <img src={oneTimeQr} alt="QR" />
+              {/if}
+            </div>
+            <div class="install-info">
+              <span class="srow-label">{$t("mob.yourcode")}</span>
+              <span class="pair-code">{oneTime.code}</span>
+              {#if oneTimeLeft > 0}
+                <p class="install-note">
+                  {$t("mob.waiting")} · {Math.floor(oneTimeLeft / 60)}:{String(oneTimeLeft % 60).padStart(2, "0")}
+                </p>
+              {:else}
+                <p class="install-note expired">{$t("mob.expired")}</p>
+              {/if}
+              <button class="btn-ghost" onclick={() => copyText(oneTimeLink, "once")}>
+                ⧉ {copiedWhich === "once" ? $t("mob.copied") : $t("mob.copylink")}
+              </button>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <div class="card step-card">
+        <div class="step-head">
+          <span class="step-badge">2.2</span>
+          <div class="srow-meta">
+            <span class="srow-label">{$t("mob.permanent")}</span>
+            <span class="srow-desc">{$t("mob.permanent.desc")}</span>
+          </div>
+          {#if $settingsPrefs.mobileLinkToken}
+            <button class="btn-ghost danger" onclick={revokePermanent}>
+              {$t("mob.revoke")}
+            </button>
+          {:else}
+            <button class="btn-primary" onclick={generatePermanent}>
+              {$t("mob.genlink")}
+            </button>
+          {/if}
+        </div>
+        {#if $settingsPrefs.mobileLinkToken}
+          <div class="perm-link-row">
+            <code class="perm-link">{permanentLink}</code>
+            <button class="btn-ghost" onclick={() => copyText(permanentLink, "perm")}>
+              ⧉ {copiedWhich === "perm" ? $t("mob.copied") : $t("mob.copylink")}
+            </button>
+          </div>
+        {/if}
+      </div>
+
+      <h3 class="sec-title">{$t("mob.devices")}</h3>
+      <div class="card">
+        <div class="device-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" /></svg>
+          <div class="srow-meta">
+            <span class="srow-label">{$t("mob.nodevices")}</span>
+            <span class="srow-desc">{$t("mob.nodevices.desc")}</span>
+          </div>
         </div>
       </div>
     {:else if category === "updates"}
       <h2>{$t("set.cat.updates")}</h2>
-      <h3 class="sec-title">{$t("set.sec.updatesec")}</h3>
+
+      <h3 class="sec-title">{$t("upd.sec")}</h3>
+      <button class="btn-ghost wide" onclick={() => (showWhatsNew = !showWhatsNew)}>
+        {$t("upd.whatsnew")}
+      </button>
+      {#if showWhatsNew}
+        <div class="card whatsnew">
+          {#if $updateInfo?.notes}
+            <pre class="release-notes">{$updateInfo.notes}</pre>
+          {:else}
+            <p class="lede">{$t("upd.norelease")}</p>
+          {/if}
+        </div>
+      {/if}
       <div class="card">
         <div class="srow">
           <div class="srow-meta">
-            <span class="srow-label">{$t("settings.version")}</span>
-            <span class="srow-desc">Minime {APP_VERSION}</span>
+            <span class="srow-label">{$t("upd.track")}</span>
+            <span class="srow-desc">
+              {$t($settingsPrefs.updateTrack === "beta" ? "upd.track.beta.desc" : "upd.track.stable.desc")}
+            </span>
           </div>
-          <button class="btn-ghost" onclick={() => (checkedUpdates = true)}>
-            {$t("settings.checkUpdates")}
+          <select
+            class="sselect"
+            value={$settingsPrefs.updateTrack}
+            onchange={(e) => {
+              setPref("updateTrack", (e.currentTarget as HTMLSelectElement).value as "stable" | "beta");
+              void checkForUpdate();
+            }}
+            aria-label={$t("upd.track")}
+          >
+            <option value="stable">Stable</option>
+            <option value="beta">Beta</option>
+          </select>
+        </div>
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">
+              {$t("upd.version")} {$updateInfo?.current ?? APP_VERSION}
+            </span>
+            <span class="srow-desc">
+              {$t($settingsPrefs.updateTrack === "beta" ? "upd.follows.beta" : "upd.follows.stable")}
+            </span>
+            {#if $updateInfo?.update_available}
+              <span class="update-ready">
+                Minime v{$updateInfo.latest} {$t("upd.ready")}
+              </span>
+            {:else if $updateInfo}
+              <span class="srow-desc">{$t("settings.upToDate")}</span>
+            {/if}
+          </div>
+          {#if $updateInfo?.update_available}
+            <button class="btn-ghost" onclick={() => restartApp()}>
+              {$t("upd.restart")}
+            </button>
+          {:else}
+            <button class="btn-ghost" onclick={() => checkForUpdate()}>
+              {$t("settings.checkUpdates")}
+            </button>
+          {/if}
+        </div>
+        <div class="srow">
+          <div class="srow-meta">
+            <span class="srow-label">{$t("upd.restartrow")}</span>
+            <span class="srow-desc">{$t("upd.restartrow.desc")}</span>
+            {#if updNote}
+              <span class="srow-desc note-warn">{updNote}</span>
+            {/if}
+          </div>
+          <button class="btn-ghost" onclick={installWhenIdle}>
+            {$t("upd.installidle")}
           </button>
         </div>
-        {@render switchRow("autoUpdate", "set.update.auto", "set.update.auto.desc")}
+        {@render switchRow("autoUpdate", "upd.auto", "upd.auto.desc")}
+        {@render switchRow("updateAutoInstall", "upd.autoinstall", "upd.autoinstall.desc")}
+        {@render switchRow("updateMembers", "upd.members", "upd.members.desc")}
       </div>
-      {#if checkedUpdates}
-        <p class="lede ok">{$t("settings.upToDate")}</p>
-      {/if}
-      <p class="lede">{$t("settings.about")}</p>
+      <p class="lede about">{$t("settings.about")}</p>
     {:else if category === "providers"}
       <h2>{$t("set.cat.providers")}</h2>
   <div class="section">
@@ -1474,6 +1941,213 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+}
+/* ---------- Profile & Billing ---------- */
+.photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  overflow: hidden;
+  background: #1f3a5f;
+  color: #7db4ff;
+  font-weight: 800;
+  font-size: 15px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+}
+.avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.email-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.btn-ghost.wide {
+  width: 100%;
+  margin: 4px 0 12px;
+}
+.empty-box {
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  padding: 26px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 14px;
+  margin-top: 14px;
+}
+.add-server-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* ---------- Mobile Connect & Updates ---------- */
+.step-card { margin-top: 16px; }
+.step-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+}
+.step-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #1f3a5f;
+  color: #7db4ff;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 2px;
+}
+.seg-toggle {
+  display: flex;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  flex: none;
+}
+.seg-toggle button {
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.seg-toggle button.active {
+  background: var(--panel);
+  color: var(--text);
+}
+.install-grid {
+  display: flex;
+  gap: 20px;
+  padding: 6px 0 16px;
+}
+.qr-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  width: 148px;
+  height: 148px;
+  flex: none;
+  box-sizing: border-box;
+}
+.qr-box img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.install-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.install-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.install-note {
+  font-size: 13.5px;
+  color: var(--dim);
+  margin: 0;
+}
+.install-note.expired { color: #ff7a70; }
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--dim);
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: none;
+}
+.btn-primary:disabled { opacity: 0.5; cursor: default; }
+.btn-ghost.danger { color: #ff7a70; }
+.perm-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 16px;
+}
+.perm-link {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--dim);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.device-empty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  color: var(--dim);
+}
+.device-empty svg { width: 22px; height: 22px; flex: none; }
+.whatsnew { margin-bottom: 14px; }
+.release-notes {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 12px 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.update-ready {
+  font-size: 13.5px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.note-warn { color: #ffb84d !important; }
+.lede.about { margin-top: 16px; }
+.lede {
+  color: var(--dim);
+  font-size: 14px;
+  margin: 0 0 10px;
 }
 .lede.ok { color: var(--ok); }
 @media (max-width: 900px) {

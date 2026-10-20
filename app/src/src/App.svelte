@@ -12,16 +12,20 @@
     activeServer,
     activeView,
     agentStatus,
+    checkForUpdate,
     isTauri,
     kanbanCards,
     profileStore,
     refreshProviders,
+    sendNotification,
     settingsPrefs,
     syncIsland,
     theme,
+    updateInfo,
     type IslandPayload,
     type Theme,
   } from "./lib/store";
+  import { get } from "svelte/store";
   import { t } from "./lib/i18n";
 
   /** The Dynamic Island window loads the same bundle with ?view=island. */
@@ -103,6 +107,18 @@
     // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
     // model Ollama dinamis + status Penyedia Model).
     refreshProviders();
+    // Automatic update check at launch (Settings > Updates toggle).
+    if (!isIsland && $settingsPrefs.autoUpdate) {
+      void checkForUpdate().then(() => {
+        const info = get(updateInfo);
+        if (info?.update_available) {
+          void sendNotification(
+            $t("upd.notify.title"),
+            `${$t("upd.notify.body")} v${info.latest}`,
+          );
+        }
+      });
+    }
     // Live response when the OS theme changes and setting = "system".
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {

@@ -239,6 +239,58 @@ fn system_permissions() -> SystemPermissions {
     }
 }
 
+/// This device's display name + OS label (Settings > Profile sessions).
+#[derive(Serialize)]
+struct DeviceInfo {
+    name: String,
+    os: String,
+}
+
+#[tauri::command]
+fn device_info() -> DeviceInfo {
+    let os_name = match std::env::consts::OS {
+        "macos" => "macOS",
+        "windows" => "Windows",
+        "linux" => "Linux",
+        other => other,
+    };
+    let name = device_name();
+    DeviceInfo {
+        name,
+        os: format!("{os_name} · {}", std::env::consts::ARCH),
+    }
+}
+
+fn device_name() -> String {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(out) = std::process::Command::new("scutil")
+            .args(["--get", "ComputerName"])
+            .output()
+        {
+            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !s.is_empty() {
+                return s;
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(v) = std::env::var("COMPUTERNAME") {
+            if !v.trim().is_empty() {
+                return v;
+            }
+        }
+    }
+    if let Ok(out) = std::process::Command::new("hostname").output() {
+        let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !s.is_empty() {
+            return s;
+        }
+    }
+    "Desktop".to_string()
+}
+
 /// Open the macOS Privacy & Security pane for one permission kind
 /// ("screen" | "accessibility").
 #[tauri::command]
@@ -263,6 +315,119 @@ fn open_privacy_settings(kind: String) -> Result<(), String> {
         let _ = kind;
         Err("Hanya tersedia di macOS".to_string())
     }
+}
+
+/// Update check against the public GitHub releases of Minime
+/// (Settings > Updates). Stable track = latest non-prerelease release;
+/// beta track = most recent release including prereleases.
+#[derive(Serialize)]
+struct UpdateInfo {
+    current: String,
+    latest: Option<String>,
+    update_available: bool,
+    notes: String,
+    url: String,
+}
+
+fn semver_gt(candidate: &str, current: &str) -> bool {
+    let parse = |s: &str| -> Vec<u64> {
+        s.trim_start_matches('v')
+            .split('.')
+            .map(|p| {
+                p.chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect::<String>()
+                    .parse()
+                    .unwrap_or(0)
+            })
+            .collect()
+    };
+    let a = parse(candidate);
+    let b = parse(current);
+    for i in 0..a.len().max(b.len()) {
+        let x = a.get(i).copied().unwrap_or(0);
+        let y = b.get(i).copied().unwrap_or(0);
+        if x != y {
+            return x > y;
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::semver_gt;
+
+    #[test]
+    fn semver_compares_numerically() {
+        assert!(semver_gt("0.2.0", "0.1.0"));
+        assert!(semver_gt("v1.0.0", "0.9.9"));
+        assert!(semver_gt("0.1.1", "0.1.0"));
+        assert!(semver_gt("0.10.0", "0.9.0"));
+        assert!(!semver_gt("0.1.0", "0.1.0"));
+        assert!(!semver_gt("0.1.0", "0.2.0"));
+        assert!(!semver_gt("0.9.9", "1.0.0"));
+        assert!(!semver_gt("1.0.0", "1.0.0"));
+    }
+}
+
+#[tauri::command]
+async fn check_update(track: String) -> Result<UpdateInfo, String> {
+    let current = env!("CARGO_PKG_VERSION").to_string();
+    let releases_page = "https://github.com/PatriaAWijaya/minime/releases".to_string();
+    let client = reqwest::Client::builder()
+        .user_agent("Minime-Updater")
+        .build()
+        .map_err(|e| e.to_string())?;
+    let api = if track == "beta" {
+        "https://api.github.com/repos/PatriaAWijaya/minime/releases?per_page=1"
+    } else {
+        "https://api.github.com/repos/PatriaAWijaya/minime/releases/latest"
+    };
+    let resp = client.get(api).send().await.map_err(|e| e.to_string())?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        // No releases published yet.
+        return Ok(UpdateInfo {
+            current,
+            latest: None,
+            update_available: false,
+            notes: String::new(),
+            url: releases_page,
+        });
+    }
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let release = if track == "beta" {
+        json.as_array().and_then(|a| a.first().cloned())
+    } else {
+        Some(json.clone())
+    };
+    let Some(release) = release else {
+        return Ok(UpdateInfo {
+            current,
+            latest: None,
+            update_available: false,
+            notes: String::new(),
+            url: releases_page,
+        });
+    };
+    let tag = release["tag_name"].as_str().unwrap_or("").to_string();
+    let latest = tag.trim_start_matches('v').to_string();
+    Ok(UpdateInfo {
+        update_available: semver_gt(&latest, &current),
+        latest: Some(latest),
+        notes: release["body"].as_str().unwrap_or("").to_string(),
+        url: release["html_url"]
+            .as_str()
+            .unwrap_or(&releases_page)
+            .to_string(),
+        current,
+    })
+}
+
+/// Restart the app (the apply step once an update is downloaded).
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    app.restart();
 }
 
 fn main() {
@@ -303,6 +468,9 @@ fn main() {
             island::island_haptic,
             system_permissions,
             open_privacy_settings,
+            device_info,
+            check_update,
+            restart_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

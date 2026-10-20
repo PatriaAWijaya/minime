@@ -602,6 +602,56 @@ export async function openPrivacySettings(kind: "screen" | "accessibility"): Pro
   }
 }
 
+/* ---------- Device info (Settings > Profile sessions) ---------- */
+
+export interface DeviceInfo {
+  name: string;
+  os: string;
+}
+
+/** This device's name + OS label from the backend. Null in the browser. */
+export async function fetchDeviceInfo(): Promise<DeviceInfo | null> {
+  try {
+    return await tauriInvoke<DeviceInfo>("device_info");
+  } catch {
+    return null;
+  }
+}
+
+/* ---------- App updates (Settings > Updates) ---------- */
+
+export interface UpdateInfo {
+  current: string;
+  latest: string | null;
+  update_available: boolean;
+  notes: string;
+  url: string;
+}
+
+/** Result of the last update check (GitHub releases). */
+export const updateInfo = writable<UpdateInfo | null>(null);
+
+/** Check GitHub releases for a newer Minime version on the chosen track. */
+export async function checkForUpdate(): Promise<void> {
+  try {
+    const res = await tauriInvoke<UpdateInfo>("check_update", {
+      track: get(settingsPrefs).updateTrack,
+    });
+    if (res) updateInfo.set(res);
+  } catch {
+    /* offline or no releases — keep the previous state */
+  }
+}
+
+/** Restart the app (applies a downloaded update). */
+export async function restartApp(): Promise<void> {
+  try {
+    await tauriInvoke<void>("restart_app");
+  } catch {
+    /* not in the desktop app */
+  }
+}
+
 export async function sendNotification(title: string, body: string): Promise<void> {
   try {
     await tauriInvoke("send_notification", { title, body });
@@ -870,6 +920,8 @@ export interface SettingsPrefs {
   dictationLang: string;
   dictationDownloads: string[];
   elevenlabsKeySaved: boolean;
+  /** Permanent Mobile Connect link token ("" = no link generated). */
+  mobileLinkToken: string;
   islandNotch: boolean;
   islandIdle: boolean;
   islandExtra: boolean;
@@ -883,6 +935,9 @@ export interface SettingsPrefs {
   computerHidden: boolean;
   computerMirror: boolean;
   autoUpdate: boolean;
+  updateTrack: "stable" | "beta";
+  updateAutoInstall: boolean;
+  updateMembers: boolean;
 }
 
 const SETTINGS_DEFAULTS: SettingsPrefs = {
@@ -906,6 +961,7 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   dictationLang: "auto",
   dictationDownloads: [],
   elevenlabsKeySaved: false,
+  mobileLinkToken: "",
   islandNotch: true,
   islandIdle: true,
   islandExtra: true,
@@ -919,6 +975,9 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   computerHidden: false,
   computerMirror: true,
   autoUpdate: true,
+  updateTrack: "stable",
+  updateAutoInstall: false,
+  updateMembers: true,
 };
 
 export const settingsPrefs = writable<SettingsPrefs>({
@@ -937,12 +996,22 @@ export function setPref<K extends keyof SettingsPrefs>(key: K, value: SettingsPr
   settingsPrefs.update((p) => ({ ...p, [key]: value }));
 }
 
-/** User profile (Settings > Profile). */
-export const profileStore = writable<{ name: string; email: string }>({
+/** User profile (Settings > Profile). `photo` is a small data-URL
+    (downscaled at upload); `signedInAt` stamps the local session start. */
+export interface ProfileState {
+  name: string;
+  email: string;
+  photo: string;
+  signedInAt: number;
+}
+
+export const profileStore = writable<ProfileState>({
   name: "",
   email: "",
-  ...(loadRecord<string>("minime.profile") as { name?: string; email?: string }),
-} as { name: string; email: string });
+  photo: "",
+  signedInAt: 0,
+  ...(loadRecord<string>("minime.profile") as Partial<ProfileState>),
+} as ProfileState);
 profileStore.subscribe((v) => {
   try {
     localStorage.setItem("minime.profile", JSON.stringify(v));
@@ -950,6 +1019,10 @@ profileStore.subscribe((v) => {
     /* ignore */
   }
 });
+// Stamp the local session the first time the app runs with a profile.
+if (get(profileStore).signedInAt === 0) {
+  profileStore.update((p) => ({ ...p, signedInAt: Date.now() }));
+}
 
 /* ---------- Theme (keputusan Patria 19 Okt): system = follow OS,
    or force dark/light. Applied as data-theme on <html> by App.svelte. ---------- */
