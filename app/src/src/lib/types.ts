@@ -65,6 +65,12 @@ export interface LibraryItem {
   type: LibraryType;
   agentId: string;
   taskKey: string;
+  /** Plain title for REAL items (Tahap 3.6); falls back to titleKey. */
+  title?: string;
+  /** Plain one-line summary of a real tool result. */
+  summary?: string;
+  /** Plain date label for real items; falls back to dateKey. */
+  dateLabel?: string;
 }
 
 export interface CostRow {
@@ -111,16 +117,6 @@ export type ServerKind = "local" | "cloud" | "independent";
 /** Server menu layout preference (mock). */
 export type ServerLayout = "rail" | "menu";
 
-/** A task folder groups several agents that work together (mock). */
-export interface TaskFolder {
-  id: number;
-  /** i18n key for the folder name; {n} replaced by num when present */
-  nameKey: string;
-  num?: number;
-  agentIds: string[];
-  open: boolean;
-}
-
 /** Kanban column id (mock task board). */
 export interface AgentFile {
   name: string;
@@ -166,10 +162,14 @@ export interface FlowEdge {
   target: string;
 }
 
-/** A named project owning its own connection-canvas content (mock). */
+/** A named project owning its own connection-canvas content.
+ *  Patria 20 Okt: the Agents-view folder IS the project — agents placed in
+ *  the folder are the agents assigned to work on this project. */
 export interface FlowProject {
   id: string;
   name: string;
+  /** Agent ids assigned to this project (the folder members). */
+  agentIds: string[];
 }
 
 /** Project workflow (Patria 20 Okt): user buat project → brief awal +

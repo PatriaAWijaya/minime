@@ -19,7 +19,7 @@ import type {
   ServerKind,
   ServerLayout,
   ToolInfo,
-  TaskFolder,
+  LibraryType,
 } from "./types";
 
 export type View =
@@ -432,8 +432,9 @@ export function addScheduleItem() {
   ]);
 }
 
-/** Library outputs (mock). */
-export const libraryItems: LibraryItem[] = [
+/** Library outputs. Seeds are mock; real tool results are appended by
+ *  addLibraryItem (Tahap 3.6) and persist across restarts. */
+const librarySeed: LibraryItem[] = [
   { id: 1, titleKey: "library.mock1.title", dateKey: "library.mock1.date", daysAgo: 1, type: "doc", agentId: "kreatif", taskKey: "schedule.mock1.name" },
   { id: 2, titleKey: "library.mock2.title", dateKey: "library.mock2.date", daysAgo: 2, type: "image", agentId: "kreatif", taskKey: "library.task.once" },
   { id: 3, titleKey: "library.mock3.title", dateKey: "library.mock3.date", daysAgo: 4, type: "table", agentId: "riset", taskKey: "schedule.mock4.name" },
@@ -443,6 +444,46 @@ export const libraryItems: LibraryItem[] = [
   { id: 7, titleKey: "library.mock7.title", dateKey: "library.mock7.date", daysAgo: 21, type: "app", agentId: "code", taskKey: "library.task.once" },
   { id: 8, titleKey: "library.mock8.title", dateKey: "library.mock8.date", daysAgo: 17, type: "table", agentId: "finance", taskKey: "schedule.mock2.name" },
 ];
+let librarySeq = 1000;
+export const libraryItems = writable<LibraryItem[]>(
+  loadList<LibraryItem>("minime.library", () => librarySeed.map((i) => ({ ...i }))),
+);
+persistList("minime.library", libraryItems);
+for (const i of get(libraryItems)) {
+  librarySeq = Math.max(librarySeq, i.id + 1);
+}
+
+/** Append a REAL tool result to the Library (Tahap 3.6). */
+export function addLibraryItem(input: {
+  title: string;
+  summary?: string;
+  type: LibraryType;
+  agentId: string;
+  taskKey?: string;
+}): number {
+  const now = new Date();
+  const id = librarySeq++;
+  libraryItems.update((list) => [
+    {
+      id,
+      titleKey: "",
+      dateKey: "",
+      daysAgo: 0,
+      type: input.type,
+      agentId: input.agentId,
+      taskKey: input.taskKey ?? "library.task.once",
+      title: input.title,
+      summary: input.summary,
+      dateLabel: now.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    },
+    ...list,
+  ]);
+  return id;
+}
 
 /** Cost rows (mock). */
 export const costRows: CostRow[] = [
@@ -1287,24 +1328,16 @@ theme.subscribe((v) => {
   }
 });
 
-let folderSeq = 3;
+/** Folder open/collapse UI state per project (the Agents-view folder IS the
+    project — Patria 20 Okt). Not persisted; defaults to open. */
+export const folderOpen = writable<Record<string, boolean>>({});
 
-/** Task folders group agents that work together. Empty by default
-    (Patria 20 Okt): the user creates their own folders. */
-export const taskFolders = writable<TaskFolder[]>([]);
-
-export function addTaskFolder() {
-  const id = folderSeq++;
-  taskFolders.update((list) => [
-    ...list,
-    { id, nameKey: "agents.folderNew.name", num: id, agentIds: [], open: true },
-  ]);
+export function toggleFolder(id: string) {
+  folderOpen.update((m) => ({ ...m, [id]: !(m[id] ?? true) }));
 }
 
-export function toggleFolder(id: number) {
-  taskFolders.update((list) =>
-    list.map((f) => (f.id === id ? { ...f, open: !f.open } : f)),
-  );
+export function isFolderOpen(id: string, openMap: Record<string, boolean>): boolean {
+  return openMap[id] ?? true;
 }
 
 let customAgentSeq = 1;
@@ -1437,6 +1470,80 @@ export function decideKanbanCard(id: number, decision: "approve" | "revise" | "r
   const col: KanbanCol =
     decision === "approve" ? "done" : decision === "revise" ? "revision" : "queue";
   moveKanbanCard(id, col);
+}
+
+/* ---------- Agent runtime (Tahap 3.6) ----------
+   Runs a real tool for an agent, with the Kanban card moving along
+   queue → doing → approval and the result landing in the Library.
+   Errors move the card back to queue and notify — never a silent dummy. */
+
+export interface ToolRunArgs {
+  agentId: string;
+  toolId: string;
+  action: string;
+  args: Record<string, string>;
+}
+
+/** Tool ids with a real backend implementation, for one agent. */
+export async function allowedRuntimeTools(agentId: string): Promise<string[]> {
+  const list = await tauriInvoke<string[]>("runtime_allowed_tools", { agentId });
+  return list ?? [];
+}
+
+function toolErrorLabel(code: string): string {
+  const known = [
+    "not_allowed",
+    "not_connected",
+    "not_implemented",
+    "unknown_tool",
+  ] as const;
+  return (known as readonly string[]).includes(code) ? code : "error";
+}
+
+export async function runToolTask(
+  cardId: number,
+  run: ToolRunArgs,
+  opts: { title?: string } = {},
+): Promise<{ ok: boolean; error?: string }> {
+  moveKanbanCard(cardId, "doing");
+  try {
+    const res = await tauriInvoke<{ ok: boolean; summary: string }>("tool_run", {
+      agentId: run.agentId,
+      toolId: run.toolId,
+      action: run.action,
+      args: run.args,
+    });
+    if (!res || !res.ok) {
+      // Not running inside Tauri (e.g. web preview) — card returns to queue.
+      moveKanbanCard(cardId, "queue");
+      return { ok: false, error: "error" };
+    }
+    addLibraryItem({
+      title: opts.title ?? res.summary,
+      summary: res.summary,
+      type: "doc",
+      agentId: run.agentId,
+    });
+    moveKanbanCard(cardId, "approval");
+    void sendNotification(
+      "Tool selesai",
+      `Hasil dari ${run.toolId} menunggu persetujuanmu`,
+    );
+    return { ok: true };
+  } catch (e) {
+    const code = toolErrorLabel(e instanceof Error ? e.message : String(e));
+    moveKanbanCard(cardId, "queue");
+    void sendNotification("Tool gagal", `Tool ${run.toolId}: ${code}`);
+    return { ok: false, error: code };
+  }
+}
+
+/** Turn a Brief todo into a real Kanban task card (Tahap 3.6 wiring). */
+export function briefTodoToCard(todoId: string): void {
+  const todos = get(projectTodos);
+  const td = todos.find((t) => t.id === todoId);
+  if (!td || !td.text.trim()) return;
+  addKanbanCard(td.text.trim(), td.agentId, "queue", td.projectId);
 }
 
 /* ---------- Social drafts (Phase 3.3: Meta/Postiz) ----------
@@ -1588,13 +1695,53 @@ function seedProject(id: string, name: string): FlowProject {
   return { id, name };
 }
 
-/** All projects, shared by the Connection canvas and the Kanban filter.
-    Empty by default (Patria 20 Okt): dummy projects removed; the user
-    creates the first real project themselves. */
+/** All projects, shared by the Connection canvas, the Kanban filter, and
+    the Agents-view folders (the folder IS the project — Patria 20 Okt).
+    Empty by default: dummy projects removed; the user creates the first
+    real project themselves. */
 export const projects = writable<FlowProject[]>(
-  loadList("minime.projects", () => []),
+  loadList<FlowProject>("minime.projects", () => []).map((p) => ({
+    ...p,
+    agentIds: Array.isArray(p.agentIds) ? p.agentIds : [],
+  })),
 );
 persistList("minime.projects", projects);
+
+/** Rename a project (also renames its Agents-view folder). */
+export function renameProject(id: string, name: string): void {
+  const n = name.trim();
+  if (!n) return;
+  projects.update((list) => list.map((p) => (p.id === id ? { ...p, name: n } : p)));
+}
+
+/** Agents assigned to a project = agents in its folder. An agent belongs to
+    at most one folder; adding it to a project removes it from the others. */
+export function addAgentToProject(projectId: string, agentId: string): void {
+  projects.update((list) =>
+    list.map((p) => {
+      const ids = (p.agentIds ?? []).filter((x) => x !== agentId);
+      return p.id === projectId ? { ...p, agentIds: [...ids, agentId] } : { ...p, agentIds: ids };
+    }),
+  );
+  // An agent plotted for a project is meant to work: make it visible.
+  setAgentEnabled(agentId, true);
+}
+
+export function removeAgentFromProject(projectId: string, agentId: string): void {
+  projects.update((list) =>
+    list.map((p) =>
+      p.id === projectId
+        ? { ...p, agentIds: (p.agentIds ?? []).filter((x) => x !== agentId) }
+        : p,
+    ),
+  );
+}
+
+/** Agent ids assigned to a project (empty when the project has no folder team). */
+export function projectAgentIds(projectId: string): string[] {
+  return get(projects).find((p) => p.id === projectId)?.agentIds ?? [];
+}
+
 
 /** Project briefs + todos (workflow Patria 20 Okt). Brief awal dibuat user
     di Mimi; Mimi auto-delegasi menjadi todo per agen. */
@@ -1742,10 +1889,11 @@ export function switchFlowProject(id: string): void {
   loadActiveCanvas();
 }
 
-/** Create a project (empty canvas) and switch to it. Returns the new id. */
+/** Create a project (empty canvas) and switch to it. Returns the new id.
+ *  The project also appears as a folder in the Agents view. */
 export function addFlowProject(name: string): string {
   const id = `proj-${Date.now()}`;
-  projects.update((list) => [...list, { id, name }]);
+  projects.update((list) => [...list, { id, name, agentIds: [] }]);
   flowMap[id] = { nodes: [], edges: [] };
   saveFlowMap();
   activeFlowProjectId.set(id);
@@ -1811,7 +1959,11 @@ export function disconnectFlowNode(id: string) {
   );
 }
 
-export function addCustomAgent() {
+/** Add a user-created agent. Returns the new id. The agent is enabled right
+    away (Patria 20 Okt): clicking "Agen baru" must visibly add the agent to
+    the list — the "only Mimi by default" rule covers the initial roster,
+    not an explicit user action. */
+export function addCustomAgent(): string {
   const n = customAgentSeq++;
   const id = `custom-${n}`;
   customAgents.update((list) => [
@@ -1826,7 +1978,8 @@ export function addCustomAgent() {
       color: CUSTOM_AGENT_COLORS[(n - 1) % CUSTOM_AGENT_COLORS.length],
     },
   ]);
-  agentEnabled.update((m) => ({ ...m, [id]: false }));
+  setAgentEnabled(id, true);
+  return id;
 }
 
 /* ---------- Tauri bridge — model router nyata (Tahap 2) ----------

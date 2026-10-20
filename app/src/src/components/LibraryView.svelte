@@ -12,13 +12,13 @@
   const types: LibraryType[] = ["doc", "table", "deck", "image", "video", "app"];
   const ranges = ["7", "30", "90", "365"];
 
-  // Task options come from the mock items themselves.
+  // Task options come from the items themselves (mock seeds + real results).
   const taskOptions = $derived(
-    Array.from(new Set(libraryItems.map((i) => i.taskKey))),
+    Array.from(new Set($libraryItems.map((i) => i.taskKey))),
   );
 
   const visible = $derived(
-    libraryItems.filter((i) => {
+    $libraryItems.filter((i) => {
       if (typeFilter !== "all" && i.type !== typeFilter) return false;
       if (agentFilter !== "all" && i.agentId !== agentFilter) return false;
       if (taskFilter !== "all" && i.taskKey !== taskFilter) return false;
@@ -78,10 +78,22 @@
       {#each visible as item (item.id)}
         <div class="card">
           <span class="chip">{$t(`library.type.${item.type}`)}</span>
-          <h4>{$t(item.titleKey)}</h4>
-          <p>{$t("library.by", { agent: getAgent(item.agentId).name })} · {$t(item.dateKey)}</p>
+          <h4>{item.title ?? $t(item.titleKey)}</h4>
+          {#if item.summary}
+            <p class="summary">{item.summary}</p>
+          {/if}
+          <p>{$t("library.by", { agent: getAgent(item.agentId).name })} · {item.dateLabel ?? $t(item.dateKey)}</p>
         </div>
       {/each}
     </div>
   {/if}
 </div>
+
+<style>
+  .summary {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 6px 0;
+    line-height: 1.45;
+  }
+</style>

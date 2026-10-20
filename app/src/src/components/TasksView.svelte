@@ -36,6 +36,8 @@
     moveFlowNode,
     removeFlowNode,
     disconnectFlowNode,
+    allowedRuntimeTools,
+    runToolTask,
     type TasksViewKind,
   } from "../lib/store";
   import type { KanbanCol } from "../lib/types";
@@ -71,6 +73,52 @@
 
   // ---------- Kanban: add-card form ----------
   let addingCol = $state<KanbanCol | null>(null);
+
+  // ---------- Kanban: tool runner (Tahap 3.6) ----------
+  // Per-card expand/run state, keyed by card id.
+  let toolOpen = $state<Record<number, boolean>>({});
+  let toolChoice = $state<Record<number, string>>({});
+  let toolArg = $state<Record<number, string>>({});
+  let toolBusy = $state<Record<number, boolean>>({});
+  let toolMsg = $state<Record<number, string>>({});
+  let toolLists = $state<Record<string, string[]>>({});
+
+  async function openToolRunner(card: { id: number; agentId: string }) {
+    toolOpen[card.id] = true;
+    toolMsg[card.id] = "";
+    if (toolLists[card.agentId] === undefined) {
+      toolLists[card.agentId] = await allowedRuntimeTools(card.agentId);
+    }
+    const list = toolLists[card.agentId];
+    if (list.length > 0 && !toolChoice[card.id]) {
+      toolChoice[card.id] = list[0];
+    }
+  }
+
+  async function runCardTool(card: { id: number; agentId: string; title: string }) {
+    const toolId = toolChoice[card.id];
+    if (!toolId || toolBusy[card.id]) return;
+    toolBusy[card.id] = true;
+    toolMsg[card.id] = "";
+    const args: Record<string, string> =
+      toolId === "browser" ? { url: (toolArg[card.id] ?? "").trim() } : {};
+    const r = await runToolTask(
+      card.id,
+      {
+        agentId: card.agentId,
+        toolId,
+        action: toolId === "browser" ? "fetch" : "run",
+        args,
+      },
+      { title: card.title },
+    );
+    toolBusy[card.id] = false;
+    if (r.ok) {
+      toolOpen[card.id] = false;
+    } else {
+      toolMsg[card.id] = get(t)(`tasks.tool.err.${r.error ?? "error"}`);
+    }
+  }
   let draftTitle = $state("");
   let draftAgent = $state("mimi");
   let draftProject = $state("proj-a");
@@ -436,6 +484,61 @@
                     <button class="mini-btn danger" onclick={() => decideKanbanCard(card.id, "reject")}>
                       {$t("tasks.reject")}
                     </button>
+                  </div>
+                {/if}
+                {#if col === "queue"}
+                  <div class="tool-run">
+                    {#if toolOpen[card.id]}
+                      {@const tlist = toolLists[card.agentId] ?? []}
+                      <div class="tool-run-row">
+                        <span class="field-label">{$t("tasks.tool.tool")}</span>
+                        {#if tlist.length === 0}
+                          <span class="empty-note">{$t("tasks.tool.noTools")}</span>
+                        {:else}
+                          <select
+                            bind:value={toolChoice[card.id]}
+                            disabled={toolBusy[card.id]}
+                            aria-label={$t("tasks.tool.tool")}
+                          >
+                            {#each tlist as tid}
+                              <option value={tid}>{tid}</option>
+                            {/each}
+                          </select>
+                        {/if}
+                      </div>
+                      {#if toolChoice[card.id] === "browser"}
+                        <div class="tool-run-row">
+                          <span class="field-label">{$t("tasks.tool.url")}</span>
+                          <input
+                            type="url"
+                            bind:value={toolArg[card.id]}
+                            placeholder={$t("tasks.tool.urlPh")}
+                            disabled={toolBusy[card.id]}
+                          />
+                        </div>
+                      {/if}
+                      <div class="tool-run-row">
+                        <button
+                          class="mini-btn ok"
+                          onclick={() => runCardTool(card)}
+                          disabled={toolBusy[card.id] || tlist.length === 0}
+                        >
+                          {toolBusy[card.id] ? $t("tasks.tool.running") : $t("tasks.tool.do")}
+                        </button>
+                        <button
+                          class="mini-btn"
+                          onclick={() => (toolOpen[card.id] = false)}
+                          disabled={toolBusy[card.id]}
+                        >×</button>
+                      </div>
+                      {#if toolMsg[card.id]}
+                        <p class="tool-err">{toolMsg[card.id]}</p>
+                      {/if}
+                    {:else}
+                      <button class="mini-btn" onclick={() => openToolRunner(card)}>
+                        {$t("tasks.tool.run")}
+                      </button>
+                    {/if}
                   </div>
                 {/if}
               </article>
@@ -826,6 +929,34 @@
   .card-actions .mini-btn:hover { border-color: var(--accent); }
   .card-actions .mini-btn.ok { color: var(--ok); border-color: var(--ok); }
   .card-actions .mini-btn.danger { color: var(--danger); }
+  .tool-run { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .tool-run .mini-btn {
+    min-height: 34px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tool-run .mini-btn:hover { border-color: var(--accent); }
+  .tool-run .mini-btn.ok { color: var(--ok); border-color: var(--ok); }
+  .tool-run .mini-btn:disabled { opacity: 0.5; cursor: default; }
+  .tool-run-row { display: flex; align-items: center; gap: 8px; }
+  .tool-run-row .field-label { font-size: 12px; color: var(--muted); min-width: 36px; }
+  .tool-run-row select, .tool-run-row input {
+    flex: 1;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+  }
+  .tool-err { font-size: 12px; color: var(--danger); margin: 0; }
   .draft-badge {
     display: inline-block;
     margin-top: 6px;

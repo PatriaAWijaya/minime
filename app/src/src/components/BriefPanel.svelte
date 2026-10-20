@@ -11,6 +11,7 @@
     addProjectTodo,
     removeProjectTodo,
     toggleProjectTodo,
+    briefTodoToCard,
   } from "../lib/store";
   import { t } from "../lib/i18n";
 
@@ -124,6 +125,11 @@
               <span class:done={td.done}>{td.text}</span>
             </label>
             <span class="todo-agent">{agentName(td.agentId)}</span>
+            <button
+              class="mini-btn"
+              onclick={() => briefTodoToCard(td.id)}
+              title={$t("tasks.brief.toCard")}
+            >{$t("tasks.brief.toCard")}</button>
             <button
               class="mini-btn danger"
               onclick={() => removeProjectTodo(td.id)}
