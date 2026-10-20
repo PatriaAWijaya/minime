@@ -1971,6 +1971,57 @@ export function addCustomAgent(): string {
   return id;
 }
 
+/** Drop one key from a per-agent record store. */
+function dropAgentKey<T>(store: Writable<Record<string, T>>, id: string): void {
+  store.update((m) => {
+    if (!(id in m)) return m;
+    const next = { ...m };
+    delete next[id];
+    return next;
+  });
+}
+
+/** Permanently delete a custom agent (Patria 20 Okt): ONLY from the Tools
+ *  menu; the 6 built-in Minime agents cannot be deleted (only deactivated).
+ *  Cleans the registry, per-agent config, folder memberships, backend skill
+ *  overrides and chat history; reassigns its cards/todos to Mimi so no
+ *  orphaned work remains. */
+export async function deleteCustomAgent(id: string): Promise<void> {
+  if (!get(customAgents).some((a) => a.id === id)) return;
+  customAgents.update((list) => list.filter((a) => a.id !== id));
+  for (const s of [
+    agentEnabled, agentModel, agentReasoning, agentNotify, agentNames,
+    agentTitles, agentInstructions, agentGender, agentAge, agentPosition,
+    agentHobbies, agentVoiceOn, agentVoice, agentBrowserOn, agentFiles,
+  ]) {
+    dropAgentKey(s as Writable<Record<string, unknown>>, id);
+  }
+  projects.update((list) =>
+    list.map((p) => ({
+      ...p,
+      agentIds: (p.agentIds ?? []).filter((x) => x !== id),
+    })),
+  );
+  kanbanCards.update((list) =>
+    list.map((c) => (c.agentId === id ? { ...c, agentId: "mimi" } : c)),
+  );
+  projectTodos.update((list) =>
+    list.map((t) => (t.agentId === id ? { ...t, agentId: "mimi" } : t)),
+  );
+  messagesByAgent.update((m) => {
+    if (!(id in m)) return m;
+    const next = { ...m };
+    delete next[id];
+    return next;
+  });
+  try {
+    await tauriInvoke("set_agent_skills", { agentId: id, skills: [] });
+  } catch {
+    /* backend unavailable (preview) — local state is already clean */
+  }
+  await refreshSkillCatalog();
+}
+
 /* ---------- Tauri bridge — model router nyata (Tahap 2) ----------
    Di aplikasi desktop, status provider & chat memakai Tauri commands
    (Rust). Di browser (preview), invoke() tidak ada → fallback ke mock

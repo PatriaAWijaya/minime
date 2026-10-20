@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import {
     customAgents,
+    deleteCustomAgent,
     toggleAppInstalled,
     refreshTools,
     toolInfos,
@@ -164,6 +165,19 @@
   let pickerSkill = $state<string | null>(null);
   let pickerSelection = $state<string[]>([]);
   let saving = $state(false);
+
+  // Permanent delete of a custom agent (Patria 20 Okt): ONLY from Tools;
+  // the 6 built-in Minime agents have no delete button (deactivate only).
+  const customIds = $derived(new Set($customAgents.map((a) => a.id)));
+  let delAgentId = $state<string | null>(null);
+  let deleting = $state(false);
+  async function confirmDeleteAgent() {
+    if (!delAgentId || deleting) return;
+    deleting = true;
+    await deleteCustomAgent(delAgentId);
+    delAgentId = null;
+    deleting = false;
+  }
   function openPicker(s: SkillCatalogEntry) {
     pickerSkill = s.id;
     pickerSelection = [...s.agents];
@@ -284,6 +298,18 @@
                 <span class="glyph">{a.badge}</span>
               </span>
               <h3>{agentName(a)}</h3>
+              {#if customIds.has(a.id)}
+                <button
+                  class="mkt-del"
+                  onclick={() => (delAgentId = a.id)}
+                  aria-label={$t("mkt.deleteAgent")}
+                  title={$t("mkt.deleteAgent")}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  </svg>
+                </button>
+              {/if}
               <button class="mkt-add" onclick={openAgent}>
                 {$t("mkt.open")}
               </button>
@@ -550,6 +576,31 @@
   {/if}
 {/if}
 
+{#if delAgentId}
+  {@const da = toolsAgents.find((x) => x.id === delAgentId)}
+  <div class="mkt-backdrop" role="presentation" onclick={() => (delAgentId = null)}></div>
+  <div
+    class="mkt-dialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="delagent-title"
+    aria-describedby="delagent-desc"
+  >
+    <h3 id="delagent-title">{$t("mkt.delAgentTitle")}</h3>
+    <p class="mkt-dlg-sub" id="delagent-desc">
+      {$t("mkt.delAgentMsg", { name: da ? agentName(da) : delAgentId })}
+    </p>
+    <div class="mkt-dlg-actions">
+      <button class="btn-ghost" onclick={() => (delAgentId = null)} disabled={deleting}>
+        {$t("mkt.cancel")}
+      </button>
+      <button class="mkt-btn-del" onclick={confirmDeleteAgent} disabled={deleting}>
+        {deleting ? $t("mkt.deleting") : $t("mkt.delete")}
+      </button>
+    </div>
+  </div>
+{/if}
+
 {#if showCreate}
   <div class="mkt-backdrop" role="presentation" onclick={() => (showCreate = false)}></div>
   <div class="mkt-dialog" role="dialog" aria-label={$t("mkt.createTitle")}>
@@ -742,6 +793,38 @@
     border-color: color-mix(in srgb, var(--success) 45%, transparent);
   }
   .mkt-add:disabled { cursor: default; opacity: 0.9; }
+  .mkt-del {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--dim);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .mkt-del:hover {
+    color: #dc2626;
+    border-color: #dc2626;
+  }
+  .mkt-del svg { width: 16px; height: 16px; }
+  .mkt-btn-del {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .mkt-btn-del:hover { filter: brightness(1.1); }
+  .mkt-btn-del:disabled { opacity: 0.6; cursor: default; }
   .soon-badge {
     flex: none;
     font-size: 12px;
