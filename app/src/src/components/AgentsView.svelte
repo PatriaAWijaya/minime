@@ -326,6 +326,10 @@
   function agentFolderId(agentId: string): string {
     return $projects.find((p) => (p.agentIds ?? []).includes(agentId))?.id ?? "";
   }
+  /** Svelte action: focus the element as soon as it mounts. */
+  function autofocus(node: HTMLElement) {
+    node.focus();
+  }
   function moveAgentToFolder(agentId: string, projectId: string) {
     const cur = agentFolderId(agentId);
     if (cur) removeAgentFromProject(cur, agentId);
@@ -1204,12 +1208,14 @@
                   <input
                     class="folder-rename"
                     bind:value={renameValue}
+                    onclick={(e) => e.stopPropagation()}
                     onkeydown={(e) => {
                       if (e.key === "Enter") commitRename(p);
                       else if (e.key === "Escape") renamingFolder = null;
                     }}
                     onblur={() => commitRename(p)}
                     aria-label={$t("agents.folder.rename")}
+                    use:autofocus
                   />
                 {:else}
                   <span class="folder-name">{p.name}</span>
