@@ -68,6 +68,7 @@
         <path d="M8.5 8.5l7 7" />
       </svg>
     </button>
+    {#if data.agentId !== "mimi"}
     <button
       class="node-act danger"
       onclick={(e) => {
@@ -83,6 +84,7 @@
         <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
       </svg>
     </button>
+    {/if}
   </div>
   <span class="badge" style:background={agent.color}>{agent.badge}</span>
   <span class="meta">

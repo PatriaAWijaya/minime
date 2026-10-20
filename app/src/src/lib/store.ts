@@ -1949,6 +1949,14 @@ function isLegacyLinearAuto(
 }
 
 function loadActiveCanvas(): void {
+  // Patria 20 Okt: with no projects, the Connection view shows its default —
+  // an empty canvas (no project name) with just Mimi as parent.
+  if (get(projects).length === 0) {
+    const { nodes, edges } = buildChain([]);
+    flowNodes.set(nodes);
+    flowEdges.set(edges);
+    return;
+  }
   const pid = resolveProjectId();
   const d = flowMap[pid];
   // Defensive: old/corrupt localStorage may hold {} without nodes/edges.
@@ -1968,6 +1976,8 @@ function loadActiveCanvas(): void {
 }
 
 function saveActiveCanvas(): void {
+  // No project to save to (Patria 20 Okt: default empty canvas) — skip.
+  if (get(projects).length === 0) return;
   flowMap[resolveProjectId()] = {
     nodes: get(flowNodes),
     edges: get(flowEdges),
@@ -2066,19 +2076,18 @@ export function addFlowProject(name: string): string {
 /**
  * Delete a project and its whole connection canvas (Patria 20 Okt: the folder
  * IS the project — one delete removes both, from either view). Deleting the
- * last remaining project replaces it with a fresh empty one, so the app
- * never ends up with zero projects.
+ * last project is allowed: the Connection view falls back to its default —
+ * an empty canvas with just Mimi as parent.
  */
-export function removeFlowProject(id: string, fallbackName = "Project baru"): void {
+export function removeFlowProject(id: string): void {
   const list = get(projects);
   if (!list.some((p) => p.id === id)) return;
-  if (list.length <= 1) addFlowProject(fallbackName);
   projects.update((cur) => cur.filter((p) => p.id !== id));
   delete flowMap[id];
   saveFlowMap();
   if (get(activeFlowProjectId) === id) {
     const rest = get(projects);
-    activeFlowProjectId.set(rest[0].id);
+    activeFlowProjectId.set(rest[0]?.id ?? "");
     loadActiveCanvas();
   }
 }

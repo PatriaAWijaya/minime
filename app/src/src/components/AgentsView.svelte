@@ -1230,7 +1230,24 @@
       />
       <div class="list-body">
         {#each filteredLoose as a (a.id)}
-          {@render agentRow(a)}
+          <div class="agent-row-wrap">
+            {@render agentRow(a)}
+            {#if a.id !== "mimi"}
+              <button
+                class="row-del"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  deactivateAgent(a.id);
+                }}
+                aria-label={$t("agents.removeFromList")}
+                title={$t("agents.removeFromList")}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            {/if}
+          </div>
         {/each}
         {#each folderView as { p, agents: fAgents } (p.id)}
           {@const open = folderIsOpen(p.id) || !!aq}
@@ -1337,7 +1354,7 @@
                     title={$t("agents.folder.delete")}
                     onclick={(e) => {
                       e.stopPropagation();
-                      removeFlowProject(p.id, $t("tasks.flow.newProject"));
+                      removeFlowProject(p.id);
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1375,8 +1392,7 @@
                 {#each fAgents as a, i (a.id)}
                   <div class="folder-agent">
                     {@render agentRow(a)}
-                    <div class="order-btns" role="group" aria-label={$t("agents.folder.order")}>
-                      <button
+                    <div class="order-btns" role="group" aria-label={$t("agents.folder.order")}>                      <button
                         class="order-btn"
                         disabled={i === 0}
                         onclick={() => moveAgentInProject(p.id, a.id, -1)}
@@ -1391,6 +1407,21 @@
                         title={$t("agents.folder.moveDown")}
                       >↓</button>
                     </div>
+                    {#if a.id !== "mimi"}
+                      <button
+                        class="row-del"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          deactivateAgent(a.id);
+                        }}
+                        aria-label={$t("agents.removeFromList")}
+                        title={$t("agents.removeFromList")}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M6 6l12 12M18 6L6 18" />
+                        </svg>
+                      </button>
+                    {/if}
                   </div>
                 {/each}
               </div>
@@ -2653,6 +2684,37 @@
   .folder-agent .agent-row {
     flex: 1;
     min-width: 0;
+  }
+  .agent-row-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .agent-row-wrap .agent-row {
+    flex: 1;
+    min-width: 0;
+  }
+  .row-del {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .row-del svg {
+    width: 14px;
+    height: 14px;
+  }
+  .row-del:hover {
+    background: var(--panel-2);
+    color: #ff6b6b;
   }
   .order-btns {
     display: flex;

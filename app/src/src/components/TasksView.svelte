@@ -187,6 +187,14 @@
   const nodeTypes = { agent: FlowAgentNode };
 
   function handleAddChild(sourceId: string, agentId: string) {
+    // Patria 20 Okt: with no project yet, adding a team member auto-creates
+    // one so the work is never lost. The canvas was regenerated — re-resolve
+    // the parent node id.
+    if (get(projects).length === 0) {
+      addFlowProject($t("tasks.flow.newProject"));
+      const mimiNode = get(flowNodes).find((n) => n.agentId === "mimi");
+      if (mimiNode) sourceId = mimiNode.id;
+    }
     const src = get(flowNodes).find((n) => n.id === sourceId);
     const pid = get(activeFlowProjectId);
     const id = addFlowNode(agentId, (src?.x ?? 80) + 320, src?.y ?? 120);
@@ -325,7 +333,7 @@
     stopRun();
     // Kanban filter pointing at the deleted project falls back to "all".
     if (get(kanbanFilterProject) === delProjId) kanbanFilterProject.set("all");
-    removeFlowProject(delProjId, $t("tasks.flow.newProject"));
+    removeFlowProject(delProjId);
     delProjId = null;
     reloadFlow();
   }
