@@ -333,4 +333,30 @@ mod tests {
         // browser needs no auth.
         assert!(check_connected("browser", &reg).is_ok());
     }
+
+    /// Full dispatch E2E of the connection gate (Patria 20 Okt): an auth
+    /// tool with no dedicated keychain check fails honestly at dispatch,
+    /// deterministically — no keychain state involved.
+    #[tokio::test]
+    async fn dispatch_not_connected_e2e() {
+        let reg = registry();
+        let err = dispatch(&reg, "mimi", "slack", "status", &ToolArgs::new())
+            .await
+            .expect_err("must be gated");
+        assert_eq!(err, "not_connected");
+    }
+
+    /// Full dispatch E2E against the real internet (Patria 20 Okt): proves
+    /// browser/fetch works end-to-end without mocks or credentials.
+    #[tokio::test]
+    async fn dispatch_browser_fetch_real_internet() {
+        let reg = registry();
+        let mut args = ToolArgs::new();
+        args.insert("url".into(), "https://example.com".into());
+        let r = dispatch(&reg, "riset", "browser", "fetch", &args)
+            .await
+            .expect("real fetch must work");
+        assert!(r.ok);
+        assert!(r.data["text"].as_str().unwrap().contains("Example"));
+    }
 }
