@@ -97,6 +97,7 @@
   const voiceOn = $derived($agentVoiceOn[agent.id] ?? false);
   const voiceChoice = $derived($agentVoice[agent.id] ?? "v1");
   const displayName = $derived(agentDisplayName(agent, $agentNames, $t));
+  const displayRole = $derived(agentDisplayRole(agent, $agentTitles, $t));
   const agentTitle = $derived($agentTitles[agent.id] ?? "");
   const chatAgent = $derived({ ...agent, name: displayName });
 
@@ -742,7 +743,7 @@
         <span class="badge sm" style:background={agent.color}>{agent.badge}</span>
         <span class="tb-agent-meta">
           <span class="tb-agent-name">{displayName}</span>
-          <span class="tb-agent-role">{$t(agent.roleKey)}</span>
+          <span class="tb-agent-role">{displayRole}</span>
         </span>
       </div>
     </div>

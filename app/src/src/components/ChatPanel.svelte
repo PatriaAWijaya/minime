@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { get } from "svelte/store";
-  import { getAgent } from "../lib/agents";  import type { Agent } from "../lib/agents";
+  import { getAgent, agentDisplayName, agentDisplayRole } from "../lib/agents";  import type { Agent } from "../lib/agents";
   import type { AttachmentMeta, Message } from "../lib/types";
   import {
     activeAgentId,
     agentModel,
+    agentNames,
     agentStatus,
+    agentTitles,
     buildSystemPrompt,
     defaultModelFor,
     getModel,
@@ -257,8 +259,8 @@
   <header class="chat-head">
     <span class="badge" style:background={agent.color}>{agent.badge}</span>
     <div class="who">
-      <div class="name">{agent.name}</div>
-      <div class="role">{$t(agent.roleKey)} · {agent.model}</div>
+      <div class="name">{agentDisplayName(agent, $agentNames, $t)}</div>
+      <div class="role">{agentDisplayRole(agent, $agentTitles, $t)} · {agent.model}</div>
     </div>
     <span class="status"><span class="dot {status}"></span>{$t(`status.${status}`)}</span>
   </header>

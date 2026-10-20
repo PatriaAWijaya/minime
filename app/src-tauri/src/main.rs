@@ -180,11 +180,6 @@ fn provider_account(provider_id: &str) -> Result<&'static str, String> {
     }
 }
 
-#[tauri::command]
-fn agent_send_stub(agent_id: String, _message: String) -> String {
-    format!("ack:{agent_id}")
-}
-
 /// Send a native OS notification (Phase 3.2: approval gate).
 /// Used when a task needs approval or finishes.
 #[tauri::command]
@@ -445,12 +440,6 @@ fn list_skill_catalog(
     skills::catalog_with_agents(&db, &agent_ids)
 }
 
-/// An agent's effective skill ids (override or defaults).
-#[tauri::command]
-fn get_agent_skills(db: State<'_, db::Db>, agent_id: String) -> Vec<String> {
-    skills::effective_skills(&db, &agent_id)
-}
-
 /// Replace an agent's skill set (persisted override; drives the skills
 /// injected into that agent's system prompt from the next message on).
 #[tauri::command]
@@ -500,7 +489,6 @@ fn main() {
             provider_connect,
             provider_disconnect,
             routerku_set_base_url,
-            agent_send_stub,
             send_notification,
             tools::list_tools,
             tools::get_tool_status,
@@ -517,7 +505,6 @@ fn main() {
             check_update,
             restart_app,
             list_skill_catalog,
-            get_agent_skills,
             set_agent_skills,
             create_skill,
             pireel::pireel_connect_url,

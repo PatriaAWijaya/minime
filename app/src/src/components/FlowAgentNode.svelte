@@ -50,7 +50,7 @@
   });
 </script>
 
-<div class="flow-node" class:selected aria-label={agent.name}>
+<div class="flow-node" class:selected aria-label={agentDisplayName(agent, $agentNames, $t)}>
   <Handle type="target" position={Position.Left} aria-label={$t("tasks.flow.connectIn")} />
   <div class="node-actions nodrag" role="toolbar" aria-label={$t("tasks.flow.nodeActions")}>
     <button

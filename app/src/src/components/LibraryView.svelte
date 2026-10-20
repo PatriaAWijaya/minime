@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { agents, getAgent } from "../lib/agents";
-  import { libraryItems } from "../lib/store";
+  import { agents, getAgent, agentDisplayName } from "../lib/agents";
+  import { agentNames, libraryItems } from "../lib/store";
   import { t } from "../lib/i18n";
   import type { LibraryType } from "../lib/types";
 
@@ -48,7 +48,7 @@
       <select id="f-agent" bind:value={agentFilter}>
         <option value="all">{$t("library.all")}</option>
         {#each agents as a}
-          <option value={a.id}>{a.name}</option>
+          <option value={a.id}>{agentDisplayName(a, $agentNames, $t)}</option>
         {/each}
       </select>
     </div>
