@@ -64,7 +64,7 @@ async fn agent_chat(
     };
 
     // System prompt final: persona dari UI + playbook skill agen.
-    let skill_ctx = skills::skill_context(&agent_id);
+    let skill_ctx = skills::skill_context(&db, &agent_id);
     let full_system = if skill_ctx.is_empty() {
         system_prompt.clone()
     } else {
@@ -430,7 +430,46 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
+/* ---------- Marketplace > Skills (catalog + assignment) ---------- */
+
+/// Skill catalog with the agents that have each skill (Marketplace).
+#[tauri::command]
+fn list_skill_catalog(
+    db: State<'_, db::Db>,
+    agent_ids: Vec<String>,
+) -> Vec<skills::CatalogEntry> {
+    skills::catalog_with_agents(&db, &agent_ids)
+}
+
+/// An agent's effective skill ids (override or defaults).
+#[tauri::command]
+fn get_agent_skills(db: State<'_, db::Db>, agent_id: String) -> Vec<String> {
+    skills::effective_skills(&db, &agent_id)
+}
+
+/// Replace an agent's skill set (persisted override; drives the skills
+/// injected into that agent's system prompt from the next message on).
+#[tauri::command]
+fn set_agent_skills(
+    db: State<'_, db::Db>,
+    agent_id: String,
+    skills: Vec<String>,
+) -> Result<(), String> {
+    db.set_skill_override(&agent_id, &skills)
+}
+
+/// Create a user skill (writes a real SKILL.md into the user skills dir).
+#[tauri::command]
+fn create_skill(name: String, description: String) -> Result<skills::CatalogEntry, String> {
+    skills::create_skill(&name, &description)
+}
+
 fn main() {
+    // User-created skills live in <app-data>/skills (writable), bundled
+    // skills ship read-only inside the app (Marketplace > Skills).
+    if let Some(dir) = db::app_data_dir() {
+        skills::init_user_skills_dir(dir.join("skills"));
+    }
     // open() sudah fallback ke in-memory bila file gagal; expect di sini
     // hanya untuk kegagalan total yang praktis tidak mungkin.
     let database = db::Db::open().expect("database (file/memory) harus bisa dibuka");
@@ -471,6 +510,10 @@ fn main() {
             device_info,
             check_update,
             restart_app,
+            list_skill_catalog,
+            get_agent_skills,
+            set_agent_skills,
+            create_skill,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

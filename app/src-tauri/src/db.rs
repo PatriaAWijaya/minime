@@ -4,7 +4,7 @@
 //! (`~/Library/Application Support/com.minime.app/` di macOS).
 //! Semua data milik user di perangkatnya sendiri — tidak dikirim ke mana pun.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -93,7 +93,11 @@ impl Db {
                 output_tokens INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
             );
-            CREATE INDEX IF NOT EXISTS idx_usage_agent ON usage_events(agent_id, created_at);",
+            CREATE INDEX IF NOT EXISTS idx_usage_agent ON usage_events(agent_id, created_at);
+            CREATE TABLE IF NOT EXISTS agent_skill_overrides (
+                agent_id TEXT PRIMARY KEY,
+                skills TEXT NOT NULL DEFAULT '[]'
+            );",
         )
         .map_err(|e| format!("migrasi db gagal: {e}"))?;
         Ok(())
@@ -191,10 +195,63 @@ impl Db {
             .collect::<Result<_, _>>()
             .map_err(|e| format!("ringkasan usage gagal: {e}"))
     }
+
+    /// User-assigned skill set for an agent (Marketplace > Skills).
+    /// `None` = no override stored; the caller falls back to defaults.
+    pub fn skill_override(&self, agent_id: &str) -> Result<Option<Vec<String>>, String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        let row: Option<String> = conn
+            .query_row(
+                "SELECT skills FROM agent_skill_overrides WHERE agent_id = ?1",
+                params![agent_id],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(|e| format!("baca override skill gagal: {e}"))?;
+        match row {
+            Some(json) => Ok(Some(
+                serde_json::from_str(&json).unwrap_or_default(),
+            )),
+            None => Ok(None),
+        }
+    }
+
+    /// Replace an agent's skill set (stored as a JSON array of skill ids).
+    pub fn set_skill_override(
+        &self,
+        agent_id: &str,
+        skills: &[String],
+    ) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        let json = serde_json::to_string(skills).map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO agent_skill_overrides (agent_id, skills) VALUES (?1, ?2)
+             ON CONFLICT(agent_id) DO UPDATE SET skills = excluded.skills",
+            params![agent_id, json],
+        )
+        .map_err(|e| format!("simpan override skill gagal: {e}"))?;
+        Ok(())
+    }
+
+    /// Agent ids that have a stored skill override.
+    pub fn skill_override_agent_ids(&self) -> Result<Vec<String>, String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        let mut stmt = conn
+            .prepare("SELECT agent_id FROM agent_skill_overrides")
+            .map_err(|e| format!("baca override skill gagal: {e}"))?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| format!("baca override skill gagal: {e}"))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row.map_err(|e| format!("baca override skill gagal: {e}"))?);
+        }
+        Ok(out)
+    }
 }
 
 /// Direktori data aplikasi per OS (tanpa crate tambahan).
-fn app_data_dir() -> Option<PathBuf> {
+pub(crate) fn app_data_dir() -> Option<PathBuf> {
     let home = std::env::var("HOME").ok().map(PathBuf::from)?;
     #[cfg(target_os = "macos")]
     {
