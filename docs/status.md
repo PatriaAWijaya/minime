@@ -1927,3 +1927,13 @@ OAuth selesai end-to-end:
   (fallback file karena keychain SSH terblokir)
 - Verifikasi: API Drive merespons sebagai Patria A. Wijaya ✅
 - Uji upload: file test berhasil diupload lalu dihapus ✅
+
+## 21 Okt 2026 ~16:30 — FIX refresh token client_secret
+
+Masalah: token access expired (1 jam), refresh gagal karena tidak
+kirim client_secret → app tampil "belum konek" walau token ada.
+
+Perbaikan: TokenBundle tambah field client_secret (opsional);
+refresh_bundle kirim secret; exchange simpan secret ke bundle.
+Token file di MacBook diupdate dengan secret.
+Test refresh manual: SUKSES ✅. App rebuild, test 32/32 ✅.
