@@ -449,11 +449,11 @@
     if (first) {
       agentModel.update((m) => ({ ...m, [agent.id]: first.id }));
     }
-    // Jika premium & belum konek → bantu user konek (buka Settings > Penyedia Model)
+    // Local-first: jika belum konek → tandai agar SettingsView
+    // otomatis trigger setup (download/API key dialog)
     const prov = PROVIDERS.find((x) => x.id === pid);
     const st = get(providerState)[pid] ?? { connected: false };
-    if (prov && prov.kind === "paid" && !prov.local && !st.connected) {
-      // Tandai agar SettingsView membuka form konek otomatis
+    if (prov && !st.connected && (prov.kind === "paid" || prov.local)) {
       try {
         localStorage.setItem("minime.pending-connect", pid);
       } catch {}

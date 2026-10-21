@@ -351,15 +351,20 @@
     keyInput = "";
     keySavedFor = null;
   }
-  // Patria 21 Okt: jika user pilih provider premium yang belum konek,
-  // langsung bukakan menu bantu konek.
+  // Patria 22 Okt: local-first — pilih provider yang belum siap,
+  // otomatis trigger download/setup + bukakan window koneksi.
   function selectProvider(p: { id: string; kind: string; local?: boolean }) {
     defaultProviderId.set(p.id);
     const st = $providerState[p.id] ?? { connected: false };
     const rs = realStatus(p.id);
     const connected = rs ? rs.state === "connected" : st.connected;
-    if (!connected && p.kind === "paid" && !p.local) {
+    if (connected) return;
+    if (p.kind === "paid" && !p.local) {
+      // Premium: bukakan dialog API key
       openKeyForm(p.id);
+    } else if (p.local) {
+      // Local: trigger koneksi otomatis
+      connectProvider(p.id);
     }
   }
   async function submitKeyForm(id: string) {
@@ -1342,59 +1347,58 @@
           aria-label={p.name}
         />
         <label for="prov-{p.id}" class="prov-meta">
-          <span class="prov-name">
-            {p.name}
-            <span class="chip {p.kind === 'paid' ? 'paid' : ''}">
-              {$t(p.kind === "free" ? "providers.free" : "providers.paid")}
-            </span>
-            {#if p.tagKey}
-              <span class="chip dim">{$t(p.tagKey)}</span>
-            {/if}
-          </span>
-          <span class="prov-status" title={rs?.detail ?? ""}>
-            {#if rs}
-              {#if rs.state === "connected"}
-                <span class="badge ok">{$t("providers.connected")}</span>{rs.detail ? ` · ${rs.detail}` : ""}
-              {:else if rs.state === "no_key"}
-                <span class="badge warn">{$t("providers.state.noKey")}</span>
-              {:else if rs.state === "unreachable"}
-                <span class="badge warn">{$t("providers.state.unreachable")}</span>{rs.detail ? ` · ${rs.detail}` : ""}
-              {:else}
-                <span class="badge warn">{$t("providers.notConnected")}</span>
-              {/if}
-            {:else if p.local}
+          <span class="prov-name">{p.name}</span>
+          <span class="prov-sub">
+            {#if p.local}
               {$t("providers.availableLocal")}
-            {:else if st.connected}
-              <span class="badge ok">{$t("providers.connected")}</span>
             {:else}
-              <span class="badge warn">{$t("providers.notConnected")}</span>
+              {$t("providers.availableLocal")}
+            {/if}
+            {#if rs?.detail}
+              <span class="prov-warn">{rs.detail}</span>
             {/if}
           </span>
         </label>
-        {#if isPaid && p.id !== "routerku"}
-          {#if st.connected}
-            <button class="btn-ghost sm" onclick={() => disconnectKey(p.id)}>
-              {$t("providers.disconnect")}
-            </button>
-          {:else if keyFormFor !== p.id}
-            <button class="btn-ghost sm" onclick={() => openKeyForm(p.id)}>
+        <span class="prov-right">
+          {#if rs?.detail && rs.state === "connected"}
+            <span class="prov-ver">{rs.detail}</span>
+          {/if}
+          {#if p.kind === "free"}
+            <span class="chip">{$t("providers.free")}</span>
+          {/if}
+          {#if st.connected || rs?.state === "connected"}
+            <span class="badge ok">{$t("providers.connected")}</span>
+          {:else if isPaid}
+            <span class="badge warn">{$t("providers.notConnected")}</span>
+          {/if}
+          {#if isPaid}
+            {#if st.connected}
+              <button class="btn-ghost sm" onclick={() => disconnectKey(p.id)}>
+                {$t("providers.disconnect")}
+              </button>
+            {:else}
+              <button class="btn-primary sm" onclick={() => openKeyForm(p.id)}>
+                {$t("providers.connect")}
+              </button>
+              <button class="btn-ghost sm" onclick={() => openKeyForm(p.id)}>
+                API key
+              </button>
+            {/if}
+          {:else if p.local}
+            <button class="btn-ghost sm" onclick={() => connectProvider(p.id)}>
               {$t("providers.connect")}
             </button>
           {/if}
-        {:else if !p.local && !st.connected && p.id !== "routerku"}
-          <button class="btn-ghost sm" onclick={() => connectProvider(p.id)}>
-            {$t("providers.connect")}
-          </button>
-        {/if}
-        <label class="switch">
-          <input
-            type="checkbox"
-            checked={st.active}
-            onchange={(e) => toggleProvider(p.id, e.currentTarget.checked)}
-            aria-label={p.name}
-          />
-          <span class="track" aria-hidden="true"></span>
-        </label>
+          <label class="switch">
+            <input
+              type="checkbox"
+              checked={st.active}
+              onchange={(e) => toggleProvider(p.id, e.currentTarget.checked)}
+              aria-label={p.name}
+            />
+            <span class="track" aria-hidden="true"></span>
+          </label>
+        </span>
       </div>
       {#if isPaid && p.id !== "routerku" && keyFormFor === p.id}
         <div class="prov-detail">
@@ -1636,6 +1640,38 @@
     font-size: 13px;
     color: var(--dim);
   }
+  .prov-sub {
+    display: block;
+    font-size: 13px;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+  .prov-warn {
+    display: block;
+    color: #f59e0b;
+    margin-top: 2px;
+  }
+  .prov-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .prov-ver {
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .btn-primary.sm {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary.sm:hover { background: #2563eb; }
   .badge {
     display: inline-block;
     padding: 2px 10px;
