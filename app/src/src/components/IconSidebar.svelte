@@ -59,7 +59,7 @@
 </script>
 
 <aside class="rail" aria-label="Minime">
-  <div class="logo" style:background={$settingsPrefs.logoColor} aria-hidden="true">M</div>
+  <img class="logo" src="icon-me.png" alt="Minime" aria-hidden="true" />
   <nav class="tabs" aria-label="Minime">
     {#each tabs as tab}
       <button
@@ -93,4 +93,5 @@
 
 <style>
   .tabs { display: flex; flex-direction: column; gap: 6px; }
+  img.logo { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; display: block; }
 </style>
