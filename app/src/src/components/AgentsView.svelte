@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agents, agentDisplayName, agentDisplayRole } from "../lib/agents";
+  import { agents, agentDisplayName, agentDisplayRole, agentAvatar, AVATAR_CHOICES } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
   import {
     PROVIDERS,
@@ -43,6 +43,7 @@
     agentModel,
     agentNames,
     agentNotify,
+    agentAvatars,
     agentPosition,
     agentReasoning,
     agentStatus,
@@ -121,6 +122,7 @@
   let agentMenuOpen = $state(false);
   let agentDlg = $state<"browser" | "files" | "task" | "memories" | "skills" | "tables" | "publish" | "advanced" | "permissions" | null>(null);
   let autopostAgree = $state(false);
+  let avatarPickerOpen = $state(false);
   let taskTitle = $state("");
   let taskProject = $state("");
   let taskAdded = $state(false);
@@ -511,7 +513,7 @@
     class:active={$activeAgentId === a.id}
     onclick={() => activeAgentId.set(a.id)}
   >
-    {#if a.avatar}<img class="badge-img" src={a.avatar} alt={a.name} />{:else}<span class="badge" style:background={a.color}>{a.badge}</span>{/if}
+    {#if agentAvatar(a, $agentAvatars)}<img class="badge-img" src={agentAvatar(a, $agentAvatars)} alt={a.name} />{:else}<span class="badge" style:background={a.color}>{a.badge}</span>{/if}
     <span class="meta">
       <span class="name">{rowName}</span>
       <span class="role">{rowRole}</span>
@@ -745,7 +747,7 @@
 
       <!-- Active agent identity -->
       <div class="tb-agent">
-        {#if agent.avatar}<img class="badge-img sm" src={agent.avatar} alt={agent.name} />{:else}<span class="badge sm" style:background={agent.color}>{agent.badge}</span>{/if}
+        {#if agentAvatar(agent, $agentAvatars)}<img class="badge-img sm" src={agentAvatar(agent, $agentAvatars)} alt={agent.name} />{:else}<span class="badge sm" style:background={agent.color}>{agent.badge}</span>{/if}
         <span class="tb-agent-meta">
           <span class="tb-agent-name">{displayName}</span>
           <span class="tb-agent-role">{displayRole}</span>
@@ -1251,7 +1253,7 @@
                       closeAll();
                     }}
                   >
-                    {#if a.avatar}<img class="badge-img sm" src={a.avatar} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
+                    {#if agentAvatar(a, $agentAvatars)}<img class="badge-img sm" src={agentAvatar(a, $agentAvatars)} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
                     <span>{agentDisplayName(a, $agentNames, $t)}</span>
                   </button>
                 {/each}
@@ -1419,7 +1421,7 @@
                         addAgentMenuFor = null;
                       }}
                     >
-                      {#if a.avatar}<img class="badge-img sm" src={a.avatar} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
+                      {#if agentAvatar(a, $agentAvatars)}<img class="badge-img sm" src={agentAvatar(a, $agentAvatars)} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
                       <span>{agentDisplayName(a, $agentNames, $t)}</span>
                     </button>
                   {/each}
@@ -1507,14 +1509,22 @@
     {#if detailOpen}
       <div class="desc-col">
         <div class="avatar-wrap">
-          <span
-            class="badge avatar-big"
-            style:background={agent.color}
-          >{agent.badge}</span>
+          {#if agentAvatar(agent, $agentAvatars)}
+            <img
+              class="badge-img avatar-big"
+              src={agentAvatar(agent, $agentAvatars)}
+              alt={displayName}
+            />
+          {:else}
+            <span
+              class="badge avatar-big"
+              style:background={agent.color}
+            >{agent.badge}</span>
+          {/if}
           <button
             class="avatar-edit"
             aria-label={$t("agents.editAvatar")}
-            onclick={closeAll}
+            onclick={() => (avatarPickerOpen = true)}
           >
             <svg
               viewBox="0 0 24 24"
@@ -1529,6 +1539,26 @@
             </svg>
           </button>
         </div>
+        {#if avatarPickerOpen}
+          <div class="avatar-picker" role="dialog" aria-label={$t("agents.editAvatar")}>
+            {#each AVATAR_CHOICES as choice}
+              <button
+                class="avatar-choice"
+                class:selected={agentAvatar(agent, $agentAvatars) === choice}
+                onclick={() => {
+                  agentAvatars.update((m) => ({ ...m, [agent.id]: choice }));
+                  avatarPickerOpen = false;
+                }}
+              >
+                <img src={choice} alt={choice} />
+              </button>
+            {/each}
+            <button
+              class="btn-ghost"
+              onclick={() => (avatarPickerOpen = false)}
+            >{$t("agents.task.cancel")}</button>
+          </div>
+        {/if}
 
         {#if agent.id !== "mimi"}
           <div class="row">
@@ -2173,6 +2203,18 @@
   flex: none;
 }
 .badge-img.sm { width: 28px; height: 28px; }
+.avatar-picker {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 12px; margin-top: 8px;
+  background: var(--dlg-bg, #1a1a1a); border-radius: 12px;
+}
+.avatar-choice {
+  width: 56px; height: 56px; border-radius: 50%; overflow: hidden;
+  border: 2px solid transparent; padding: 0; cursor: pointer; background: none;
+}
+.avatar-choice img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-choice.selected { border-color: #4fa6f0; }
+.badge-img.avatar-big { width: 72px; height: 72px; }
   .badge.sm {
     width: 32px;
     height: 32px;

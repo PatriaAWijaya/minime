@@ -39,3 +39,21 @@ export function agentDisplayRole(
 ): string {
   return titles[a.id] ?? t(a.roleKey);
 }
+
+/** Available avatar choices (3D animal faces). */
+export const AVATAR_CHOICES = [
+  "avatars/cat.png",
+  "avatars/fox.png",
+  "avatars/elephant.png",
+  "avatars/dog.png",
+  "avatars/lion.png",
+  "avatars/monkey.png",
+];
+
+/** Effective avatar: user override wins, else the agent default. */
+export function agentAvatar(
+  a: Pick<Agent, "id" | "avatar">,
+  overrides: Record<string, string>,
+): string | undefined {
+  return overrides[a.id] ?? a.avatar;
+}

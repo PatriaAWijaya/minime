@@ -360,6 +360,12 @@ export const agentNames = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-names", agentNames);
 
+/** Custom avatar override per agent (persisted). */
+export const agentAvatars = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-avatars"),
+);
+persistRecord("minime.agent-avatars", agentAvatars);
+
 /** Custom title override per agent (mock, persisted). */
 export const agentTitles = writable<Record<string, string>>(
   loadRecord<string>("minime.agent-titles"),
