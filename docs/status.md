@@ -1661,3 +1661,8 @@ dialog pilih agen, buat skill.
    pertama oleh Patria → vonis launching.
 6. **MeHarness**: ECC gelombang 1 → AgentShield.
 7. **Fase 6 komersil** → Fase Voice (STT riil) → aplikasi mobile.
+
+## 21 Okt 2026 ~07:10 — Repo minime-v2 TERHAPUS ✅
+
+- Patria hapus manual via GitHub. Verifikasi API: `PatriaAWijaya/minime-v2`
+  → 404 (terhapus); `PatriaAWijaya/minime` → 200 (AMAN, semua kerjaan utuh).
