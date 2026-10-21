@@ -733,3 +733,36 @@ impl<'a> ChainLink<'a> {
         }
     }
 }
+
+/// Discover models from an OpenAI-compatible endpoint (OpenBot "Find again").
+/// GET {base_url}/models, returns list of model IDs.
+#[tauri::command]
+pub async fn discover_models(base_url: String, api_key: Option<String>) -> Result<Vec<String>, String> {
+    let url = format!("{}/models", base_url.trim_end_matches('/'));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut req = client.get(&url);
+    if let Some(key) = api_key {
+        let k = key.trim();
+        if !k.is_empty() {
+            req = req.bearer_auth(k);
+        }
+    }
+    let resp = req.send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let models = body
+        .get("data")
+        .and_then(|d| d.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|m| m.get("id").and_then(|id| id.as_str()).map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(models)
+}

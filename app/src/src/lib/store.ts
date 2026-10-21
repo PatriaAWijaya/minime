@@ -1170,14 +1170,27 @@ export interface CustomProvider {
 let customProvSeq = 1;
 export const customProviders = writable<CustomProvider[]>([]);
 
-export function addCustomProvider(name: string, endpoint: string) {
+export function addCustomProvider(
+  id: string,
+  name: string,
+  endpoint: string,
+  apiKey: string,
+  models: string[],
+) {
+  const pid = id.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "-");
   const n = name.trim();
-  const e = endpoint.trim();
-  if (!n || !e) return;
+  const e = endpoint.trim().replace(/\/+$/, "");
+  if (!pid || !n || !e || models.length === 0) return;
+  const provId = `custom-${pid}`;
   customProviders.update((list) => [
     ...list,
     { id: customProvSeq++, name: n, endpoint: e, active: true },
   ]);
+  // Daftarkan model-model yang dipilih ke section paid (custom provider = paid)
+  customModels.update((m) => ({
+    ...m,
+    paid: [...m.paid, ...models.map((mid) => `${n}: ${mid}`)],
+  }));
 }
 
 export function toggleCustomProvider(id: number, active: boolean) {

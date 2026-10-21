@@ -398,11 +398,46 @@
     } catch {}
   });
   let provEndpoint = $state("");
+  let provId = $state("");
+  let provApiKey = $state("");
+  let discoveredModels = $state<string[]>([]);
+  let selectedModels = $state<string[]>([]);
+  let findingModels = $state(false);
+  let modelsError = $state("");
+
+  async function findModels() {
+    const url = provEndpoint.trim();
+    if (!url) return;
+    findingModels = true;
+    modelsError = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const models = await invoke<string[]>("discover_models", {
+        baseUrl: url,
+        apiKey: provApiKey.trim() || null,
+      });
+      discoveredModels = models;
+      selectedModels = [...models];
+      if (models.length === 0) modelsError = "Tidak ada model ditemukan di endpoint ini.";
+    } catch (e) {
+      modelsError = String(e);
+      discoveredModels = [];
+      selectedModels = [];
+    } finally {
+      findingModels = false;
+    }
+  }
+
+  function toggleModelSelect(mid: string, on: boolean) {
+    selectedModels = on
+      ? [...selectedModels, mid]
+      : selectedModels.filter((m) => m !== mid);
+  }
 
   const APP_VERSION = "0.1.0";
 
   function createProvider() {
-    addCustomProvider(provName, provEndpoint);
+    addCustomProvider(provId, provName, provEndpoint, provApiKey, selectedModels);
     provName = "";
     provEndpoint = "";
     showProvDialog = false;
@@ -1328,18 +1363,20 @@
           <span class="prov-status" title={rs?.detail ?? ""}>
             {#if rs}
               {#if rs.state === "connected"}
-                {$t("providers.connected")}{rs.detail ? ` · ${rs.detail}` : ""}
+                <span class="badge ok">{$t("providers.connected")}</span>{rs.detail ? ` · ${rs.detail}` : ""}
               {:else if rs.state === "no_key"}
-                {$t("providers.state.noKey")}
+                <span class="badge warn">{$t("providers.state.noKey")}</span>
               {:else if rs.state === "unreachable"}
-                {$t("providers.state.unreachable")}{rs.detail ? ` · ${rs.detail}` : ""}
+                <span class="badge warn">{$t("providers.state.unreachable")}</span>{rs.detail ? ` · ${rs.detail}` : ""}
               {:else}
-                {$t("providers.notConnected")}
+                <span class="badge warn">{$t("providers.notConnected")}</span>
               {/if}
             {:else if p.local}
               {$t("providers.availableLocal")}
+            {:else if st.connected}
+              <span class="badge ok">{$t("providers.connected")}</span>
             {:else}
-              {st.connected ? $t("providers.connected") : $t("providers.notConnected")}
+              <span class="badge warn">{$t("providers.notConnected")}</span>
             {/if}
           </span>
         </label>
@@ -1498,12 +1535,51 @@
         <h3>{$t("providers.customTitle")}</h3>
         <p class="lede">{$t("providers.custom.desc")}</p>
         <div class="field">
-          <label for="prov-name">{$t("providers.customName")}</label>
+          <label for="prov-id">Provider ID *</label>
+          <input id="prov-id" type="text" bind:value={provId} placeholder="my-provider" />
+          <span class="hint">Huruf kecil, angka, strip, atau garis bawah.</span>
+        </div>
+        <div class="field">
+          <label for="prov-name">{$t("providers.customName")} *</label>
           <input id="prov-name" type="text" bind:value={provName} />
         </div>
         <div class="field">
-          <label for="prov-endpoint">{$t("providers.customEndpoint")}</label>
-          <input id="prov-endpoint" type="text" bind:value={provEndpoint} placeholder="https://" />
+          <label for="prov-endpoint">Base URL *</label>
+          <input id="prov-endpoint" type="text" bind:value={provEndpoint} placeholder="https://api.example.com/v1" />
+        </div>
+        <div class="field">
+          <label for="prov-key">API key</label>
+          <input id="prov-key" type="password" bind:value={provApiKey} placeholder="Opsional" />
+          <span class="hint">Opsional. Kosongkan jika auth via header.</span>
+        </div>
+        <div class="field">
+          <div class="models-head">
+            <label>Models</label>
+            <button
+              class="btn-ghost sm"
+              onclick={findModels}
+              disabled={!provEndpoint.trim() || findingModels}
+            >
+              {findingModels ? "..." : "↻ Find again"}
+            </button>
+          </div>
+          {#if discoveredModels.length > 0}
+            <p class="hint">Endpoint lists {discoveredModels.length} models. Select the models to add.</p>
+            <div class="model-checks">
+              {#each discoveredModels as mid}
+                <label class="check-row">
+                  <input
+                    type="checkbox"
+                    checked={selectedModels.includes(mid)}
+                    onchange={(e) => toggleModelSelect(mid, e.currentTarget.checked)}
+                  />
+                  <span class="mono">{mid}</span>
+                </label>
+              {/each}
+            </div>
+          {:else if modelsError}
+            <p class="err">{modelsError}</p>
+          {/if}
         </div>
         <div class="actions">
           <button class="btn-ghost sm" onclick={() => (showProvDialog = false)}>
@@ -1512,9 +1588,9 @@
           <button
             class="btn-primary"
             onclick={createProvider}
-            disabled={!provName.trim() || !provEndpoint.trim()}
+            disabled={!provId.trim() || !provName.trim() || !provEndpoint.trim() || selectedModels.length === 0}
           >
-            {$t("providers.add")}
+            Submit
           </button>
         </div>
       </div>
@@ -1569,6 +1645,49 @@
     font-size: 13px;
     color: var(--dim);
   }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge.ok {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+  .badge.warn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+  }
+  .models-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .models-head label { font-weight: 600; }
+  .model-checks {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+  }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    cursor: pointer;
+  }
+  .check-row:hover { background: var(--hover); }
+  .check-row .mono {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+  .hint { font-size: 12px; color: var(--dim); margin-top: 4px; }
+  .err { font-size: 13px; color: #ef4444; margin-top: 8px; }
   .scan-btn { margin-top: 12px; }
   .dialog .lede { margin-bottom: 16px; }
   .prov-detail {

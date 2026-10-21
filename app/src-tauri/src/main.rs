@@ -483,6 +483,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
+            providers::discover_models,
             agent_chat,
             chat_history,
             usage_summary,

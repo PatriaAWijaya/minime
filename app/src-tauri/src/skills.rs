@@ -35,7 +35,7 @@ fn skills_for(agent_id: &str) -> &'static [&'static str] {
             "operational-playbook",
             "smo-playbook",
         ],
-        "code" => &["code-builder-playbook"],
+        "code" => &["code-builder-playbook", "reverse-engineer-anything"],
         _ => &[],
     }
 }
