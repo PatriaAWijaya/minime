@@ -453,6 +453,7 @@ fn serve_callback(
         *error_slot.lock().unwrap() = outcome.err();
         // Clear pending so the user can retry with a fresh code.
         *slot = None;
+    }
 }
 
 async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<TokenBundle, String> {
