@@ -1666,3 +1666,54 @@ dialog pilih agen, buat skill.
 
 - Patria hapus manual via GitHub. Verifikasi API: `PatriaAWijaya/minime-v2`
   → 404 (terhapus); `PatriaAWijaya/minime` → 200 (AMAN, semua kerjaan utuh).
+
+## 21 Okt 2026 ~07:15 — REVIEW DETAIL GATE TAHAP 3 (perintah Patria)
+
+### 3.1 Tools Gateway ✅
+- 12 tool di registry (meta, postiz, pireel, drive, slack, discord,
+  telegram, github, notion, canva, ruangapi, browser).
+- 6 command terdaftar: list_tools, get_tool_status, set_tool_connected,
+  get_agent_tools, set_agent_tools, agent_can_use_tool.
+- Allowlist per agen berfungsi.
+
+### 3.2 Approval Gate + Notifikasi ✅
+- Kolom "Butuh Approval" di Kanban; keputusan: Setuju→Selesai,
+  Revisi→Revisi, Tolak→Antrian.
+- Notifikasi native saat kartu butuh approval / selesai.
+
+### 3.3 Meta & Postiz — DRAFT-ONLY ✅ (dengan temuan)
+- TERBUKTI: tidak ada satu pun HTTP call ke Meta Graph API atau Postiz API
+  di seluruh codebase. Tidak ada jalur posting — draft-only terjamin
+  secara struktural, bukan sekadar kebijakan.
+- ⚠️ TEMUAN: mode "autopost" di UI menampilkan notifikasi "Terposting
+  otomatis" padahal tidak ada yang terposting (tidak ada kode posting).
+  Klaim UI menyesatkan. Rekomendasi: hapus opsi autopost sampai posting
+  beneran diimplementasikan, atau ubah teksnya jadi jujur.
+
+### 3.4 Pireel ✅
+- OAuth 2.1 PKCE terhubung NYATA (token di Keychain, terverifikasi).
+- `pireel_status`: memanggil API asli (get_state), respons valid.
+- `pireel_create_project`: command + dispatch runtime + tombol "Buat
+  project dummy" di kartu Pireel + i18n 3 bahasa.
+
+### 3.5 Google Drive ✅ (kode; menunggu Patria)
+- OAuth flow sama jujurnya dengan Pireel; `drive_upload` terimplementasi.
+- BELUM terhubung: butuh OAuth Client ID (Desktop app) dari Google Cloud
+  Console oleh Patria.
+
+### 3.6 Runtime ✅
+- 3 dispatch arm nyata: browser/fetch, pireel/create_project, drive/upload.
+- 3 gate jujur: allowlist→`not_allowed`; koneksi dicek ke Keychain→
+  `not_connected`; tanpa implementasi→`tool_not_implemented`.
+- Kartu Kanban "Jalankan tool" → Library → Butuh Approval.
+
+### Kriteria gate
+- [x] Draft-only terbukti (struktural — tidak ada kode posting)
+- [~] Pipeline E2E: komponen teruji satuan; alur penuh
+      brief→delegasi→tool→approval→Library belum diuji ujung-ke-ujung
+- [x] Konsistensi + performa (audit #3 LOLOS)
+- [ ] Vonis Patria (menunggu)
+
+### REKOMENDASI MIMI: LOLOS BERSYARAT
+Syarat: (1) perbaiki teks autopost yang menyesatkan ATAU hapus opsinya;
+(2) uji E2E penuh setelah vonis. Kode Tahap 3 solid, tidak ada gimmick.
