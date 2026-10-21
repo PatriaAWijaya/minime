@@ -1588,3 +1588,76 @@ cek konsistensi + performa dari awal, nol error lolos.
   backend `pireel_create_project` + dispatch runtime + tombol UI + i18n 3 bahasa.
 
 ### VONIS: LOLOS — nol error, semua fungsi nyata.
+
+## 21 Okt 2026 ~07:05 — REKAP MENYELURUH SEMUA FASE (perintah Patria)
+
+### YANG SUDAH SELESAI
+
+**FASE 0 — Fondasi ✅** (16 Okt): repo publik, arsitektur, framework agen,
+workflow, house rules.
+
+**TAHAP 1 — UI/UX ✅** (gate LOLOS 19 Okt): Tauri 2 + Svelte 5, layout ala
+OpenBot, 6 agen + badge + dot status, 3 bahasa (754 kunci, paritas penuh),
+7 tab, tema monokrom + #4FA6F0, dark glass.
+
+**TAHAP 2 — Model Router ✅** (gate LOLOS 20 Okt): Ollama default gratis
+(fallback OpenCode); berbayar Muse→Gemini→DeepSeek; Keychain; SQLite
+riwayat + usage; system prompt + skills engine. RuangAPI terhubung.
+
+**TAHAP 2.5 — Alur Kerja + Polish ✅**: BriefPanel, initiateProject, popup
+inisiasi tim, data dummy dihapus.
+
+**TAHAP 3 — Tools & Distribusi ✅ KODE** (gate MENUNGGU vonis Patria):
+3.1 Tools Gateway (12 tool), 3.2 Approval Gate + notifikasi, 3.3 Meta &
+Postiz (draft-only default), 3.4 Pireel OAuth (TERHUBUNG 21 Okt ✅),
+3.5 Google Drive OAuth (kode selesai), 3.6 Runtime integrasi (tool_run +
+gate jujur). Tes: 5 skenario (45+ pemeriksaan) LOLOS; audit penuh #1/#2/#3
+LOLOS.
+
+**Model agen & folder ✅** (20 Okt): hanya agen aktif di list; folder =
+project; Mimi = agen utama (tidak masuk folder, parent kanvas); hapus
+permanen hanya dari Tools; run global play/pause; kolom resizable.
+
+**Marketplace tab Tools ✅**: katalog 30 skill nyata, 12 tool registry,
+dialog pilih agen, buat skill.
+
+### YANG BELUM / TERTANGGUH (+ ALASAN)
+
+1. **Avatar animasi agen** — menunggu Patria buat sendiri (keputusannya,
+   tidak blocking).
+2. **RouterKu aktif** — TERTANGGUH: base URL gateway tidak diketahui + saldo
+   0. Butuh tiket support + top-up QRIS oleh Patria (langkahnya, bukan Mimi).
+3. **Google Drive terhubung** — TERTANGGUH: butuh OAuth Client ID tipe
+   Desktop app yang dibuat Patria di Google Cloud Console, lalu login di app.
+4. **Tahap 4.1 Avatar 3D** — BELUM: file lama dari commit 8525762, perlu
+   rebuild total.
+5. **Tahap 4.3 Security audit + CSP** — BELUM: CSP masih `null`; audit
+   keamanan formal belum jalan.
+6. **Installer Windows (.exe)** — BELUM: butuh runner Windows di GH Actions.
+7. **Uji instalasi bersih** — BELUM: menunggu 4.1–4.3 + installer selesai.
+8. **Tahap 4.5 sisa** — BELUM: latensi IPC formal, Lighthouse CI, audit
+   independen (benchmark internal sudah).
+9. **MeHarness ECC gelombang 1 + AgentShield** — BELUM: kurasi 7 playbook
+   ECC dan evaluasi AgentShield tertunda.
+10. **Gate Tahap 3 (vonis Patria)** — MENUNGGU: kode + E2E siap, Pireel
+    terhubung; vonis di tangan Patria.
+11. **Runtime agen penuh** (chat → orkestrasi → eksekusi multi-agen) —
+    BELUM: dari TODO Tahap 2; dispatch per-tool ada, orkestrasi ujung-ke-
+    ujung belum teruji.
+12. **Pipeline E2E penuh** (brief → delegasi → tool → approval → Library) —
+    BELUM TERUJI penuh.
+13. **Hapus repo `minime-v2`** — TERTANGGUH: harus manual via GitHub
+    settings (token tidak punya scope delete).
+14. **WebDriver AFK** — DIPARKIR atas perintah Patria (lanjut ke Tahap 4).
+
+### RENCANA PENGERJAAN BERIKUTNYA (usulan urutan)
+
+1. **Vonis Gate Tahap 3** oleh Patria (pintu masuk semua tahap berikut).
+2. **Google Drive**: Patria buat Client ID → login di app → uji upload.
+3. **Tahap 4 rebuild**: avatar 3D → security audit + CSP → installer
+   Windows → uji instalasi bersih.
+4. **Tahap 4.5 sisa**: latensi IPC formal → Lighthouse CI → audit independen.
+5. **Tinjau ulang semua tahap** (keputusan 11:59) → uji project asli
+   pertama oleh Patria → vonis launching.
+6. **MeHarness**: ECC gelombang 1 → AgentShield.
+7. **Fase 6 komersil** → Fase Voice (STT riil) → aplikasi mobile.
