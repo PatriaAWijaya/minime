@@ -1880,3 +1880,13 @@ publicDir static ✅.
 **Performa:** CPU 0,3%, RAM ~36MB ✅.
 
 **Kesimpulan: LOLOS — tidak ada error, tidak ada gimmick.**
+
+## 21 Okt 2026 ~12:15 — OAuth Client ID Google Drive DIBUAT ✅
+
+- Dibuat via browser takeover: project PENDOPO (main-light-877bw tidak
+  memberi izin ke akun wijaya.patria@gmail.com).
+- Nama: "Minime", tipe Desktop app, status Enabled.
+- Client ID: 209257928705-stgmnel3tjn6hg3o4ts6mvb48r8k8jb6.apps.googleusercontent.com
+- Consent screen: app "Minime", test user wijaya.patria@gmail.com.
+- Langkah berikut: Patria paste Client ID di kartu Drive → Hubungkan →
+  consent Google → uji upload.
