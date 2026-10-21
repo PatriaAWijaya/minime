@@ -156,16 +156,18 @@ async fn exchange_code(
     form.insert("client_id", client_id);
     form.insert("redirect_uri", redirect_uri);
     form.insert("code_verifier", verifier);
-    let resp: TokenResponse = client
+    let raw = client
         .post(TOKEN_URL)
         .form(&form)
         .send()
         .await
-        .map_err(|e| format!("token request failed: {e}"))?
-        .error_for_status()
-        .map_err(|e| format!("token http error: {e}"))?
-        .json()
-        .await
+        .map_err(|e| format!("token request failed: {e}"))?;
+    let status = raw.status();
+    let body = raw.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!("token http {status}: {}", body.chars().take(300).collect::<String>()));
+    }
+    let resp: TokenResponse = serde_json::from_str(&body)
         .map_err(|e| format!("token parse failed: {e}"))?;
     Ok(TokenBundle {
         access_token: resp.access_token,
