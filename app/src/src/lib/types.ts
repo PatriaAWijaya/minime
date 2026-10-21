@@ -16,6 +16,8 @@ export interface Agent {
   badge: string;
   /** Solid badge background color (flat, no gradients) */
   color: string;
+  /** 3D animal avatar image path (Patria's direction, 21 Oct 2026) */
+  avatar?: string;
 }
 
 export interface AttachmentMeta {

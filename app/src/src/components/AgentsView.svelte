@@ -511,7 +511,7 @@
     class:active={$activeAgentId === a.id}
     onclick={() => activeAgentId.set(a.id)}
   >
-    <span class="badge" style:background={a.color}>{a.badge}</span>
+    {#if a.avatar}<img class="badge-img" src={a.avatar} alt={a.name} />{:else}<span class="badge" style:background={a.color}>{a.badge}</span>{/if}
     <span class="meta">
       <span class="name">{rowName}</span>
       <span class="role">{rowRole}</span>
@@ -745,7 +745,7 @@
 
       <!-- Active agent identity -->
       <div class="tb-agent">
-        <span class="badge sm" style:background={agent.color}>{agent.badge}</span>
+        {#if agent.avatar}<img class="badge-img sm" src={agent.avatar} alt={agent.name} />{:else}<span class="badge sm" style:background={agent.color}>{agent.badge}</span>{/if}
         <span class="tb-agent-meta">
           <span class="tb-agent-name">{displayName}</span>
           <span class="tb-agent-role">{displayRole}</span>
@@ -1251,7 +1251,7 @@
                       closeAll();
                     }}
                   >
-                    <span class="badge sm" style:background={a.color}>{a.badge}</span>
+                    {#if a.avatar}<img class="badge-img sm" src={a.avatar} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
                     <span>{agentDisplayName(a, $agentNames, $t)}</span>
                   </button>
                 {/each}
@@ -1419,7 +1419,7 @@
                         addAgentMenuFor = null;
                       }}
                     >
-                      <span class="badge sm" style:background={a.color}>{a.badge}</span>
+                      {#if a.avatar}<img class="badge-img sm" src={a.avatar} alt={a.name} />{:else}<span class="badge sm" style:background={a.color}>{a.badge}</span>{/if}
                       <span>{agentDisplayName(a, $agentNames, $t)}</span>
                     </button>
                   {/each}
@@ -2168,6 +2168,11 @@
     text-overflow: ellipsis;
     max-width: 180px;
   }
+.badge-img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  flex: none;
+}
+.badge-img.sm { width: 28px; height: 28px; }
   .badge.sm {
     width: 32px;
     height: 32px;
