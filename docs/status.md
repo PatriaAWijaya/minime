@@ -1904,3 +1904,14 @@ dibersihkan → retry terjebak pakai kode basi (single-use) → 400 terus.
 
 Perbaikan: pending dibersihkan saat gagal (drive.rs + pireel.rs) agar
 retry selalu pakai kode + PKCE baru. Test 32/32 ✅, app rebuild ✅.
+
+## 21 Okt 2026 ~12:45 — FIX client_secret missing
+
+Error exact dari Google: "client_secret is missing" — Client ID
+terdaftar sebagai Web application (butuh secret), bukan Desktop app.
+
+Dua jalur perbaikan paralel:
+1. App: tambah field Client Secret opsional (store + Rust + UI + i18n 3 bahasa).
+   Test 32/32 ✅, rebuild ✅.
+2. Browser: buat Client ID baru tipe Desktop app di project PENDOPO
+   (tidak butuh secret) — sedang berjalan.
