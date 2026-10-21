@@ -99,6 +99,19 @@ backend Rust menyatu di proses Tauri.
 - Fallback berlapis: utama → cadangan → custom pengguna.
 - Metering: catat token & estimasi biaya per agen; budget cap opsional
   (peringatan saat mendekati batas).
+- **OmniRoute (diegosouzapw/OmniRoute, MIT — opsi power-user, vonis 21 Okt 2026).**
+  Gateway AI gratis (~79rb stars): satu endpoint ke 375 provider (153 bertanda
+  gratis, ±1.475 model), auto-fallback sadar-kuota antar free tier, kompresi
+  token 15–95%, kompatibel OpenCode/Claude Code/Cursor.
+  **"Gratis" = bawa akun provider sendiri** (bukan grant token; angka
+  ±1,62 miliar token/bulan = agregat 34 pool key, diaudit dua mingguan,
+  12 provider ditandai "avoid" di katalog risiko).
+  Posisi: BUKAN default Minime (service Node/Electron terpisah, melanggar
+  prinsip compact; friksi signup per-provider untuk user publik).
+  Dipakai sebagai **agregator free-tier opsional**: jalan di mesin user,
+  Minime menunjuk endpoint-nya sebagai "penyedia custom".
+  Catatan tetap: free tier churn — selalu tumpuan sekunder di bawah
+  Ollama lokal.
 
 ### 4.3 Skills engine
 - Skill = playbook terstruktur (diadaptasi dari `skills/` v1 di repo):

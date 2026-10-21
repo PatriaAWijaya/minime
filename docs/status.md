@@ -1937,3 +1937,15 @@ Perbaikan: TokenBundle tambah field client_secret (opsional);
 refresh_bundle kirim secret; exchange simpan secret ke bundle.
 Token file di MacBook diupdate dengan secret.
 Test refresh manual: SUKSES ✅. App rebuild, test 32/32 ✅.
+
+---
+
+## 2026-10-21 ~16:32 WIB — OmniRoute dievaluasi sebagai router free-tier
+
+- Patria: cek diegosouzapw/OmniRoute sebagai alternatif router model AI free tier.
+- Vonis Mimi: legit (MIT, ~79rb stars, 900+ kontributor, auto-fallback sadar-kuota,
+  kompatibel OpenCode) — tapi **bukan default Minime**: "gratis" = bawa akun provider
+  sendiri per provider (friksi untuk user publik), service Node/Electron terpisah
+  (melanggar prinsip compact). Diposisikan sebagai **opsi power-user**: agregator
+  free-tier opsional di mesin user, Minime menunjuk endpoint-nya sebagai penyedia
+  custom. Tercatat di `docs/arsitektur.md` §4.2.
