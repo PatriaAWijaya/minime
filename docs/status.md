@@ -1833,3 +1833,11 @@ Verifikasi ulang menyeluruh (tidak ada perubahan kode sejak audit #4):
 
 **Kesimpulan: LOLOS — tidak ada error, tidak ada gimmick.**
 Catatan: MacBook sempat reboot (host key berubah), SSH disambung ulang.
+
+## 21 Okt 2026 ~10:25 — UPDATE APLIKASI DI MAC ✅
+
+Pull terbaru → vite build ✅ → tauri build --debug ✅ → bundle skills ✅
+→ relaunch ✅ (PID 12007, sehat).
+
+Termasuk: avatar 3D 6 hewan, logo + ikon app baru, CSP ketat,
+consent gate autopost.
