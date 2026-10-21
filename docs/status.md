@@ -1973,3 +1973,27 @@ Test diperbarui, 32/32 lolos ✅.
 
 Provider premium: pilih radio provider berbayar yang belum konek →
 otomatis bukakan form bantu konek (fungsi selectProvider).
+
+## 21 Okt 2026 ~23:40 — Skill REA (Reverse Engineer Anything) untuk Code Builder
+
+Perintah Patria: clone `morluto/rea` dan aplikasikan ke skill umum Muse + Minime.
+
+- Repo di-clone ke `~/workspace/rea-morluto` (v6.7.0, MIT) sebagai referensi pola.
+- Skill umum Muse: `~/workspace/custom-skills/reverse-engineer-anything/SKILL.md` (format ID: Purpose → Kapan dipakai → Workflow → Output → Rules; adaptasi instruksi, kode tidak disalin).
+- Skill Minime: `skills/reverse-engineer-anything/SKILL.md` (frontmatter: owner `code`, v1.0.0) — di-wiring ke agen Code Builder di `skills.rs` (`skills_for`: `"code" => &["code-builder-playbook", "reverse-engineer-anything"]`).
+- Fungsi: analisis binary/paket/aplikasi yang sudah di-ship (dekompilasi, perbandingan versi, verifikasi runtime) via MCP `rea-agents` atau CLI `npx -y rea-agents@latest`. Bukan untuk analisis source repo biasa.
+
+## 21 Okt 2026 ~23:40 — Pola OpenBot: provider dulu, model mengikuti
+
+Perintah Patria: duplikasikan fungsi pilih model AI dari OpenBot.
+
+Yang diduplikasi (clean-room, bukan salin kode):
+1. Provider picker di panel agen — pilih provider dulu
+2. Ganti provider → otomatis pilih model pertama provider itu
+3. Model list terfilter hanya model dari provider terpilih
+4. Pilih provider premium yang belum konek → otomatis bukakan form bantu konek
+
+Implementasi: store agentProvider (per-agent), dropdown provider di
+panel model, visibleSections terfilter, setProvider() dengan auto-cascade,
+SettingsView auto-buka form konek via localStorage flag.
+i18n: model.provider (ID/EN/ZH). Build ✅, app jalan.
