@@ -93,32 +93,27 @@ fn default_allowlists() -> HashMap<String, Vec<String>> {
     m.insert("mimi".into(), vec!["*".into()]);
     m.insert(
         "kreatif".into(),
-        vec!["pireel".into(), "canva".into(), "meta".into(), "postiz".into()],
+        vec!["pireel".into(), "meta".into(), "postiz".into()],
     );
-    m.insert("riset".into(), vec!["browser".into(), "ruangapi".into()]);
-    m.insert("finance".into(), vec!["ruangapi".into()]);
+    m.insert("riset".into(), vec!["browser".into()]);
+    m.insert("finance".into(), Vec::new());
     m.insert(
         "strategis".into(),
-        vec!["meta".into(), "postiz".into(), "ruangapi".into()],
+        vec!["meta".into(), "postiz".into()],
     );
-    m.insert("code".into(), vec!["github".into(), "ruangapi".into()]);
+    m.insert("code".into(), Vec::new());
     m
 }
 
 /// Daftar tool yang dikenal aplikasi.
 fn known_tools() -> Vec<(String, String, String, bool, bool)> {
+    // Patria 21 Okt: hanya tool yang benar-benar ada dan terbukti bekerja.
+    // meta/postiz = draft-only by design; pireel/drive = OAuth nyata; browser = fetch nyata.
     vec![
         ("meta".into(), "Meta".into(), "social".into(), true, true),
         ("postiz".into(), "Postiz".into(), "social".into(), true, true),
         ("pireel".into(), "Pireel".into(), "video".into(), true, false),
         ("drive".into(), "Google Drive".into(), "storage".into(), true, false),
-        ("slack".into(), "Slack".into(), "chat".into(), true, false),
-        ("discord".into(), "Discord".into(), "chat".into(), true, false),
-        ("telegram".into(), "Telegram".into(), "chat".into(), true, false),
-        ("github".into(), "GitHub".into(), "code".into(), true, false),
-        ("notion".into(), "Notion".into(), "docs".into(), true, false),
-        ("canva".into(), "Canva".into(), "design".into(), true, false),
-        ("ruangapi".into(), "RuangAPI".into(), "api".into(), true, false),
         ("browser".into(), "Browser".into(), "web".into(), false, false),
     ]
 }
@@ -245,9 +240,9 @@ mod tests {
         let m = default_allowlists();
         assert_eq!(m.get("mimi").unwrap(), &vec!["*".to_string()]);
         assert!(m.get("kreatif").unwrap().contains(&"pireel".to_string()));
-        assert!(m.get("kreatif").unwrap().contains(&"canva".to_string()));
-        assert_eq!(m.get("finance").unwrap(), &vec!["ruangapi".to_string()]);
-        assert!(m.get("code").unwrap().contains(&"github".to_string()));
+        assert!(!m.get("kreatif").unwrap().contains(&"canva".to_string()));
+        assert!(m.get("finance").unwrap().is_empty());
+        assert!(m.get("code").unwrap().is_empty());
         assert!(m.get("riset").unwrap().contains(&"browser".to_string()));
     }
 
@@ -255,17 +250,17 @@ mod tests {
     fn gate_allows_and_denies_correctly() {
         let m = default_allowlists();
         // Mimi (orchestrator) may use everything.
-        assert!(can_use(&m, "mimi", "github"));
         assert!(can_use(&m, "mimi", "pireel"));
-        // Finance: ruangapi only.
-        assert!(can_use(&m, "finance", "ruangapi"));
-        assert!(!can_use(&m, "finance", "github"));
+        assert!(can_use(&m, "mimi", "drive"));
+        // Finance: no tools (ruangapi belum ada).
+        assert!(!can_use(&m, "finance", "ruangapi"));
+        assert!(!can_use(&m, "finance", "pireel"));
         assert!(!can_use(&m, "finance", "meta"));
-        // Code: github yes, pireel no.
-        assert!(can_use(&m, "code", "github"));
+        // Code: no tools (github belum ada), pireel no.
+        assert!(!can_use(&m, "code", "github"));
         assert!(!can_use(&m, "code", "pireel"));
         // Unknown agent: denied everything.
-        assert!(!can_use(&m, "hantu", "ruangapi"));
+        assert!(!can_use(&m, "hantu", "browser"));
     }
 
     #[test]
@@ -277,6 +272,6 @@ mod tests {
         }
         let s = reg.status.lock().unwrap();
         assert_eq!(s.get("meta"), Some(&true));
-        assert_eq!(s.get("slack"), None);
+        assert_eq!(s.get("drive"), None);
     }
 }

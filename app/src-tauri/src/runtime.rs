@@ -348,7 +348,7 @@ mod tests {
     #[tokio::test]
     async fn dispatch_not_connected_e2e() {
         let reg = registry();
-        let err = dispatch(&reg, "mimi", "slack", "status", &ToolArgs::new())
+        let err = dispatch(&reg, "mimi", "pireel", "status", &ToolArgs::new())
             .await
             .expect_err("must be gated");
         assert_eq!(err, "not_connected");

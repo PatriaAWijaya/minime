@@ -351,6 +351,17 @@
     keyInput = "";
     keySavedFor = null;
   }
+  // Patria 21 Okt: jika user pilih provider premium yang belum konek,
+  // langsung bukakan menu bantu konek.
+  function selectProvider(p: { id: string; kind: string; local?: boolean }) {
+    defaultProviderId.set(p.id);
+    const st = $providerState[p.id] ?? { connected: false };
+    const rs = realStatus(p.id);
+    const connected = rs ? rs.state === "connected" : st.connected;
+    if (!connected && p.kind === "paid" && !p.local) {
+      openKeyForm(p.id);
+    }
+  }
   async function submitKeyForm(id: string) {
     keyBusy = true;
     try {
@@ -1292,7 +1303,7 @@
           id="prov-{p.id}"
           name="default-provider"
           checked={$defaultProviderId === p.id}
-          onchange={() => defaultProviderId.set(p.id)}
+          onchange={() => selectProvider(p)}
           aria-label={p.name}
         />
         <label for="prov-{p.id}" class="prov-meta">
