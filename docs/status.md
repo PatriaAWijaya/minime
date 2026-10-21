@@ -1747,3 +1747,16 @@ Syarat: (1) perbaiki teks autopost yang menyesatkan ATAU hapus opsinya;
 ### CATATAN: MacBook offline saat verifikasi (SSH putus ~07:13). Semua
 di atas adalah verifikasi kode statis mendalam. Uji live menyusul setelah
 MacBook online kembali.
+
+## 21 Okt 2026 ~08:05 — CONSENT GATE AUTOPOST SELESAI + TERUJI BUILD
+
+- Fitur (perintah Patria 07:12): mode autopost kini butuh persetujuan
+  eksplisit pertama kali per platform. Alur: pilih "Posting otomatis" di
+  dialog Publikasikan → dialog konsekuensi muncul (3 poin risiko) → user
+  HARUS centang "Saya mengerti risikonya" → tombol "Aktifkan" baru bisa
+  ditekan → Batal = tetap draft. Persetujuan tersimpan per platform.
+- i18n: 7 kunci baru × 3 bahasa (total 761, paritas penuh).
+- Verifikasi: vite build ✅, cargo check 0/0 ✅, test 32/32 ✅,
+  app relaunch sehat (CPU 0,2%).
+- Token Pireel tetap di Keychain setelah restart ✅.
+- Uji klik dialog oleh Patria (butuh interaksi UI langsung).
