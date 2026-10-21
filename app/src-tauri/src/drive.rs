@@ -43,6 +43,8 @@ struct TokenBundle {
     refresh_token: String,
     expires_at: u64,
     client_id: String,
+    #[serde(default)]
+    client_secret: Option<String>,
 }
 
 impl TokenBundle {
@@ -190,6 +192,7 @@ async fn exchange_code(
             .ok_or_else(|| "no refresh token granted — retry with a fresh consent".to_string())?,
         expires_at: now_epoch() + resp.expires_in.unwrap_or(3600),
         client_id: client_id.to_string(),
+        client_secret: client_secret.map(|x| x.to_string()),
     })
 }
 
@@ -198,6 +201,9 @@ async fn refresh_bundle(bundle: &TokenBundle) -> Result<TokenBundle, String> {
     let mut form = HashMap::new();
     form.insert("grant_type", "refresh_token");
     form.insert("client_id", bundle.client_id.as_str());
+    if let Some(secret) = bundle.client_secret.as_deref() {
+        form.insert("client_secret", secret);
+    }
     form.insert("refresh_token", bundle.refresh_token.as_str());
     let resp: TokenResponse = client
         .post(TOKEN_URL)
@@ -215,6 +221,7 @@ async fn refresh_bundle(bundle: &TokenBundle) -> Result<TokenBundle, String> {
         refresh_token: resp.refresh_token.unwrap_or_else(|| bundle.refresh_token.clone()),
         expires_at: now_epoch() + resp.expires_in.unwrap_or(3600),
         client_id: bundle.client_id.clone(),
+        client_secret: bundle.client_secret.clone(),
     })
 }
 
