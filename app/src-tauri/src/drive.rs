@@ -103,6 +103,7 @@ struct PendingOAuth {
     verifier: String,
     state: String,
     client_id: String,
+    client_secret: Option<String>,
     redirect_uri: String,
     expires_at: u64,
 }
@@ -145,6 +146,7 @@ struct TokenResponse {
 
 async fn exchange_code(
     client_id: &str,
+    client_secret: Option<&str>,
     redirect_uri: &str,
     verifier: &str,
     code: &str,
@@ -154,6 +156,9 @@ async fn exchange_code(
     form.insert("grant_type", "authorization_code");
     form.insert("code", code);
     form.insert("client_id", client_id);
+    if let Some(secret) = client_secret {
+        form.insert("client_secret", secret);
+    }
     form.insert("redirect_uri", redirect_uri);
     form.insert("code_verifier", verifier);
     let raw = client
@@ -255,6 +260,7 @@ fn serve_callback(
             .map_err(|e| format!("runtime: {e}"))?;
         let bundle = rt.block_on(exchange_code(
             &pending.client_id,
+            pending.client_secret.as_deref(),
             &pending.redirect_uri,
             &pending.verifier,
             &code,
@@ -370,6 +376,7 @@ pub struct DriveOAuthPhase {
 pub async fn drive_connect_url(
     state: tauri::State<'_, DriveState>,
     client_id: String,
+    client_secret: Option<String>,
 ) -> Result<String, String> {
     let s = state.inner().clone();
     let client_id = client_id.trim().to_string();
@@ -387,6 +394,7 @@ pub async fn drive_connect_url(
         verifier: verifier.clone(),
         state: oauth_state.clone(),
         client_id: client_id.clone(),
+        client_secret: client_secret.map(|x| x.trim().to_string()).filter(|x| !x.is_empty()),
         redirect_uri: redirect_uri.clone(),
         expires_at: now_epoch() + 600,
     };

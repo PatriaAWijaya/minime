@@ -33,6 +33,7 @@
     driveOAuthError,
     driveAuthUrl,
     driveClientId,
+    driveClientSecret,
     driveConnect,
     drivePollOAuth,
     driveRefreshStatus,
@@ -454,6 +455,17 @@
                       type="text"
                       bind:value={$driveClientId}
                       placeholder={$t("mkt.drive.clientIdPh")}
+                      autocomplete="off"
+                      spellcheck={false}
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="drive-client-secret">{$t("mkt.drive.clientSecret")} <span class="opt">({$t("mkt.drive.optional")})</span></label>
+                    <input
+                      id="drive-client-secret"
+                      type="password"
+                      bind:value={$driveClientSecret}
+                      placeholder={$t("mkt.drive.clientSecretPh")}
                       autocomplete="off"
                       spellcheck={false}
                     />

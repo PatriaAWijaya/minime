@@ -699,10 +699,22 @@ driveClientId.subscribe((v) => {
     /* ignore */
   }
 });
+/** Optional client secret (hanya bila Client ID tipe Web application). */
+export const driveClientSecret = writable<string>(
+  loadString("minime.drive.client-secret", ""),
+);
+driveClientSecret.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.drive.client-secret", v);
+  } catch {
+    /* ignore */
+  }
+});
 
 /** Start OAuth with the user's own client ID (opens the system browser). */
 export async function driveConnect(): Promise<void> {
   const clientId = get(driveClientId).trim();
+  const clientSecret = get(driveClientSecret).trim();
   driveOAuthError.set(null);
   if (!clientId) {
     driveStatus.set({ connected: false, detail: "invalid_client_id", email: null });
@@ -711,6 +723,7 @@ export async function driveConnect(): Promise<void> {
   try {
     const url = await tauriInvoke<string>("drive_connect_url", {
       clientId,
+      clientSecret: clientSecret || null,
     });
     if (url) {
       driveAuthUrl.set(url);
