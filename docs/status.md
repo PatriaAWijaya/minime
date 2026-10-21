@@ -1915,3 +1915,15 @@ Dua jalur perbaikan paralel:
    Test 32/32 ✅, rebuild ✅.
 2. Browser: buat Client ID baru tipe Desktop app di project PENDOPO
    (tidak butuh secret) — sedang berjalan.
+
+## 21 Okt 2026 ~12:55 — DRIVE TERHUBUNG ✅
+
+OAuth selesai end-to-end:
+- Client ID baru "Minime Desktop" (tipe Desktop):
+  209257928705-cifndse7oclo8c24qljfsla10q851j3h.apps.googleusercontent.com
+- Google tetap minta client_secret (kebijakan baru) → reset secret via console
+- Consent OAuth diselesaikan via browser (signed in wijaya.patria@gmail.com)
+- Token exchange sukses, token disimpan di ~/.minime/drive_tokens.json
+  (fallback file karena keychain SSH terblokir)
+- Verifikasi: API Drive merespons sebagai Patria A. Wijaya ✅
+- Uji upload: file test berhasil diupload lalu dihapus ✅
