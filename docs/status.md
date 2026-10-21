@@ -1717,3 +1717,33 @@ dialog pilih agen, buat skill.
 ### REKOMENDASI MIMI: LOLOS BERSYARAT
 Syarat: (1) perbaiki teks autopost yang menyesatkan ATAU hapus opsinya;
 (2) uji E2E penuh setelah vonis. Kode Tahap 3 solid, tidak ada gimmick.
+
+## 21 Okt 2026 ~07:20 — LAPORAN DETAIL 3.5 & 3.6 (perintah Patria)
+
+### 3.5 Google Drive — VERIFIKASI KODE (bukan gimmick)
+1. **OAuth jujur** ✅: pola sama dengan Pireel — tukar kode dulu, BARU
+   tampil "Otorisasi selesai". Gagal = pesan error tampil di UI.
+2. **Keychain fallback** ✅: `pending_tokens` + tulis di thread Tauri +
+   fallback `security` CLI bila keyring gagal.
+3. **drive_upload NYATA** ✅: validasi nama file + batas 25MB → token
+   valid (auto-refresh) → pastikan folder MIMI ada → multipart upload
+   ke `uploadType=multipart` Drive API → kembalikan file ID asli.
+   Bukan mock, bukan simulasi.
+4. **Batasan jujur**: BELUM terhubung — butuh OAuth Client ID (Desktop app)
+   dari Google Cloud Console oleh Patria. Tanpa ini tidak bisa dites
+   end-to-end. Kode siap, kredensial belum ada.
+
+### 3.6 Runtime — VERIFIKASI KODE (bukan gimmick)
+1. **3 dispatch arm nyata**: browser/fetch, pireel/create_project,
+   drive/upload — semua memanggil API asli.
+2. **Gate jujur** ✅: `check_connected` cek token ASLI di Keychain (bukan
+   status UI); allowlist → `not_allowed`; tanpa implementasi →
+   `tool_not_implemented`; tool tak dikenal → `unknown_tool`.
+3. **Tes**: `dispatch_browser_fetch_real_internet` memanggil example.com
+   betulan (bukan mock); `dispatch_not_connected_e2e` verifikasi gate.
+4. **Batasan jujur**: alur penuh agen→tool→Kanban→Library belum diuji
+   ujung-ke-ujung via UI (butuh MacBook online).
+
+### CATATAN: MacBook offline saat verifikasi (SSH putus ~07:13). Semua
+di atas adalah verifikasi kode statis mendalam. Uji live menyusul setelah
+MacBook online kembali.
