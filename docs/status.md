@@ -1997,3 +1997,18 @@ Implementasi: store agentProvider (per-agent), dropdown provider di
 panel model, visibleSections terfilter, setProvider() dengan auto-cascade,
 SettingsView auto-buka form konek via localStorage flag.
 i18n: model.provider (ID/EN/ZH). Build ✅, app jalan.
+
+## 22 Okt 2026 ~00:05 — Mekanisme OpenBot divisual + git → Minime
+
+Patria kirim 6 screenshot proses ganti model di OpenBot. Mekanisme yang
+diduplikasi (clean-room):
+
+1. **Custom provider dialog lengkap**: Provider ID, Display name, Base URL,
+   API key (opsional) → tombol "Find again" → fetch GET {base}/models →
+   checkbox pilih model → Submit. (Backend: discover_models command baru)
+2. **Badge status visual**: "Connected" hijau / "Not connected" oranye,
+   ala OpenBot.
+3. Sudah ada sebelumnya: provider picker per-agen, auto-cascade model,
+   auto-buka form konek premium.
+
+Test 32/32 ✅, build ✅, app jalan.
