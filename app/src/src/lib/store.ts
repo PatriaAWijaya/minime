@@ -1615,6 +1615,46 @@ export function setSocialMode(platform: "meta" | "postiz", mode: SocialMode): vo
   socialMode.update((m) => ({ ...m, [platform]: mode }));
 }
 
+/* ---------- Autopost consent gate (Patria 21 Okt) ----------
+   Autopost mode requires explicit first-time consent per platform.
+   The dialog shows consequences; only a manual confirmation enables it. */
+export const autopostConsent = writable<Record<"meta" | "postiz", boolean>>(
+  loadRecord<boolean>("minime.autopost-consent"),
+);
+persistRecord("minime.autopost-consent", autopostConsent);
+
+/** Platform awaiting consent dialog, null when no dialog open. */
+export const autopostPending = writable<"meta" | "postiz" | null>(null);
+
+export function hasAutopostConsent(platform: "meta" | "postiz"): boolean {
+  return get(autopostConsent)[platform] === true;
+}
+
+/** Called when the user picks "autopost" in the UI. Opens the consent
+    dialog on first use; enables directly when already consented. */
+export function requestAutopost(platform: "meta" | "postiz"): void {
+  if (hasAutopostConsent(platform)) {
+    setSocialMode(platform, "autopost");
+  } else {
+    autopostPending.set(platform);
+  }
+}
+
+/** User confirmed the consequences — record consent and enable. */
+export function confirmAutopost(): void {
+  const p = get(autopostPending);
+  if (p) {
+    autopostConsent.update((c) => ({ ...c, [p]: true }));
+    setSocialMode(p, "autopost");
+  }
+  autopostPending.set(null);
+}
+
+/** User declined — stay on draft. */
+export function cancelAutopost(): void {
+  autopostPending.set(null);
+}
+
 export function createSocialDraft(
   title: string,
   content: string,

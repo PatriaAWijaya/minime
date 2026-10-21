@@ -29,6 +29,10 @@
     activeFlowProjectId,
     socialMode,
     setSocialMode,
+    requestAutopost,
+    confirmAutopost,
+    cancelAutopost,
+    autopostPending,
     serverList,
     addServer,
     serverMuted,
@@ -116,6 +120,7 @@
   // Agent extras menu (+) + dialogs
   let agentMenuOpen = $state(false);
   let agentDlg = $state<"browser" | "files" | "task" | "memories" | "skills" | "tables" | "publish" | "advanced" | "permissions" | null>(null);
+  let autopostAgree = $state(false);
   let taskTitle = $state("");
   let taskProject = $state("");
   let taskAdded = $state(false);
@@ -1063,6 +1068,34 @@
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
       {:else if agentDlg === "publish"}
+        {#if $autopostPending}
+          <h3>{$t("agents.publish.consent.title")}</h3>
+          <p class="note warn" role="alert">
+            {$t("agents.publish.consent.body", {
+              platform: $autopostPending === "meta" ? "Meta" : "Postiz",
+            })}
+          </p>
+          <ul class="consent-list">
+            <li>{$t("agents.publish.consent.c1")}</li>
+            <li>{$t("agents.publish.consent.c2")}</li>
+            <li>{$t("agents.publish.consent.c3")}</li>
+          </ul>
+          <label class="consent-check">
+            <input type="checkbox" bind:checked={autopostAgree} />
+            <span>{$t("agents.publish.consent.agree")}</span>
+          </label>
+          <div class="dlg-actions">
+            <button
+              class="btn-primary"
+              disabled={!autopostAgree}
+              onclick={() => { confirmAutopost(); autopostAgree = false; }}
+            >{$t("agents.publish.consent.enable")}</button>
+            <button
+              class="btn-ghost"
+              onclick={() => { cancelAutopost(); autopostAgree = false; }}
+            >{$t("agents.task.cancel")}</button>
+          </div>
+        {:else}
         <h3>{$t("agents.publish")}</h3>
         <p class="dlg-agent">{displayName}</p>
         <p class="note">{$t("agents.publish.note")}</p>
@@ -1081,7 +1114,11 @@
           <span>{$t("agents.publish.mode")}</span>
           <select
             value={$socialMode[draftPlatform] ?? "draft"}
-            onchange={(e) => setSocialMode(draftPlatform, (e.currentTarget as HTMLSelectElement).value as "draft" | "autopost")}
+            onchange={(e) => {
+              const v = (e.currentTarget as HTMLSelectElement).value as "draft" | "autopost";
+              if (v === "autopost") requestAutopost(draftPlatform);
+              else setSocialMode(draftPlatform, "draft");
+            }}
           >
             <option value="draft">{$t("agents.publish.mode.draft")}</option>
             <option value="autopost">{$t("agents.publish.mode.autopost")}</option>
@@ -1109,6 +1146,7 @@
           >{$t("agents.publish.create")}</button>
           <button class="btn-ghost" onclick={() => (agentDlg = null)}>{$t("agents.task.cancel")}</button>
         </div>
+        {/if}
       {:else if agentDlg === "advanced"}
         <h3>{$t("agents.advanced")}</h3>
         <p class="dlg-agent">{displayName}</p>

@@ -380,3 +380,29 @@ table.data tr:last-child td { border-bottom: 0; }
 }
 .dialog h3 { margin-bottom: 12px; font-size: 17px; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+/* Autopost consent dialog (Patria 21 Okt) */
+.consent-list {
+  margin: 12px 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.consent-list li {
+  margin-bottom: 8px;
+}
+.consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.consent-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #4fa6f0;
+  flex-shrink: 0;
+}
