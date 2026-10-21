@@ -281,10 +281,6 @@ fn serve_callback(
         // Clear pending so the user can retry with a fresh code
         // (auth codes are single-use; retrying with a burned code = 400).
         *slot = None;
-        *slot = Some(PendingOAuth {
-            expires_at: 0,
-            ..pending.clone()
-        });
     }
 }
 
