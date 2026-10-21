@@ -226,9 +226,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registry_has_12_tools_with_draft_only_social() {
+    fn registry_has_5_tools_with_draft_only_social() {
         let tools = known_tools();
-        assert_eq!(tools.len(), 12);
+        assert_eq!(tools.len(), 5);
         let meta = tools.iter().find(|(id, ..)| id == "meta").unwrap();
         assert!(meta.4, "meta must be draft_only");
         let postiz = tools.iter().find(|(id, ..)| id == "postiz").unwrap();
