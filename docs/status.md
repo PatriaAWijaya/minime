@@ -1841,3 +1841,16 @@ Pull terbaru → vite build ✅ → tauri build --debug ✅ → bundle skills �
 
 Termasuk: avatar 3D 6 hewan, logo + ikon app baru, CSP ketat,
 consent gate autopost.
+
+## 21 Okt 2026 ~10:35 — FIX: tombol ganti avatar
+
+Laporan Patria: tombol ganti avatar tidak merespons.
+Penyebab: onclick={closeAll} — cuma menutup dialog, bukan buka picker.
+
+Perbaikan:
+- Tombol kini membuka picker berisi 6 avatar hewan.
+- Pilih avatar → tersimpan per agen (persisted), langsung tampil di
+  semua tempat (list, panel detail, Kanban).
+- Tampilan avatar di panel detail kini pakai gambar, bukan huruf.
+
+Terverifikasi: vite build ✅, app rebuild + relaunch ✅.
