@@ -52,6 +52,15 @@ impl TokenBundle {
 }
 
 fn read_bundle() -> Option<TokenBundle> {
+    // File fallback (Patria 21 Okt: untuk impor token manual via SSH).
+    if let Ok(home) = std::env::var("HOME") {
+        let p = std::path::Path::new(&home).join(".minime").join("drive_tokens.json");
+        if let Ok(raw) = std::fs::read_to_string(&p) {
+            if let Ok(b) = serde_json::from_str::<TokenBundle>(&raw) {
+                return Some(b);
+            }
+        }
+    }
     if let Ok(entry) = keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT) {
         if let Ok(raw) = entry.get_password() {
             if let Ok(b) = serde_json::from_str::<TokenBundle>(&raw) {
