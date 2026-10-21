@@ -74,6 +74,7 @@
   import type { ModelSection } from "../lib/store";
   import type { Agent, ServerKind, FlowProject } from "../lib/types";
   import { t } from "../lib/i18n";
+  import { get } from "svelte/store";
 
   const reasoningOptions = ["low", "mid", "high"] as const;
 
@@ -443,13 +444,14 @@
   // Ganti provider → otomatis pilih model pertama provider itu.
   function setProvider(pid: string) {
     agentProvider.update((p) => ({ ...p, [agent.id]: pid }));
-    const first = $modelCatalog.find((m) => m.providerId === pid);
+    const catalog = get(modelCatalog);
+    const first = catalog.find((m) => m.providerId === pid);
     if (first) {
       agentModel.update((m) => ({ ...m, [agent.id]: first.id }));
     }
     // Jika premium & belum konek → bantu user konek (buka Settings > Penyedia Model)
     const prov = PROVIDERS.find((x) => x.id === pid);
-    const st = $providerState[pid] ?? { connected: false };
+    const st = get(providerState)[pid] ?? { connected: false };
     if (prov && prov.kind === "paid" && !prov.local && !st.connected) {
       // Tandai agar SettingsView membuka form konek otomatis
       try {
