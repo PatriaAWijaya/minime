@@ -1854,3 +1854,12 @@ Perbaikan:
 - Tampilan avatar di panel detail kini pakai gambar, bukan huruf.
 
 Terverifikasi: vite build ✅, app rebuild + relaunch ✅.
+
+## 21 Okt 2026 ~10:30 — FIX: avatar tidak tampil
+
+Laporan Patria: picker avatar terbuka tapi gambar rusak (ikon ?).
+Penyebab: file di `src/static/` tidak ke-copy ke dist — Vite default
+pakai `public/`, bukan `static/`.
+
+Perbaikan: `publicDir: "static"` di vite.config.ts.
+Terverifikasi: 6 avatar ada di dist/avatars/ ✅, app rebuild + relaunch ✅.
