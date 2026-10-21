@@ -1896,3 +1896,11 @@ publicDir static ✅.
 Laporan Patria: ikon di dock masih ungu "M" lama.
 Tindakan: rebuild app (ikon baru sudah di bundle sejak 08:44) +
 refresh Dock macOS. Ikon baru biru "me" harusnya tampil sekarang.
+
+## 21 Okt 2026 ~12:35 — FIX OAuth retry (bug 400)
+
+Penyebab 400: setelah token exchange gagal, slot pending TIDAK
+dibersihkan → retry terjebak pakai kode basi (single-use) → 400 terus.
+
+Perbaikan: pending dibersihkan saat gagal (drive.rs + pireel.rs) agar
+retry selalu pakai kode + PKCE baru. Test 32/32 ✅, app rebuild ✅.
