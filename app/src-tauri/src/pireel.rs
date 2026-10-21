@@ -451,11 +451,8 @@ fn serve_callback(
         *error_slot.lock().unwrap() = None;
     } else {
         *error_slot.lock().unwrap() = outcome.err();
-        *slot = Some(PendingOAuth {
-            expires_at: 0,
-            ..pending.clone()
-        });
-    }
+        // Clear pending so the user can retry with a fresh code.
+        *slot = None;
 }
 
 async fn exchange_code(pending: &PendingOAuth, code: &str) -> Result<TokenBundle, String> {
