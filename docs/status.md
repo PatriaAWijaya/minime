@@ -1957,3 +1957,19 @@ i18n 3 bahasa ✅, gimmick scan bersih ✅.
 **Performa:** vite 1.58 dtk ✅, CPU 0.1% RAM 52MB ✅.
 **Konektivitas:** Drive API OK ✅, Pireel token ada ✅, Ollama 5 model ✅.
 **Kesimpulan: LOLOS — nol error.**
+
+## 21 Okt 2026 ~22:40 — Hapus 7 tools fiktif + auto-konek provider
+
+Perintah Patria: hanya tampilkan tools/skills yang benar-benar ada dan
+terbukti bekerja.
+
+Dihapus dari registry (hanya entri display, tanpa backend):
+slack, discord, telegram, github, notion, canva, ruangapi.
+Tersisa 5: meta, postiz (draft-only by design), pireel, drive, browser.
+
+Allowlist diperbarui: kreatif (pireel/meta/postiz), riset (browser),
+finance (kosong), strategis (meta/postiz), code (kosong).
+Test diperbarui, 32/32 lolos ✅.
+
+Provider premium: pilih radio provider berbayar yang belum konek →
+otomatis bukakan form bantu konek (fungsi selectProvider).
