@@ -1772,3 +1772,21 @@ Catatan yang akan disempurnakan:
 - Google Drive menunggu Client ID Patria.
 
 Lanjut ke TAHAP 4 (Rilis macOS + Windows).
+
+## 21 Okt 2026 ~08:30 — TAHAP 4: ringkasan
+
+- **4.3 Security audit** ✅: tidak ada hardcoded secret, 2 blok unsafe
+  sah (FFI macOS), semua HTTP kecuali localhost, tidak ada command
+  injection / path traversal.
+- **4.3 CSP** ✅: CSP ketat dipasang di tauri.conf.json (self+ipc,
+  allowlist Pireel/Google/OAuth callback).
+- **4.1 Avatar 3D** ⏳: menunggu keputusan arah avatar dari Patria.
+- **4.2 Release bundle** ✅: Minime.app 16MB, 30 skills terbundel,
+  self-contained (tanpa dep eksternal), jalan sehat (CPU 0,5%).
+- **Windows installer** ⏳: workflow GitHub Actions siap di
+  `docs/build-windows.yml.README`. TIDAK BISA dipush otomatis (token
+  GitHub tanpa scope workflow) — Patria perlu pasang manual ke
+  `.github/workflows/build-windows.yml` di repo, atau reconnect token
+  dengan scope workflow.
+- **Uji instalasi bersih (macOS)** ✅: binary self-contained terverifikasi
+  via otool.
