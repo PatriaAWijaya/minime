@@ -1890,3 +1890,9 @@ publicDir static ✅.
 - Consent screen: app "Minime", test user wijaya.patria@gmail.com.
 - Langkah berikut: Patria paste Client ID di kartu Drive → Hubungkan →
   consent Google → uji upload.
+
+## 21 Okt 2026 ~12:20 — App icon diganti ke biru "me"
+
+Laporan Patria: ikon di dock masih ungu "M" lama.
+Tindakan: rebuild app (ikon baru sudah di bundle sejak 08:44) +
+refresh Dock macOS. Ikon baru biru "me" harusnya tampil sekarang.
