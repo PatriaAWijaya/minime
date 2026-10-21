@@ -2012,3 +2012,19 @@ diduplikasi (clean-room):
    auto-buka form konek premium.
 
 Test 32/32 ✅, build ✅, app jalan.
+
+## 22 Okt 2026 ~00:35 — UI Provider ala OpenBot + local-first
+
+Perintah Patria: local-first, pilih model → otomatis download +
+window setting untuk API key. UI samakan persis OpenBot.
+
+Perubahan:
+1. Baris provider didesain ulang: radio + nama + status +
+   badge + tombol aksi (Connect/API key) + toggle — layout ala OpenBot
+2. Tombol Connect biru untuk premium, API key sebagai opsi kedua
+3. selectProvider: pilih provider belum siap → otomatis trigger setup
+   (premium → dialog API key, local → auto-connect)
+4. AgentsView: setProvider juga trigger pending-connect untuk semua
+   provider yang belum konek
+
+Build ✅, app jalan.
