@@ -41,6 +41,7 @@
     setServerNotif,
     skillCatalog,
     agentModel,
+    agentProvider,
     agentNames,
     agentNotify,
     agentAvatars,
@@ -400,6 +401,13 @@
     { id: "ollama", labelKey: "model.freeOllama" },
     { id: "paid", labelKey: "model.premium" },
   ];
+  // Filter sections: hanya tampilkan provider yang dipilih (pola OpenBot)
+  const visibleSections = $derived(
+    MODEL_SECTIONS.filter((sec) => {
+      if (sec.id === "paid") return PROVIDERS.find((p) => p.id === agentProvId)?.kind === "paid";
+      return sec.id === agentProvId;
+    })
+  );
   const sectionOf = (id: string): ModelSection => {
     const m = getModel(id);
     return m.kind === "paid" ? "paid" : (m.providerId as ModelSection);
@@ -431,6 +439,28 @@
   function setModel(id: string) {
     agentModel.update((m) => ({ ...m, [agent.id]: id }));
   }
+  // Pola OpenBot (clean-room): pilih provider dulu, model mengikuti.
+  // Ganti provider → otomatis pilih model pertama provider itu.
+  function setProvider(pid: string) {
+    agentProvider.update((p) => ({ ...p, [agent.id]: pid }));
+    const first = $modelCatalog.find((m) => m.providerId === pid);
+    if (first) {
+      agentModel.update((m) => ({ ...m, [agent.id]: first.id }));
+    }
+    // Jika premium & belum konek → bantu user konek (buka Settings > Penyedia Model)
+    const prov = PROVIDERS.find((x) => x.id === pid);
+    const st = $providerState[pid] ?? { connected: false };
+    if (prov && prov.kind === "paid" && !prov.local && !st.connected) {
+      // Tandai agar SettingsView membuka form konek otomatis
+      try {
+        localStorage.setItem("minime.pending-connect", pid);
+      } catch {}
+    }
+  }
+  const agentProvId = $derived(
+    $agentProvider[agent.id] ?? getModel($agentModel[agent.id] ?? defaultModelFor(agent.id)).providerId
+  );
+  const providerModels = $derived($modelCatalog.filter((m) => m.providerId === agentProvId));
   function setReasoning(value: "low" | "mid" | "high") {
     agentReasoning.update((m) => ({ ...m, [agent.id]: value }));
   }
@@ -789,6 +819,21 @@
               <line x1="18" y1="6" x2="6" y2="18" />
             </svg>
           </button>
+          <div class="field">
+            <label for="agent-provider">{$t("model.provider")}</label>
+            <select
+              id="agent-provider"
+              value={agentProvId}
+              onchange={(e) => setProvider(e.currentTarget.value)}
+              aria-label={$t("model.provider")}
+            >
+              {#each PROVIDERS as pv}
+                <option value={pv.id}>
+                  {pv.name} — {$t(pv.kind === "free" ? "providers.free" : "providers.paid")}
+                </option>
+              {/each}
+            </select>
+          </div>
           <div class="field field-search">
             <input
               type="search"
@@ -798,7 +843,7 @@
             />
           </div>
 
-          {#each MODEL_SECTIONS as sec}
+          {#each visibleSections as sec}
             <button
               class="sec-toggle"
               aria-expanded={modelSectionOpen === sec.id || q !== ""}

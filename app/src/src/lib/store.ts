@@ -178,6 +178,12 @@ export const agentModel = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-model", agentModel);
 
+/** Per-agent provider choice (Patria 21 Okt: pola OpenBot — provider dulu, model mengikuti). */
+export const agentProvider = writable<Record<string, string>>(
+  loadRecord<string>("minime.agent-provider"),
+);
+persistRecord("minime.agent-provider", agentProvider);
+
 export interface ModelOption {
   id: string;
   providerId: string;

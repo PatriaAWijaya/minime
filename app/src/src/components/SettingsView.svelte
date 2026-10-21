@@ -387,6 +387,15 @@
 
   onMount(() => {
     refreshProviders();
+    // Patria 21 Okt: jika user pilih provider premium dari panel agen,
+    // langsung bukakan form bantu konek.
+    try {
+      const pending = localStorage.getItem("minime.pending-connect");
+      if (pending) {
+        localStorage.removeItem("minime.pending-connect");
+        openKeyForm(pending);
+      }
+    } catch {}
   });
   let provEndpoint = $state("");
 
