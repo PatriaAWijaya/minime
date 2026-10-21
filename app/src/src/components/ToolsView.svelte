@@ -331,7 +331,7 @@
       </div>
     {/if}
   {:else if tab === "apps"}
-    {#if apps.length === 0 && soonApps.length === 0}
+    {#if apps.length === 0}
       <p class="mkt-empty">{$t("mkt.noResults")}</p>
     {:else}
       <div class="mkt-grid">
@@ -519,28 +519,7 @@
           </article>
         {/each}
       </div>
-      {#if soonApps.length > 0}
-        <h3 class="mkt-soon-title">{$t("mkt.soon")}</h3>
-        <div class="mkt-grid">
-          {#each soonApps as app (app.name)}
-            <article class="mkt-card soon" aria-disabled="true">
-              <div class="mkt-top">
-                <span class="mkt-tile sh-squircle" style:background={app.color} aria-hidden="true">
-                  <span class="glyph">{app.glyph}</span>
-                </span>
-                <h3>{app.name}</h3>
-                <span class="soon-badge">{$t("mkt.soon")}</span>
-              </div>
-              <p class="mkt-desc">{app.desc}</p>
-              <footer class="mkt-foot">
-                <span>Minime</span>
-                <span class="dot">·</span>
-                <span>{$t(app.catKey)}</span>
-              </footer>
-            </article>
-          {/each}
-        </div>
-      {/if}
+
     {/if}
   {:else}
     {#if skills.length === 0}

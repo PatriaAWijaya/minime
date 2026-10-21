@@ -1113,16 +1113,7 @@
       <p class="lede">{$t("bill.other.desc")}</p>
       <p class="lede">{$t("bill.nohosted")}</p>
 
-      <h3 class="sec-title">{$t("bill.sec.plan")}</h3>
-      <div class="card">
-        <div class="srow">
-          <div class="srow-meta">
-            <span class="srow-label">{$t("set.billing.plan")}</span>
-            <span class="srow-desc">{$t("set.billing.plan.desc")}</span>
-          </div>
-          <button class="btn-ghost" disabled>{$t("set.billing.soon")}</button>
-        </div>
-      </div>
+
     {:else if category === "mobile"}
       <h2>{$t("set.cat.mobile")}</h2>
 
