@@ -834,7 +834,7 @@ async fn ensure_sd_server(server_bin: &str, model_path: &str) -> Result<(), Stri
     }
     // Start server di background
     tokio::process::Command::new(server_bin)
-        .args(["-m", model_path, "--port", "8080", "--host", "127.0.0.1"])
+        .args(["-m", model_path, "--listen-port", "8080", "-l", "127.0.0.1"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
