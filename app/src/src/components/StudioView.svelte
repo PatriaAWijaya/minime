@@ -13,6 +13,7 @@
 
   const SIZES = [
     { id: "square", label: "1:1 (1080×1080)" },
+    { id: "portrait45", label: "4:5 (1080×1350)" },
     { id: "portrait", label: "9:16 (1080×1920)" },
     { id: "landscape", label: "16:9 (1920×1080)" },
   ];

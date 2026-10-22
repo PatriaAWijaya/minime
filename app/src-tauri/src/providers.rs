@@ -787,6 +787,7 @@ pub async fn generate_image(prompt: String, size: String) -> Result<String, Stri
 
     let (w, h) = match size.as_str() {
         "square" => (1024, 1024),
+        "portrait45" => (1080, 1350),
         "portrait" => (1024, 1792),
         "landscape" => (1792, 1024),
         _ => (1024, 1024),
