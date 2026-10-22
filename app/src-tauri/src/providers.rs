@@ -124,7 +124,7 @@ impl OllamaProvider {
         "ollama"
     }
 
-    async fn tags(&self) -> Result<Vec<ModelInfo>, ProviderError> {
+    pub async fn tags(&self) -> Result<Vec<ModelInfo>, ProviderError> {
         let url = format!("{}/api/tags", self.base_url);
         let resp = self
             .client
@@ -346,7 +346,7 @@ impl OpenAiCompatProvider {
         }
     }
 
-    async fn fetch_models(&self) -> Result<Vec<ModelInfo>, ProviderError> {
+    pub async fn fetch_models(&self) -> Result<Vec<ModelInfo>, ProviderError> {
         let key = self.key()?;
         let url = format!("{}/models", self.base_url.trim_end_matches('/'));
         let resp = self
@@ -1110,4 +1110,131 @@ pub fn get_media_tool_status() -> Vec<ToolStatus> {
         ToolStatus { id: "editors".into(), name: "Image & Video Editor".into(),
             connected: true, detail: "Built-in".into() },
     ]
+}
+
+// ---------------------------------------------------------------------------
+// Provider catalog (Xiryn-style): metadata for settings UI
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, Clone)]
+pub struct ProviderCatalogEntry {
+    pub id: String,
+    pub name: String,
+    pub local: bool,
+    pub requires_key: bool,
+    pub requires_base_url: bool,
+    pub key_env: Option<String>,
+    pub base_url_env: Option<String>,
+    pub default_base_url: Option<String>,
+    pub suggested: Vec<String>,
+    pub keys_url: Option<String>,
+    pub key_set: bool,
+    pub base_url_set: bool,
+}
+
+/// Static provider catalog with suggested models, mirroring Xiryn's approach.
+#[tauri::command]
+pub fn provider_catalog() -> Vec<ProviderCatalogEntry> {
+    let key_set = |account: &str| {
+        crate::secrets::api_key(account)
+            .map(|k| !k.trim().is_empty())
+            .unwrap_or(false)
+    };
+    vec![
+        ProviderCatalogEntry {
+            id: "ollama".into(), name: "Ollama".into(), local: true,
+            requires_key: false, requires_base_url: false,
+            key_env: None, base_url_env: Some("OLLAMA_HOST".into()),
+            default_base_url: Some("http://localhost:11434".into()),
+            suggested: vec![],
+            keys_url: None,
+            key_set: false,
+            base_url_set: std::env::var("OLLAMA_HOST").is_ok(),
+        },
+        ProviderCatalogEntry {
+            id: "muse".into(), name: "Muse".into(), local: false,
+            requires_key: true, requires_base_url: false,
+            key_env: Some("MUSE_API_KEY".into()), base_url_env: None,
+            default_base_url: Some("https://api.meta.ai/v1".into()),
+            suggested: vec!["muse-spark-1.3".into()],
+            keys_url: None,
+            key_set: key_set("muse"),
+            base_url_set: false,
+        },
+        ProviderCatalogEntry {
+            id: "gemini".into(), name: "Gemini".into(), local: false,
+            requires_key: true, requires_base_url: false,
+            key_env: Some("GEMINI_API_KEY".into()), base_url_env: None,
+            default_base_url: Some("https://generativelanguage.googleapis.com/v1beta/openai".into()),
+            suggested: vec!["gemini-3.8-flash".into()],
+            keys_url: Some("https://aistudio.google.com/apikey".into()),
+            key_set: key_set("gemini"),
+            base_url_set: false,
+        },
+        ProviderCatalogEntry {
+            id: "deepseek".into(), name: "DeepSeek".into(), local: false,
+            requires_key: true, requires_base_url: false,
+            key_env: Some("DEEPSEEK_API_KEY".into()), base_url_env: None,
+            default_base_url: Some("https://api.deepseek.com/v1".into()),
+            suggested: vec!["deepseek-chat".into()],
+            keys_url: Some("https://platform.deepseek.com/api_keys".into()),
+            key_set: key_set("deepseek"),
+            base_url_set: false,
+        },
+        ProviderCatalogEntry {
+            id: "routerku".into(), name: "RouterKu".into(), local: false,
+            requires_key: true, requires_base_url: true,
+            key_env: Some("ROUTERKU_API_KEY".into()), base_url_env: Some("ROUTERKU_BASE_URL".into()),
+            default_base_url: None,
+            suggested: vec![],
+            keys_url: Some("https://my.routerku.com".into()),
+            key_set: key_set("routerku"),
+            base_url_set: crate::secrets::api_key("minime.routerku_url")
+                .map(|u| !u.trim().is_empty()).unwrap_or(false),
+        },
+        ProviderCatalogEntry {
+            id: "opencode".into(), name: "OpenCode".into(), local: true,
+            requires_key: false, requires_base_url: false,
+            key_env: None, base_url_env: None,
+            default_base_url: None,
+            suggested: vec![],
+            keys_url: None,
+            key_set: false,
+            base_url_set: false,
+        },
+    ]
+}
+
+/// Fetch live models from a provider (Xiryn-style `fetchProviderModels`).
+/// Returns model ids; used by Test connection and the model picker.
+#[tauri::command]
+pub async fn fetch_provider_models(provider_id: String) -> Result<Vec<String>, String> {
+    match provider_id.as_str() {
+        "ollama" => {
+            let p = OllamaProvider::new();
+            p.tags().await
+                .map(|m| m.into_iter().map(|x| x.label).collect())
+                .map_err(|e| e.to_string())
+        }
+        "muse" | "gemini" | "deepseek" => {
+            let p = match provider_id.as_str() {
+                "muse" => OpenAiCompatProvider::muse(),
+                "gemini" => OpenAiCompatProvider::gemini(),
+                _ => OpenAiCompatProvider::deepseek(),
+            };
+            p.fetch_models().await
+                .map(|m| m.into_iter().map(|x| x.label).collect())
+                .map_err(|e| e.to_string())
+        }
+        "routerku" => {
+            let base = crate::secrets::api_key("minime.routerku_url").unwrap_or_default();
+            let p = OpenAiCompatProvider::routerku(
+                if base.trim().is_empty() { None } else { Some(base) }
+            );
+            p.fetch_models().await
+                .map(|m| m.into_iter().map(|x| x.label).collect())
+                .map_err(|e| e.to_string())
+        }
+        _ => Err(format!("Provider tidak dikenal: {}", provider_id)),
+    }
 }

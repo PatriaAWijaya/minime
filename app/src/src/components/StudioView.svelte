@@ -229,6 +229,7 @@
     <p class="lede">Pipeline: goal → script → storyboard → aset → edit → jadwal.</p>
   </header>
 
+  <div class="duo-row">
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("pipeline") }>
       <h3>Pipeline</h3>
@@ -291,6 +292,7 @@
     </div>
     {/if}
   </section>
+  </div>
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("brandkit") }>
@@ -589,6 +591,9 @@
   .hint { font-size: 13px; color: var(--dim); margin: 0 0 12px; }
   .row { display: flex; gap: 8px; align-items: center; }
   .row input { flex: 1; }
+  .duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 12px; }
+  .duo-row .card.collapsible { margin-bottom: 0; }
+  @media (max-width: 860px) { .duo-row { grid-template-columns: 1fr; } }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
   .field textarea, .field select, .row input {

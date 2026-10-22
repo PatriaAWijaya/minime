@@ -36,6 +36,8 @@
     toggleProvider,
     usingRealBackend,
   } from "../lib/store";
+  import ProviderRow from "./ProviderRow.svelte";
+  import ModelPicker from "./ModelPicker.svelte";
   import type { Theme } from "../lib/store";
   import { onMount } from "svelte";
 
@@ -76,6 +78,22 @@
     { id: "updates", labelKey: "set.cat.updates", icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/>' },
     { id: "providers", labelKey: "set.cat.providers", icon: '<rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01"/>' },
   ];
+
+  let providerCatalog = $state<Array<{
+    id: string; name: string; local: boolean; requires_key: boolean;
+    requires_base_url: boolean; key_env: string | null; base_url_env: string | null;
+    default_base_url: string | null; suggested: string[];
+    keys_url: string | null; key_set: boolean; base_url_set: boolean;
+  }>>([]);
+  let defaultModelSpec = $state("");
+
+  async function loadCatalog() {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      providerCatalog = await invoke("provider_catalog");
+    } catch (e) { console.error(e); }
+  }
+  $effect(() => { if (category === "providers") loadCatalog(); });
 
   let category = $state<CatId>("general");
   let catQuery = $state("");
@@ -1332,137 +1350,16 @@
       </button>
     </div>
 
-    <span class="group-label">{$t("providers.default")}</span>
-    {#each PROVIDERS as p}
-      {@const st = $providerState[p.id] ?? { connected: false, active: true }}
-      {@const rs = realStatus(p.id)}
-      {@const isPaid = p.kind === "paid"}
-      <div class="prov-row">
-        <input
-          type="radio"
-          id="prov-{p.id}"
-          name="default-provider"
-          checked={$defaultProviderId === p.id}
-          onchange={() => selectProvider(p)}
-          aria-label={p.name}
-        />
-        <label for="prov-{p.id}" class="prov-meta">
-          <span class="prov-name">{p.name}</span>
-          <span class="prov-sub">
-            {#if p.local}
-              {$t("providers.availableLocal")}
-            {:else}
-              {$t("providers.availableLocal")}
-            {/if}
-            {#if rs?.detail}
-              <span class="prov-warn">{rs.detail}</span>
-            {/if}
-          </span>
-        </label>
-        <span class="prov-right">
-          {#if rs?.detail && rs.state === "connected"}
-            <span class="prov-ver">{rs.detail}</span>
-          {/if}
-          {#if p.kind === "free"}
-            <span class="chip">{$t("providers.free")}</span>
-          {/if}
-          {#if st.connected || rs?.state === "connected"}
-            <span class="badge ok">{$t("providers.connected")}</span>
-          {:else if isPaid}
-            <span class="badge warn">{$t("providers.notConnected")}</span>
-          {/if}
-          {#if isPaid}
-            {#if st.connected}
-              <button class="btn-ghost sm" onclick={() => disconnectKey(p.id)}>
-                {$t("providers.disconnect")}
-              </button>
-            {:else}
-              <button class="btn-primary sm" onclick={() => openKeyForm(p.id)}>
-                {$t("providers.connect")}
-              </button>
-              <button class="btn-ghost sm" onclick={() => openKeyForm(p.id)}>
-                API key
-              </button>
-            {/if}
-          {:else if p.local}
-            <button class="btn-ghost sm" onclick={() => connectProvider(p.id)}>
-              {$t("providers.connect")}
-            </button>
-          {/if}
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={st.active}
-              onchange={(e) => toggleProvider(p.id, e.currentTarget.checked)}
-              aria-label={p.name}
-            />
-            <span class="track" aria-hidden="true"></span>
-          </label>
-        </span>
-      </div>
-      {#if isPaid && p.id !== "routerku" && keyFormFor === p.id}
-        <div class="prov-detail">
-          <div class="field">
-            <label for="key-{p.id}">{$t("providers.keyLabel")} — {p.name}</label>
-            <input
-              id="key-{p.id}"
-              type="password"
-              bind:value={keyInput}
-              placeholder={$t("providers.keyPlaceholder")}
-              autocomplete="off"
-            />
-          </div>
-          <p class="note">{$t("providers.keySaved")}</p>
-          <div class="row-end">
-            <button
-              class="btn-primary"
-              disabled={keyBusy || !keyInput.trim()}
-              onclick={() => submitKeyForm(p.id)}
-            >
-              {$t("providers.routerku.save")}
-            </button>
-            <button class="btn-ghost sm" onclick={() => (keyFormFor = null)}>
-              {$t("providers.cancel")}
-            </button>
-          </div>
-        </div>
-      {/if}
-      {#if keySavedFor === p.id}
-        <p class="ok-note" role="status">{$t("providers.keySaved")}</p>
-      {/if}
-      {#if p.id === "routerku"}
-        <div class="prov-detail">
-          <div class="field">
-            <label for="routerku-key">{$t("providers.routerku.key")}</label>
-            <input
-              id="routerku-key"
-              type="password"
-              bind:value={rkKey}
-              placeholder={$t("providers.routerku.keyPlaceholder")}
-              autocomplete="off"
-            />
-          </div>
-          <div class="field">
-            <label for="routerku-baseurl">{$t("providers.routerku.baseUrl")}</label>
-            <input
-              id="routerku-baseurl"
-              type="text"
-              bind:value={rkUrl}
-              placeholder={$t("providers.routerku.baseUrlPlaceholder")}
-              inputmode="url"
-            />
-          </div>
-          <p class="note">{$t("providers.routerku.note")}</p>
-          <div class="row-end">
-            <button class="btn-primary" disabled={rkBusy} onclick={saveRouterkuForm}>
-              {$t("providers.routerku.save")}
-            </button>
-            {#if rkSaved}
-              <span class="ok-note" role="status">{$t("providers.routerku.saved")}</span>
-            {/if}
-          </div>
-        </div>
-      {/if}
+    <span class="group-label">Model default</span>
+    <p class="lede" style="margin-bottom:12px">Model yang dipakai setiap agen — format <code>provider/model</code>.</p>
+    <div style="margin-bottom:20px">
+      <ModelPicker value={defaultModelSpec} onChange={(v) => (defaultModelSpec = v)} providers={providerCatalog} />
+    </div>
+
+    <span class="group-label">{$t("providers.title")}</span>
+    <p class="lede" style="margin-bottom:12px">Bawa key sendiri. Atur sebanyak mungkin provider dan campur antar agen. Runtime lokal (Ollama) hanya butuh endpoint.</p>
+    {#each providerCatalog as entry (entry.id)}
+      <ProviderRow {entry} onChanged={loadCatalog} />
     {/each}
 
     <div class="prov-row">
