@@ -229,40 +229,10 @@
   let editingVideo = $state(false);
   let draftApproved = $state(false);
 
-  let postizUrl = $state("");
-  let postizKey = $state("");
-  let metaPageId = $state("");
-  let metaToken = $state("");
-  let socialSaved = $state("");
-  let savingSocial = $state(false);
   let draftContent = $state("");
   let draftPlatform = $state("postiz");
   let creatingDraft = $state(false);
   let draftResult = $state("");
-
-  async function savePostiz() {
-    if (!postizUrl.trim() || !postizKey.trim()) return;
-    savingSocial = true;
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_postiz_config", { apiUrl: postizUrl.trim(), apiKey: postizKey.trim() });
-      socialSaved = "Postiz tersimpan.";
-      postizUrl = ""; postizKey = "";
-    } catch (e) { socialSaved = String(e); }
-    finally { savingSocial = false; }
-  }
-
-  async function saveMeta() {
-    if (!metaPageId.trim() || !metaToken.trim()) return;
-    savingSocial = true;
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_meta_token", { pageId: metaPageId.trim(), token: metaToken.trim() });
-      socialSaved = "Meta tersimpan.";
-      metaPageId = ""; metaToken = "";
-    } catch (e) { socialSaved = String(e); }
-    finally { savingSocial = false; }
-  }
 
   async function createDraft() {
     const c = draftContent.trim();
@@ -461,34 +431,8 @@
     </button>
     {#if openSections["planner"]}
     <div class="card-body side-body">
-    <h4>Integrasi Postiz / Meta</h4>
-    <p class="hint">Hanya membuat <strong>draft</strong> — tidak ada auto-posting.</p>
-    <h4>Postiz</h4>
-    <div class="field">
-      <label for="pz-url">API URL</label>
-      <input id="pz-url" type="text" bind:value={postizUrl} placeholder="https://postiz.example.com" />
-    </div>
-    <div class="field">
-      <label for="pz-key">API Key</label>
-      <input id="pz-key" type="password" bind:value={postizKey} placeholder="API key Postiz" />
-    </div>
-    <button class="btn-primary sm" onclick={savePostiz} disabled={!postizUrl.trim() || !postizKey.trim() || savingSocial}>
-      Simpan Postiz
-    </button>
-    <h4 style="margin-top:16px">Meta Business Suite</h4>
-    <div class="field">
-      <label for="mt-page">Page ID</label>
-      <input id="mt-page" type="text" bind:value={metaPageId} placeholder="Facebook Page ID" />
-    </div>
-    <div class="field">
-      <label for="mt-token">Page Access Token</label>
-      <input id="mt-token" type="password" bind:value={metaToken} placeholder="Token" />
-    </div>
-    <button class="btn-primary sm" onclick={saveMeta} disabled={!metaPageId.trim() || !metaToken.trim() || savingSocial}>
-      Simpan Meta
-    </button>
-    {#if socialSaved}<p class="ok">{socialSaved}</p>{/if}
-    <h4 style="margin-top:16px">Buat Draft</h4>
+    <!-- Koneksi Postiz/Meta pindah ke Tools → Apps (Patria 23 Okt) -->
+    <h4>Buat Draft</h4>
     <div class="field">
       <label for="dc-content">Konten</label>
       <textarea id="dc-content" bind:value={draftContent} rows="3" placeholder="Tulis konten..."></textarea>

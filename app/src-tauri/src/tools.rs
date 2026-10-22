@@ -125,15 +125,18 @@ fn known_tools() -> Vec<(String, String, String, bool, bool)> {
     ]
 }
 
-/// Status koneksi NYATA untuk tools media (cek kondisi aktual, bukan toggle manual).
+/// Status koneksi NYATA untuk tools media + postiz/meta (cek kondisi aktual, bukan toggle manual).
 /// Tools lain tetap memakai toggle registry.
 fn real_connected(tool_id: &str) -> Option<bool> {
+    let has = |key: &str| {
+        crate::secrets::api_key(key)
+            .map(|k| !k.trim().is_empty())
+            .unwrap_or(false)
+    };
     match tool_id {
-        "pixabay" => Some(
-            crate::secrets::api_key("minime.pixabay_key")
-                .map(|k| !k.trim().is_empty())
-                .unwrap_or(false),
-        ),
+        "pixabay" => Some(has("minime.pixabay_key")),
+        "postiz" => Some(has("minime.postiz_url") && has("minime.postiz_key")),
+        "meta" => Some(has("minime.meta_page_id") && has("minime.meta_token")),
         "ffmpeg" => Some(crate::providers::which_ffmpeg().is_some()),
         "whisper" => Some(crate::providers::which_auto_subtitle().is_some()),
         "arbotts" => Some(crate::providers::which_arbotts().is_some()),

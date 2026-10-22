@@ -110,8 +110,8 @@
   }
 
   /* ---------------- Apps tab ---------------- */
-  /** Tools media: status otomatis dari kondisi aktual (tanpa toggle manual). */
-  const MEDIA_TOOLS = ["pixabay", "ffmpeg", "whisper", "arbotts", "sdimage"];
+  /** Tools dengan status otomatis dari kondisi aktual (tanpa toggle manual). */
+  const AUTO_STATUS_TOOLS = ["pixabay", "postiz", "meta", "ffmpeg", "whisper", "arbotts", "sdimage"];
   const apps = $derived(
     ($toolInfos ?? [])
       .map((ti) => ({
@@ -175,6 +175,55 @@
       pxMsg = $t("tools.pixabay.saveFail") + ": " + String(e);
     } finally {
       pxSaving = false;
+    }
+  }
+
+  // Postiz & Meta connection forms (pindah dari Planner Media Studio, Patria 23 Okt).
+  // Hanya draft — tidak ada auto-posting (aturan keras).
+  let pzUrl = $state("");
+  let pzKey = $state("");
+  let pzSaving = $state(false);
+  let pzMsg = $state("");
+  let pzOk = $state(false);
+  async function savePostiz() {
+    if (!pzUrl.trim() || !pzKey.trim() || pzSaving) return;
+    pzSaving = true;
+    pzMsg = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_postiz_config", { apiUrl: pzUrl.trim(), apiKey: pzKey.trim() });
+      pzUrl = ""; pzKey = "";
+      pzOk = true;
+      pzMsg = $t("tools.postiz.saved");
+      await refreshTools();
+    } catch (e) {
+      pzOk = false;
+      pzMsg = $t("tools.postiz.saveFail") + ": " + String(e);
+    } finally {
+      pzSaving = false;
+    }
+  }
+  let mtPageId = $state("");
+  let mtToken = $state("");
+  let mtSaving = $state(false);
+  let mtMsg = $state("");
+  let mtOk = $state(false);
+  async function saveMeta() {
+    if (!mtPageId.trim() || !mtToken.trim() || mtSaving) return;
+    mtSaving = true;
+    mtMsg = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_meta_token", { pageId: mtPageId.trim(), token: mtToken.trim() });
+      mtPageId = ""; mtToken = "";
+      mtOk = true;
+      mtMsg = $t("tools.meta.saved");
+      await refreshTools();
+    } catch (e) {
+      mtOk = false;
+      mtMsg = $t("tools.meta.saveFail") + ": " + String(e);
+    } finally {
+      mtSaving = false;
     }
   }
 
@@ -389,7 +438,7 @@
                     {$t("mkt.drive.connect")}
                   </button>
                 {/if}
-              {:else if MEDIA_TOOLS.includes(app.id)}
+              {:else if AUTO_STATUS_TOOLS.includes(app.id)}
               <span class="mkt-add" class:added={app.connected} role="status">
                 {#if app.connected}
                   ✓ {$t("mkt.connected")}
@@ -569,6 +618,77 @@
                 </div>
                 {#if pxMsg}
                   <span class={pxOk ? "ok-note" : "err-note"} role="status">{pxMsg}</span>
+                {/if}
+              </div>
+            {/if}
+            {#if app.id === "postiz"}
+              <div class="ra-form">
+                <p class="pireel-note">{$t("tools.postiz.draftOnly")}</p>
+                <div class="field">
+                  <label for="pz-url">{$t("tools.postiz.url")}</label>
+                  <input
+                    id="pz-url"
+                    type="text"
+                    bind:value={pzUrl}
+                    placeholder="https://postiz.example.com"
+                    autocomplete="off"
+                    spellcheck={false}
+                    inputmode="url"
+                  />
+                </div>
+                <div class="field">
+                  <label for="pz-key">{$t("tools.postiz.key")}</label>
+                  <input
+                    id="pz-key"
+                    type="password"
+                    bind:value={pzKey}
+                    placeholder={$t("tools.postiz.keyPh")}
+                    autocomplete="off"
+                    spellcheck={false}
+                  />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={savePostiz} disabled={!pzUrl.trim() || !pzKey.trim() || pzSaving}>
+                    {pzSaving ? "..." : $t("tools.connect")}
+                  </button>
+                </div>
+                {#if pzMsg}
+                  <span class={pzOk ? "ok-note" : "err-note"} role="status">{pzMsg}</span>
+                {/if}
+              </div>
+            {/if}
+            {#if app.id === "meta"}
+              <div class="ra-form">
+                <p class="pireel-note">{$t("tools.meta.draftOnly")}</p>
+                <div class="field">
+                  <label for="mt-page">{$t("tools.meta.pageId")}</label>
+                  <input
+                    id="mt-page"
+                    type="text"
+                    bind:value={mtPageId}
+                    placeholder="Facebook Page ID"
+                    autocomplete="off"
+                    spellcheck={false}
+                  />
+                </div>
+                <div class="field">
+                  <label for="mt-token">{$t("tools.meta.token")}</label>
+                  <input
+                    id="mt-token"
+                    type="password"
+                    bind:value={mtToken}
+                    placeholder="Page Access Token"
+                    autocomplete="off"
+                    spellcheck={false}
+                  />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={saveMeta} disabled={!mtPageId.trim() || !mtToken.trim() || mtSaving}>
+                    {mtSaving ? "..." : $t("tools.connect")}
+                  </button>
+                </div>
+                {#if mtMsg}
+                  <span class={mtOk ? "ok-note" : "err-note"} role="status">{mtMsg}</span>
                 {/if}
               </div>
             {/if}
