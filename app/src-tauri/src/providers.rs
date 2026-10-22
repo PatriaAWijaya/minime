@@ -1717,7 +1717,7 @@ pub async fn assemble_video_ai(
     let safe_name: String = output_name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
     let out_path = tmp.join(format!("{}.mp4", if safe_name.is_empty() { "video-ai".to_string() } else { safe_name }));
 
-    let (w, h) = match aspect {
+    let (w, h) = match aspect.as_str() {
         "16:9" => (1920, 1080),
         "4:5" => (1080, 1350),
         "1:1" => (1080, 1080),
