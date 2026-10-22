@@ -18,7 +18,7 @@
 //! Bila tidak ditemukan, agen tetap jalan dengan system prompt dasar.
 
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 /// Skill bawaan untuk tiap agen (keputusan awal; user bisa mengubah
