@@ -174,6 +174,32 @@
     finally { creatingDraft = false; }
   }
 
+  let toolStatus = $state<Array<{id:string;name:string;connected:boolean;detail:string}>>([]);
+  let pixabayKey = $state("");
+  let savingPx = $state(false);
+
+  async function loadToolStatus() {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      toolStatus = await invoke("get_media_tool_status");
+    } catch (e) { console.error(e); }
+  }
+
+  async function savePixabay() {
+    const k = pixabayKey.trim();
+    if (!k) return;
+    savingPx = true;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_pixabay_key", { apiKey: k });
+      pixabayKey = "";
+      await loadToolStatus();
+    } catch (e) {}
+    finally { savingPx = false; }
+  }
+
+  $effect(() => { loadToolStatus(); });
+
   // Collapsible sections
   let openSections = $state<Record<string, boolean>>({ pipeline: true });
   function toggleSection(id: string) {
