@@ -111,7 +111,7 @@
 
   /* ---------------- Apps tab ---------------- */
   /** Tools dengan status otomatis dari kondisi aktual (tanpa toggle manual). */
-  const AUTO_STATUS_TOOLS = ["pixabay", "postiz", "meta", "ffmpeg", "whisper", "arbotts", "sdimage"];
+  const AUTO_STATUS_TOOLS = ["pixabay", "pexels", "wan", "ltx", "postiz", "meta", "ffmpeg", "whisper", "arbotts", "sdimage"];
   const apps = $derived(
     ($toolInfos ?? [])
       .map((ti) => ({
@@ -158,6 +158,51 @@
   let pxSaving = $state(false);
   let pxMsg = $state("");
   let pxOk = $state(false);
+
+  // Pexels / Wan / LTX API keys (Video AI Pipeline, 23 Okt)
+  let pexelsKey = $state("");
+  let pexelsSaving = $state(false);
+  let pexelsMsg = $state("");
+  let wanKey = $state("");
+  let wanSaving = $state(false);
+  let wanMsg = $state("");
+  let ltxKey = $state("");
+  let ltxSaving = $state(false);
+  let ltxMsg = $state("");
+
+  async function savePexelsKey() {
+    const k = pexelsKey.trim();
+    if (!k || pexelsSaving) return;
+    pexelsSaving = true;
+    pexelsMsg = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_pexels_key", { apiKey: k });
+      pexelsKey = "";
+      pexelsMsg = "Tersimpan.";
+      await refreshTools();
+    } catch (e) {
+      pexelsMsg = "Gagal: " + String(e);
+    } finally {
+      pexelsSaving = false;
+    }
+  }
+  async function saveVideoAiKey(model: string, key: string, setMsg: (m: string) => void, setSaving: (b: boolean) => void) {
+    const k = key.trim();
+    if (!k) return;
+    setSaving(true);
+    setMsg("");
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_video_ai_key", { model, apiKey: k });
+      setMsg("Tersimpan.");
+      await refreshTools();
+    } catch (e) {
+      setMsg("Gagal: " + String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
   async function savePixabayKey() {
     const k = pxKey.trim();
     if (!k || pxSaving) return;
@@ -619,6 +664,55 @@
                 {#if pxMsg}
                   <span class={pxOk ? "ok-note" : "err-note"} role="status">{pxMsg}</span>
                 {/if}
+              </div>
+            {/if}
+            {#if app.id === "pexels"}
+              <div class="ra-form">
+                <div class="field">
+                  <label for="pexels-key">API Key Pexels</label>
+                  <input id="pexels-key" type="password" bind:value={pexelsKey}
+                    placeholder="Key dari pexels.com/api" autocomplete="off" spellcheck={false} />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={savePexelsKey} disabled={!pexelsKey.trim() || pexelsSaving}>
+                    {pexelsSaving ? "..." : "Simpan"}
+                  </button>
+                  <a class="link" href="https://www.pexels.com/api/" target="_blank" rel="noopener">Dokumentasi</a>
+                </div>
+                {#if pexelsMsg}<span class="ok-note" role="status">{pexelsMsg}</span>{/if}
+                <p class="hint">Gratis — 200 request/jam. Untuk stok footage Video AI.</p>
+              </div>
+            {/if}
+            {#if app.id === "wan"}
+              <div class="ra-form">
+                <div class="field">
+                  <label for="wan-key">API Key fal.ai (untuk Wan 3.0)</label>
+                  <input id="wan-key" type="password" bind:value={wanKey}
+                    placeholder="Key dari fal.ai" autocomplete="off" spellcheck={false} />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={() => saveVideoAiKey("wan", wanKey, (m) => (wanMsg = m), (b) => (wanSaving = b)).then(() => (wanKey = ""))} disabled={!wanKey.trim() || wanSaving}>
+                    {wanSaving ? "..." : "Simpan"}
+                  </button>
+                </div>
+                {#if wanMsg}<span class="ok-note" role="status">{wanMsg}</span>{/if}
+                <p class="hint">Estimasi ±$0.10/detik. Key milik Anda, tersimpan di Keychain.</p>
+              </div>
+            {/if}
+            {#if app.id === "ltx"}
+              <div class="ra-form">
+                <div class="field">
+                  <label for="ltx-key">API Key fal.ai (untuk LTX-Video)</label>
+                  <input id="ltx-key" type="password" bind:value={ltxKey}
+                    placeholder="Key dari fal.ai" autocomplete="off" spellcheck={false} />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={() => saveVideoAiKey("ltx", ltxKey, (m) => (ltxMsg = m), (b) => (ltxSaving = b)).then(() => (ltxKey = ""))} disabled={!ltxKey.trim() || ltxSaving}>
+                    {ltxSaving ? "..." : "Simpan"}
+                  </button>
+                </div>
+                {#if ltxMsg}<span class="ok-note" role="status">{ltxMsg}</span>{/if}
+                <p class="hint">Estimasi ±$0.09/detik. Key milik Anda, tersimpan di Keychain.</p>
               </div>
             {/if}
             {#if app.id === "postiz"}

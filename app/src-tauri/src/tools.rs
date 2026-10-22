@@ -118,6 +118,9 @@ fn known_tools() -> Vec<(String, String, String, bool, bool)> {
         ("drive".into(), "Google Drive".into(), "storage".into(), true, false),
         ("browser".into(), "Browser".into(), "web".into(), false, false),
         ("pixabay".into(), "Pixabay".into(), "media".into(), true, false),
+        ("pexels".into(), "Pexels".into(), "media".into(), true, false),
+        ("wan".into(), "Wan 3.0 (fal.ai)".into(), "media".into(), true, false),
+        ("ltx".into(), "LTX-Video (fal.ai)".into(), "media".into(), true, false),
         ("ffmpeg".into(), "FFmpeg".into(), "media".into(), false, false),
         ("whisper".into(), "auto-subtitle".into(), "media".into(), false, false),
         ("arbotts".into(), "arboTTS".into(), "media".into(), false, false),
@@ -135,6 +138,9 @@ fn real_connected(tool_id: &str) -> Option<bool> {
     };
     match tool_id {
         "pixabay" => Some(has("minime.pixabay_key")),
+        "pexels" => Some(has("minime.pexels_key")),
+        "wan" => Some(has("minime.wan_key")),
+        "ltx" => Some(has("minime.ltx_key")),
         "postiz" => Some(has("minime.postiz_url") && has("minime.postiz_key")),
         "meta" => Some(has("minime.meta_page_id") && has("minime.meta_token")),
         "ffmpeg" => Some(crate::providers::which_ffmpeg().is_some()),
