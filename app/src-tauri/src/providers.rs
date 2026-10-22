@@ -1773,17 +1773,19 @@ mod tests {
         std::fs::create_dir_all(&tmp).unwrap();
         let img = tmp.join("audit_frame.png");
         test_img(&img);
+        let img_s = img.to_string_lossy().to_string();
         let tl = serde_json::json!({
             "tracks": [{ "id": "v1", "kind": "video" }],
             "clips": [{
                 "id": "c1", "trackId": "v1",
-                "src": img.to_string_lossy(),
+                "src": img_s,
                 "start": 0.0, "duration": 2.0,
             }],
         });
         let out = export_timeline(tl.to_string(), "audit_timeline".to_string()).await;
         assert!(out.is_ok(), "export_timeline gagal: {:?}", out.err());
-        let p = std::path::Path::new(out.unwrap().as_str());
+        let out_s = out.unwrap();
+        let p = std::path::Path::new(out_s.as_str());
         assert!(p.exists(), "file output tidak ada");
         assert!(p.metadata().unwrap().len() > 1000, "output terlalu kecil");
     }
@@ -1796,14 +1798,12 @@ mod tests {
         let img2 = tmp.join("audit_slide2.png");
         test_img(&img1);
         test_img(&img2);
-        let out = render_slideshow(
-            vec![img1.to_string_lossy().to_string(), img2.to_string_lossy().to_string()],
-            1.0,
-            "audit_slideshow".to_string(),
-        )
-        .await;
+        let s1 = img1.to_string_lossy().to_string();
+        let s2 = img2.to_string_lossy().to_string();
+        let out = render_slideshow(vec![s1, s2], 1.0, "audit_slideshow".to_string()).await;
         assert!(out.is_ok(), "render_slideshow gagal: {:?}", out.err());
-        let p = std::path::Path::new(out.unwrap().as_str());
+        let out_s = out.unwrap();
+        let p = std::path::Path::new(out_s.as_str());
         assert!(p.exists() && p.metadata().unwrap().len() > 1000);
     }
 
@@ -1811,7 +1811,8 @@ mod tests {
     async fn generate_thumbnail_produces_png() {
         let out = generate_thumbnail("Audit Judul".to_string(), "audit_thumb".to_string()).await;
         assert!(out.is_ok(), "generate_thumbnail gagal: {:?}", out.err());
-        let p = std::path::Path::new(out.unwrap().as_str());
+        let out_s = out.unwrap();
+        let p = std::path::Path::new(out_s.as_str());
         assert!(p.exists() && p.metadata().unwrap().len() > 1000);
     }
 }
