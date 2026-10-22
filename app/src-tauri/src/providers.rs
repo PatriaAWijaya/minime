@@ -1691,8 +1691,6 @@ pub async fn export_timeline(timeline_json: String, output_name: String) -> Resu
     Ok(out_path.to_string_lossy().to_string())
 }
 
-#[cfg(test)]
-
 /// Rakit video AI ala MoneyPrinterTurbo: gabung footage + narasi + subtitle.
 /// - videos: list path file video footage (akan di-concat berurutan)
 /// - audio_path: path file audio narasi (opsional)
@@ -2095,6 +2093,7 @@ fn which_hyperframes() -> Option<String> {
     None
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
