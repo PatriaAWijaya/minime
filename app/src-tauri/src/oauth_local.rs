@@ -11,7 +11,7 @@ use std::time::Duration;
 pub fn b64url(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] =
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut out = String::with_capacity((bytes.len() * 4 + 2) / 3);
+    let mut out = String::with_capacity((bytes.len() * 4).div_ceil(3));
     for chunk in bytes.chunks(3) {
         let n = (chunk[0] as u32) << 16
             | (chunk.get(1).copied().unwrap_or(0) as u32) << 8

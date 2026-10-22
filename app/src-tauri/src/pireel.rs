@@ -6,7 +6,7 @@
 //!   - Resource metadata:  `https://pireel.com/.well-known/oauth-protected-resource`
 //!   - Server metadata:    `https://pireel.com/.well-known/oauth-authorization-server`
 //!     (authorization / token / dynamic-client-registration endpoints,
-//!      public clients via `token_endpoint_auth_method: none` + PKCE S256)
+//!    public clients via `token_endpoint_auth_method: none` + PKCE S256)
 //!
 //! Each Minime user connects their OWN Pireel account (Free tier: 20
 //! credits/day). Tokens are stored in the OS keychain (service
@@ -29,11 +29,6 @@ const MCP_URL: &str = "https://pireel.com/api/studio/mcp";
 const RESOURCE_META_URL: &str = "https://pireel.com/.well-known/oauth-protected-resource";
 const KEYCHAIN_ACCOUNT: &str = "pireel";
 const KEYCHAIN_SERVICE: &str = "com.minime.app";
-/// RFC 7636 test vector (used by unit tests).
-#[cfg(test)]
-const RFC7636_VERIFIER: &str = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
-#[cfg(test)]
-const RFC7636_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 
 // ---------------------------------------------------------------------------
 // Small helpers (pure, unit-tested)

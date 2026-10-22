@@ -146,7 +146,7 @@ fn split_frontmatter(raw: &str) -> (String, &str) {
     (desc, body)
 }
 
-fn load_skill(dir: &PathBuf, name: &str) -> Option<String> {
+fn load_skill(dir: &Path, name: &str) -> Option<String> {
     let path = dir.join(name).join("SKILL.md");
     let raw = std::fs::read_to_string(&path).ok()?;
     // Pisahkan frontmatter (--- ... ---) untuk deskripsi singkat.
@@ -296,7 +296,7 @@ pub fn catalog_with_agents(db: &crate::db::Db, agent_ids: &[String]) -> Vec<Cata
             }
         })
         .collect();
-    out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    out.sort_by_key(|a| a.name.to_lowercase());
     out
 }
 
