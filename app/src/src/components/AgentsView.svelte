@@ -694,15 +694,21 @@
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Ollama tidak jalan atau belum ada model terinstall."}</p>
             {/if}
             {#each ollamaInstalled as m}
+              {@const mid = `ollama:${m.id}`}
+              {@const isUsed = modelId === mid}
               <div class="xiryn-model-row">
                 <div class="xiryn-model-meta">
                   <span class="xiryn-model-name">{m.id}</span>
                   <span class="xiryn-model-desc">{m.size}{m.modified ? " · " + m.modified : ""}</span>
                 </div>
-                <span class="badge-ok">✓ Siap pakai</span>
-                <button class="btn-ghost sm" onclick={() => setModel(`ollama:${m.id}`)}>
-                  Pakai
-                </button>
+                {#if isUsed}
+                  <button class="btn-used" disabled>Terpakai</button>
+                {:else}
+                  <span class="badge-ok">✓ Siap pakai</span>
+                  <button class="btn-ghost sm" onclick={() => setModel(mid)}>
+                    Pakai
+                  </button>
+                {/if}
               </div>
             {/each}
             <div class="field" style="margin-top:10px">
@@ -738,15 +744,21 @@
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Gagal memuat daftar."}</p>
             {/if}
             {#each opencodeFree as m}
+              {@const mid = `opencode:${m.id}`}
+              {@const isUsed = modelId === mid}
               <div class="xiryn-model-row">
                 <div class="xiryn-model-meta">
                   <span class="xiryn-model-name">{m.id}</span>
                   <span class="xiryn-model-desc">{m.name}{m.context ? " · ctx " + m.context : ""}</span>
                 </div>
-                <span class="badge-ok">Gratis</span>
-                <button class="btn-ghost sm" onclick={() => setModel(`opencode:${m.id}`)}>
-                  Pakai
-                </button>
+                {#if isUsed}
+                  <button class="btn-used" disabled>Terpakai</button>
+                {:else}
+                  <span class="badge-ok">Gratis</span>
+                  <button class="btn-ghost sm" onclick={() => setModel(mid)}>
+                    Pakai
+                  </button>
+                {/if}
               </div>
             {/each}
             </div>
@@ -2328,7 +2340,11 @@
   .xiryn-model-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
   .xiryn-model-name { font-family: monospace; font-size: 13px; font-weight: 600; }
   .xiryn-model-desc { font-size: 11px; color: var(--dim); }
-  .badge-ok { font-size: 11px; color: #22c55e; font-weight: 600; }
+  .badge-ok { font-size: 11px; color: #4FA6F0; font-weight: 600; }
+  .btn-used {
+    padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    background: #4FA6F0; color: #fff; border: none; cursor: default;
+  }
   .xiryn-prov { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
   .xiryn-prov-head {
     width: 100%; display: flex; align-items: center; gap: 10px;
