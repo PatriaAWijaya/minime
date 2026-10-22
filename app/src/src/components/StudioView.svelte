@@ -135,6 +135,12 @@
   let editingVideo = $state(false);
   let draftApproved = $state(false);
 
+  // Collapsible sections
+  let openSections = $state<Record<string, boolean>>({ pipeline: true });
+  function toggleSection(id: string) {
+    openSections[id] = !openSections[id];
+  }
+
   function approveDraft() {
     draftApproved = true;
     try {
@@ -158,9 +164,16 @@
     <p class="lede">Pipeline: goal → script → storyboard → aset → edit → jadwal.</p>
   </header>
 
-  <section class="card">
-    <div class="pipe-head">
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("pipeline") }>
       <h3>Pipeline</h3>
+      <span class="chevron">{openSections["pipeline"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["pipeline"]}
+    <div class="card-body">
+    <div class="row" style="margin-bottom:12px">
+      <span class="hint" style="margin:0">Klik tahap untuk menandai selesai.</span>
+      <span style="flex:1"></span>
       <button class="btn-ghost sm" onclick={resetPipeline}>Reset</button>
     </div>
     <div class="pipeline">
@@ -176,10 +189,17 @@
         {#if i < STAGES.length - 1}<span class="pipe-arrow">→</span>{/if}
       {/each}
     </div>
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>Brand Kit</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("brandkit") }>
+      <h3>Brand Kit</h3>
+      <span class="chevron">{openSections["brandkit"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["brandkit"]}
+    <div class="card-body">
     <p class="hint">Dipakai untuk konsistensi visual di semua konten.</p>
     <div class="brand-grid">
       <div class="field">
@@ -206,10 +226,17 @@
       <input id="brand-tone" type="text" bind:value={$brandKit.tone}
         placeholder="Contoh: profesional dan hangat" />
     </div>
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>Storyboard</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("storyboard") }>
+      <h3>Storyboard</h3>
+      <span class="chevron">{openSections["storyboard"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["storyboard"]}
+    <div class="card-body">
     <p class="hint">Susun scene untuk video. Urutan bisa diubah dengan tombol ↑ ↓.</p>
     {#if $storyboard.length === 0}
       <p class="hint">Belum ada scene. Tambahkan di bawah.</p>
@@ -250,10 +277,17 @@
         + Tambah Scene
       </button>
     </div>
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>Review Draft</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("draft") }>
+      <h3>Review Draft</h3>
+      <span class="chevron">{openSections["draft"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["draft"]}
+    <div class="card-body">
     {#if $storyboard.length === 0 && !imageUrl}
       <p class="hint">Belum ada draft. Buat storyboard atau generate gambar dulu.</p>
     {:else}
@@ -272,10 +306,17 @@
         {/if}
       </div>
     {/if}
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>API Key DALL-E</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("dallekey") }>
+      <h3>API Key DALL-E</h3>
+      <span class="chevron">{openSections["dallekey"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["dallekey"]}
+    <div class="card-body">
     <p class="hint">Disimpan di OS Keychain, tidak pernah di-hardcode.</p>
     <div class="row">
       <input type="password" bind:value={dalleKey} placeholder="sk-..." aria-label="DALL-E API Key" />
@@ -284,10 +325,17 @@
       </button>
     </div>
     {#if keySaved}<p class="ok">API key tersimpan.</p>{/if}
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>Generate Gambar</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("genimage") }>
+      <h3>Generate Gambar</h3>
+      <span class="chevron">{openSections["genimage"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["genimage"]}
+    <div class="card-body">
     <div class="field">
       <label for="studio-prompt">Prompt</label>
       <textarea id="studio-prompt" bind:value={prompt} rows="3"
@@ -303,10 +351,17 @@
       {generating ? "Membuat gambar..." : "Generate"}
     </button>
     {#if error}<p class="err">{error}</p>{/if}
+      </div>
+    {/if}
   </section>
 
-  <section class="card">
-    <h3>Jadwal Konten</h3>
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("schedule") }>
+      <h3>Jadwal Konten</h3>
+      <span class="chevron">{openSections["schedule"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["schedule"]}
+    <div class="card-body">
     <p class="hint">Dijadwalkan sebagai <strong>draft</strong> — tidak ada auto-posting (aturan keras).</p>
     {#if $scheduleQueue.length === 0}
       <p class="hint">Belum ada jadwal.</p>
@@ -345,18 +400,22 @@
     <button class="btn-primary sm" onclick={addSchedule} disabled={!schedTitle.trim() || !schedAt}>
       + Jadwalkan Draft
     </button>
+      </div>
+    {/if}
   </section>
 
   {#if imageUrl}
     <section class="card">
       <h3>Hasil</h3>
+      <div class="card-body">
       <img src={imageUrl} alt="Hasil generate" class="result-img" />
       <div class="row">
         <button class="btn-ghost sm" onclick={downloadImage}>Unduh</button>
         <button class="btn-ghost sm" onclick={() => (editingImage = imageUrl)}>Edit</button>
         <a href={imageUrl} target="_blank" rel="noopener" class="btn-ghost sm link">Buka penuh</a>
       </div>
-    </section>
+      </div>
+  </section>
   {/if}
 {#if editingImage}
   <ImageEditor src={editingImage} onClose={() => (editingImage = null)} />
@@ -367,7 +426,17 @@
 </div>
 
 <style>
-  .studio { padding: 24px; max-width: 720px; }
+  .studio { padding: 24px; max-width: 720px; height: 100%; overflow-y: auto; }
+  .card.collapsible { padding: 0; overflow: hidden; }
+  .card-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; cursor: pointer; padding: 18px; color: var(--text);
+  }
+  .card-toggle:hover { background: var(--hover); }
+  .card-toggle h3 { margin: 0; font-size: 16px; }
+  .card-toggle .chevron { font-size: 14px; color: var(--dim); }
+  .card-body { padding: 0 18px 18px; }
+  .card.collapsible { margin-bottom: 12px; }
   .studio-head h2 { margin: 0 0 4px; font-size: 22px; }
   .lede { color: var(--dim); margin: 0 0 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
