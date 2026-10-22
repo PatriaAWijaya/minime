@@ -547,13 +547,13 @@
     </aside>
     <main class="workspace">
 <nav class="tab-nav">
-  <button class="tab-btn {activeTab === 'research' ? 'active' : ''}" onclick={() => (activeTab = 'research')}>📥 Input User</button>
-  <button class="tab-btn {activeTab === 'scripts' ? 'active' : ''}" onclick={() => (activeTab = 'scripts')}>📝 Script</button>
-  <button class="tab-btn {activeTab === 'storyboard' ? 'active' : ''}" onclick={() => (activeTab = 'storyboard')}>🎬 Storyboard</button>
-  <button class="tab-btn {activeTab === 'draft' ? 'active' : ''}" onclick={() => (activeTab = 'draft')}>👁 Review Draft</button>
-  <button class="tab-btn {activeTab === 'genimage' ? 'active' : ''}" onclick={() => (activeTab = 'genimage')}>🖼 Studio Gambar</button>
-  <button class="tab-btn {activeTab === 'suara' ? 'active' : ''}" onclick={() => (activeTab = 'suara')}>🎙 Studio Suara</button>
-  <button class="tab-btn {activeTab === 'timeline' ? 'active' : ''}" onclick={() => (activeTab = 'timeline')}>🎞 Studio Video</button>
+  <button class="tab-btn {activeTab === 'research' ? 'active' : ''}" onclick={() => (activeTab = 'research')}>Input User</button>
+  <button class="tab-btn {activeTab === 'scripts' ? 'active' : ''}" onclick={() => (activeTab = 'scripts')}>Script</button>
+  <button class="tab-btn {activeTab === 'storyboard' ? 'active' : ''}" onclick={() => (activeTab = 'storyboard')}>Storyboard</button>
+  <button class="tab-btn {activeTab === 'draft' ? 'active' : ''}" onclick={() => (activeTab = 'draft')}>Review Draft</button>
+  <button class="tab-btn {activeTab === 'genimage' ? 'active' : ''}" onclick={() => (activeTab = 'genimage')}>Studio Gambar</button>
+  <button class="tab-btn {activeTab === 'suara' ? 'active' : ''}" onclick={() => (activeTab = 'suara')}>Studio Suara</button>
+  <button class="tab-btn {activeTab === 'timeline' ? 'active' : ''}" onclick={() => (activeTab = 'timeline')}>Studio Video</button>
 </nav>      <div class="tab-content">
 {#if activeTab === 'research'}
       <div class="tab-pane">
