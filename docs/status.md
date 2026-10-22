@@ -2167,3 +2167,29 @@ Perintah Patria: "oke bangun UI voice editor native, jadikan voiceStudio sebagai
 - Model VoxCPM2-Q8 (3GB) berhasil diunduh via source huggingface (modelscope gagal 2x)
 - Uji cloning: referensi /tmp/yv_test.wav → output 345KB WAV ✅
 - Fitur clone suara di Studio Suara sudah fungsional penuh
+
+## 22 Okt 2026 ~19:40 — Voice Editor Native SELESAI (build)
+
+### Backend Rust — modul baru `app/src-tauri/src/voicestudio.rs` (~440 baris + 10 unit test)
+- Command: `voicestudio_status` → {reachable,version,engine}; `voicestudio_voices` → [{voice_id,name,type,language}]; `voicestudio_tts` (POST /v1/audio/speech, fallback otomatis yovoice, hasil {path,engine}); `voicestudio_clone_tts` (multipart POST /generate, fallback yovoice --reference); `voicestudio_open` (open -a VoiceStudio, macOS).
+- Terdaftar di main.rs. reqwest +feature "multipart". `yovoice_bin()` → pub(crate).
+- **Uji live ke MacBook BERHASIL**: `open -a VoiceStudio` → port 3900 buka ~8 dtk; /v1/audio/speech → WAV valid 24kHz mono (~97KB, sintesis pertama ~28 dtk); /generate multipart → WAV valid (~90KB). Model sudah terinstall — tidak ada setup tersisa untuk Patria. VoiceStudio dibiarkan berjalan.
+- `cargo test`: 43 passed, 0 failed. `cargo clippy --all-targets -- -D warnings`: 0 warning.
+
+### UI — `app/src/src/components/VoiceEditorView.svelte` (baru, ~1000 baris)
+- Terintegrasi di StudioView sebagai kartu "Editor Suara (Timeline)". Indikator engine 🟢🟡🔴 + refresh 15 dtk + tombol "Buka VoiceStudio".
+- Timeline multi-track: tambah/hapus track; clip = segmen TTS (teks, voice dropdown, speed 0.5–2.0, ref clone opsional); susun ulang; volume 0–100; trim; waveform canvas (tanpa lib); play per-clip & play semua; mixdown → export WAV (encoder client-side); mastering per-clip via `audio_master`; state di localStorage `minime.voice-editor`.
+- Bonus fix: playback kartu Studio Suara kini pakai `convertFileSrc` (tombol play sebelumnya diam-diam mati).
+- `tauri.conf.json`: assetProtocol scope $TEMP/** + CSP media-src/connect-src (wajib agar audio lokal bunyi).
+- `vite build`: SUKSES. Nol dependency npm baru. UI degradasi jujur ke `yovoice_*` bila backend VoiceStudio belum terdaftar.
+
+### Konflik build yang diperbaiki
+- `tauri.conf.json` mengaktifkan assetProtocol tapi Cargo.toml belum punya feature `protocol-asset` → build script tauri gagal. Fix: `tauri = { version = "2", features = ["protocol-asset"] }` (feature langsung di dependency — cek tauri-build hanya baca dep.features, bukan package features).
+
+### Skill
+- `skills/voice-studio/SKILL.md` v2.0.0: engine utama VoiceStudio local API, fallback yovoice → edge-tts; instalasi tidak lagi pending.
+
+### Catatan
+- One-click mixdown→mastering dipangkas (butuh command tulis-file backend; workflow nyata: master per-clip → mixdown).
+- Smoke test runtime di MacBook disarankan: buka kartu → Generate 1 clip → Play → Mixdown.
+- AGPL: kode VoiceStudio tidak disentuh/di-bundle — hanya dipanggil via local API (pola Pireel).

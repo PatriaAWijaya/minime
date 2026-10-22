@@ -78,10 +78,10 @@
 
 ### 3.7 Voice Editor Native — engine VoiceStudio via local API (22 Okt 2026)
 > Keputusan Patria 19:20: VoiceStudio (AGPL-3.0) = engine UTAMA via local API saja (proses terpisah 127.0.0.1:3900, tidak di-bundle — pola Pireel). Override penolakan AGPL 18:45. yovoice tetap fallback.
-- [ ] Backend `voicestudio.rs`: `voicestudio_status`, `voicestudio_voices`, `voicestudio_tts` (fallback yovoice + catat engine), `voicestudio_clone_tts` (POST /generate), `voicestudio_open`; daftar di main.rs
-- [ ] UI `VoiceEditorView.svelte`: timeline multi-track, clip TTS (teks/voice/speed/clone), volume + trim, waveform canvas, preview, mixdown + export WAV, auto-mastering via `audio_master`, indikator status engine + tombol "Buka VoiceStudio"
-- [ ] Skill `skills/voice-studio/SKILL.md` diperbarui (engine utama VoiceStudio, fallback yovoice → edge-tts)
-- [ ] Uji: cargo test lolos, clippy 0 warning, vite build sukses, TTS nyata via API lokal
+- [x] Backend `voicestudio.rs`: `voicestudio_status`, `voicestudio_voices`, `voicestudio_tts` (fallback yovoice + catat engine), `voicestudio_clone_tts` (POST /generate), `voicestudio_open`; daftar di main.rs — SELESAI 22 Okt ~19:40, uji live MacBook OK
+- [x] UI `VoiceEditorView.svelte`: timeline multi-track, clip TTS (teks/voice/speed/clone), volume + trim, waveform canvas, preview, mixdown + export WAV, auto-mastering via `audio_master`, indikator status engine + tombol "Buka VoiceStudio" — SELESAI 22 Okt ~19:40
+- [x] Skill `skills/voice-studio/SKILL.md` diperbarui (engine utama VoiceStudio, fallback yovoice → edge-tts)
+- [x] Uji: cargo test 43 passed, clippy 0 warning, vite build sukses, TTS nyata via API lokal (WAV 24kHz valid)
 
 ### Gate Tahap 3
 - [ ] Pipeline E2E teruji (brief → delegasi → tool → approval → draft/upload → Library/Kanban)
