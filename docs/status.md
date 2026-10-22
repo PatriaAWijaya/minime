@@ -2057,3 +2057,27 @@ Perintah Patria: aplikasikan `backnotprop/pstack` (mirror standalone `cursor/plu
 - Skill umum Muse: `~/workspace/custom-skills/{swarm,unslop,tdd}/SKILL.md`.
 - Skill Minime: `skills/swarm` (owner `mimi` — orkestrasi fan-out worker paralel), `skills/unslop` (owner `kreatif` — potong ciri tulisan AI), `skills/tdd` (owner `code` — bug fix via failing test dulu).
 - Wiring `skills.rs`: mimi += swarm; kreatif += unslop; code += tdd.
+
+## 22 Okt 2026 ~17:35 — Audit penuh #8 + panel Model AI ala Xiryn
+
+Perintah Patria: "cek ulang pastikan fungsi benar2 bekerja bukan sekedar gimmick, cek seluruh konsistensi dan performa aplikasi dari awal sampai saat ini. Tidak boleh ada error yang lolos. Catat kedalam log jika sudah selesai"
+
+### Hasil audit
+- **Backend**: cargo clippy --all-targets = 0 warning/error ✅ (perbaiki 7: div_ceil, doc indent, &PathBuf→&Path, sort_by_key, 2 konstanta mati, cfg(test) salah tempat)
+- **Test**: 33/33 lolos ✅
+- **Frontend**: vite build sukses (1.8s), i18n 0 key hilang ✅
+- **Fungsional teruji nyata**:
+  - SD image gen end-to-end: HTTP 200, b64 PNG valid ✅ (perbaiki argumen sd-server: --port→--listen-port)
+  - arboTTS voiceover ID: WAV 29KB ✅
+  - Pillow thumbnail: PNG ✅
+  - FFmpeg slideshow: MP4 ✅
+- **Performa**: bundle debug 56M, RAM idle 13.9MB, startup ~5s ✅
+
+### Fitur baru: panel Model AI ala Xiryn
+Perintah Patria: "pada menu Model AI gunakan pendekatan seperti Xiryn, untuk model gratis harus download dan mengaplikasikannya. Untuk model premium ketika dipilih akan muncul menu input API key dan Endpoint (optional) lalu di save (button save)"
+
+- **Gratis — Model Lokal**: daftar qwen3:4b, qwen3:8b, deepseek-r1:7b, qwen2.5:3b dengan tombol Download → Terinstall → Pakai. Backend baru: `ollama_pull_model`, `suggested_free_models`.
+- **Premium — API Key**: klik Muse/Gemini/DeepSeek → expand → input API Key + Endpoint (opsional) + tombol Save (via `provider_connect` existing).
+- Test 33/33 lolos, preview jalan ✅
+
+Nol error lolos.
