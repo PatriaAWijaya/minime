@@ -3,7 +3,6 @@
   import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, userInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
-  import VideoEditor from "./VideoEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
 
