@@ -290,6 +290,8 @@
   let toolStatus = $state<Array<{id:string;name:string;connected:boolean;detail:string}>>([]);
   let pixabayKey = $state("");
   let savingPx = $state(false);
+  let pxSaveMsg = $state("");
+  let pxSaveOk = $state(false);
 
   async function loadToolStatus() {
     try {
@@ -302,12 +304,18 @@
     const k = pixabayKey.trim();
     if (!k) return;
     savingPx = true;
+    pxSaveMsg = "";
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("set_pixabay_key", { apiKey: k });
       pixabayKey = "";
+      pxSaveOk = true;
+      pxSaveMsg = "API key tersimpan di keychain.";
       await loadToolStatus();
-    } catch (e) {}
+    } catch (e) {
+      pxSaveOk = false;
+      pxSaveMsg = "Gagal menyimpan: " + String(e);
+    }
     finally { savingPx = false; }
   }
 
@@ -401,6 +409,7 @@
           {savingPx ? "..." : "Simpan"}
         </button>
       </div>
+      {#if pxSaveMsg}<p class={pxSaveOk ? "ok" : "err"}>{pxSaveMsg}</p>{/if}
     </div>
     <button class="btn-ghost sm" onclick={loadToolStatus}>Refresh Status</button>
     </div>
