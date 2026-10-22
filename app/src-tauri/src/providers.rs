@@ -1332,3 +1332,113 @@ pub async fn opencode_free_models() -> Vec<serde_json::Value> {
         })
         .collect()
 }
+
+/// Path to yovoice CLI binary.
+fn yovoice_bin() -> String {
+    let home = std::env::var("HOME").unwrap_or_default();
+    format!("{}/.minime/yovoice/yovoice", home)
+}
+
+/// Check yovoice status. Returns JSON string from `yovoice status --json`.
+#[tauri::command]
+pub fn yovoice_status() -> Result<String, String> {
+    let bin = yovoice_bin();
+    if !std::path::Path::new(&bin).exists() {
+        return Err("yovoice belum terinstall di ~/.minime/yovoice.".to_string());
+    }
+    let out = std::process::Command::new(&bin)
+        .args(["status", "--json"])
+        .output()
+        .map_err(|e| format!("Gagal menjalankan yovoice: {}", e))?;
+    if !out.status.success() {
+        return Err("yovoice status gagal.".to_string());
+    }
+    String::from_utf8(out.stdout).map_err(|e| e.to_string())
+}
+
+/// List installed yovoice models. Returns JSON array [{id, name, size}].
+#[tauri::command]
+pub fn yovoice_models() -> Result<String, String> {
+    let status = yovoice_status()?;
+    let v: serde_json::Value = serde_json::from_str(&status).map_err(|e| e.to_string())?;
+    let installed = v
+        .pointer("/state/models")
+        .and_then(|m| m.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let catalog = v
+        .pointer("/catalog")
+        .and_then(|m| m.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let list: Vec<serde_json::Value> = installed
+        .iter()
+        .map(|m| {
+            let id = m.get("id").and_then(|i| i.as_str()).unwrap_or("?");
+            let cat = catalog.iter().find(|c| c.get("id").and_then(|i| i.as_str()) == Some(id));
+            serde_json::json!({
+                "id": id,
+                "name": cat.and_then(|c| c.get("name")).and_then(|n| n.as_str()).unwrap_or(id),
+                "size": cat.and_then(|c| c.get("size")).and_then(|s| s.as_u64()).map(|b| format!("{:.0} MB", b as f64 / 1e6)).unwrap_or_default(),
+            })
+        })
+        .collect();
+    serde_json::to_string(&list).map_err(|e| e.to_string())
+}
+
+/// Generate TTS via yovoice. Returns WAV file path.
+#[tauri::command]
+pub async fn yovoice_tts(text: String, voice: String, output_name: String) -> Result<String, String> {
+    let bin = yovoice_bin();
+    if !std::path::Path::new(&bin).exists() {
+        return Err("yovoice belum terinstall.".to_string());
+    }
+    if text.trim().is_empty() {
+        return Err("Teks kosong.".to_string());
+    }
+    let tmp = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+    let text_file = tmp.join(format!("{}.txt", output_name));
+    std::fs::write(&text_file, &text).map_err(|e| e.to_string())?;
+    let out_path = tmp.join(format!("{}.wav", output_name));
+    let mut cmd = tokio::process::Command::new(&bin);
+    cmd.args([
+        "generate",
+        "--text-file", &text_file.to_string_lossy(),
+        "--output", &out_path.to_string_lossy(),
+    ]);
+    if !voice.trim().is_empty() {
+        cmd.args(["--voice", voice.trim()]);
+    }
+    let out = cmd.output().await.map_err(|e| format!("Gagal menjalankan yovoice: {}", e))?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!("yovoice gagal: {}", err.chars().take(300).collect::<String>()));
+    }
+    Ok(out_path.to_string_lossy().to_string())
+}
+
+/// Audio mastering: loudness normalization (EBU R128) + denoise via FFmpeg.
+/// Returns mastered audio file path.
+#[tauri::command]
+pub async fn audio_master(input_path: String, output_name: String) -> Result<String, String> {
+    let tmp = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+    let out_path = tmp.join(format!("{}_mastered.wav", output_name));
+    // loudnorm (EBU R128, target YouTube/TikTok) + highpass + afftdn denoise
+    let status = tokio::process::Command::new("ffmpeg")
+        .args([
+            "-y", "-loglevel", "error",
+            "-i", &input_path,
+            "-af", "highpass=f=80,afftdn=nf=-25,loudnorm=I=-14:TP=-1.5:LRA=11",
+            "-ar", "44100", "-ac", "2",
+            &out_path.to_string_lossy(),
+        ])
+        .status()
+        .await
+        .map_err(|e| format!("FFmpeg tidak ditemukan: {}", e))?;
+    if !status.success() {
+        return Err("Audio mastering gagal.".to_string());
+    }
+    Ok(out_path.to_string_lossy().to_string())
+}
