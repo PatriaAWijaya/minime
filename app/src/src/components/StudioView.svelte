@@ -19,6 +19,7 @@
   ];
 
   let yvText = $state("");
+  let yvReference = $state("");
   let yvVoice = $state("");
   let yvModels = $state<Array<{id: string; name: string; size: string}>>([]);
   let yvGenerating = $state(false);
@@ -49,7 +50,8 @@
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       yvAudio = await invoke<string>("yovoice_tts", {
-        text: t, voice: yvVoice.trim(), outputName: `yv_${Date.now()}`,
+        text: t, voice: yvVoice.trim(), reference: yvReference.trim(),
+        outputName: `yv_${Date.now()}`,
       });
     } catch (e) { yvError = String(e); }
     finally { yvGenerating = false; }
@@ -782,6 +784,12 @@
           <option value="">Default</option>
           {#each yvModels as m}<option value={m.id}>{m.name} ({m.size})</option>{/each}
         </select>
+      </div>
+      <div class="field">
+        <label for="yv-ref">Clone suara — file referensi (opsional)</label>
+        <input id="yv-ref" type="text" bind:value={yvReference}
+          placeholder="/path/ke/suara-referensi.wav (5-15 detik)" />
+        <p class="hint">Hanya clone suara yang Anda miliki izinnya.</p>
       </div>
       <button class="btn-primary" onclick={yvGenerate} disabled={!yvText.trim() || yvGenerating}>
         {yvGenerating ? "Membuat suara..." : "Generate Voiceover"}

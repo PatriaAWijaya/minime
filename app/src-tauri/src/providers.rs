@@ -1388,7 +1388,12 @@ pub fn yovoice_models() -> Result<String, String> {
 
 /// Generate TTS via yovoice. Returns WAV file path.
 #[tauri::command]
-pub async fn yovoice_tts(text: String, voice: String, output_name: String) -> Result<String, String> {
+pub async fn yovoice_tts(
+    text: String,
+    voice: String,
+    reference: String,
+    output_name: String,
+) -> Result<String, String> {
     let bin = yovoice_bin();
     if !std::path::Path::new(&bin).exists() {
         return Err("yovoice belum terinstall.".to_string());
@@ -1409,6 +1414,14 @@ pub async fn yovoice_tts(text: String, voice: String, output_name: String) -> Re
     ]);
     if !voice.trim().is_empty() {
         cmd.args(["--voice", voice.trim()]);
+    }
+    // Voice cloning: reference audio (5-15 detik, suara yang diizinkan saja).
+    let ref_path = reference.trim();
+    if !ref_path.is_empty() {
+        if !std::path::Path::new(ref_path).exists() {
+            return Err(format!("File referensi tidak ditemukan: {}", ref_path));
+        }
+        cmd.args(["--reference", ref_path]);
     }
     let out = cmd.output().await.map_err(|e| format!("Gagal menjalankan yovoice: {}", e))?;
     if !out.status.success() {
