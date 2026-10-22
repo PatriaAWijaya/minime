@@ -2305,3 +2305,9 @@ Fitur Doory yang diadopsi ke Studio Gambar Minime:
 - Yang lama tetap: Sesuaikan, Pangkas, Putar/Balik, Kuas, Filter.
 - Build: vite ✓, clippy 0, test 49/49, bundle debug ✓, app restart ✓.
 - Pasangan SHA: lokal 674cb02 ↔ remote c07db15; chore: lokal ffda2d5 ↔ remote 8ec49b4 (tree identik).
+
+## 23 Okt 2026 ~00:50 — Fix tombol Upload & Edit (laporan Patria)
+- Masalah: tombol "Upload & Edit" di Studio Gambar tidak membuka dialog file.
+- Akar: `<input type="file">` memakai `display: none`; WebKit mengabaikan `.click()` programatik pada input yang display:none.
+- Perbaikan: ubah CSS `.hidden` menjadi visually-hidden (opacity 0, 1px) agar `.click()` tetap berfungsi.
+- Pasangan SHA: lokal 0c3cdb9 ↔ remote 43294e9 (tree identik).
