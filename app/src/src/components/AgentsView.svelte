@@ -382,6 +382,54 @@
   let modelSectionOpen = $state<ModelSection | null>("opencode");
   let modelAddFor = $state<ModelSection | null>(null);
   let newModelName = $state("");
+  let suggestedModels = $state<Array<{id: string; size: string; desc: string}>>([]);
+  let downloadedModels = $state<string[]>([]);
+  let pullingModel = $state<string | null>(null);
+  let premiumExpanded = $state<string | null>(null);
+  let premiumKey = $state("");
+  let premiumEndpoint = $state("");
+  let premiumSaving = $state(false);
+  let premiumMsg = $state("");
+
+  async function loadSuggested() {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      suggestedModels = await invoke("suggested_free_models");
+      const live = await invoke<string[]>("fetch_provider_models", { providerId: "ollama" }).catch(() => []);
+      downloadedModels = live;
+    } catch {}
+  }
+  $effect(() => { if (modelSectionOpen) loadSuggested(); });
+
+  async function pullModel(id: string) {
+    pullingModel = id;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("ollama_pull_model", { modelName: id });
+      await loadSuggested();
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      pullingModel = null;
+    }
+  }
+
+  async function savePremiumKey(providerId: string) {
+    const k = premiumKey.trim();
+    if (!k) return;
+    premiumSaving = true;
+    premiumMsg = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("provider_connect", { providerId, apiKey: k });
+      premiumMsg = "Tersimpan!";
+      premiumKey = "";
+    } catch (e) {
+      premiumMsg = String(e);
+    } finally {
+      premiumSaving = false;
+    }
+  }
 
   function syncModelSection() {
     modelSectionOpen = sectionOf(modelId);
@@ -622,103 +670,78 @@
             />
           </div>
 
-          {#each visibleSections as sec}
-            <button
-              class="sec-toggle"
-              aria-expanded={modelSectionOpen === sec.id || q !== ""}
-              onclick={() =>
-                (modelSectionOpen =
-                  modelSectionOpen === sec.id ? null : sec.id)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-              <span>{$t(sec.labelKey)}</span>
-            </button>
-            {#if modelSectionOpen === sec.id || q !== ""}
-              {#each sectionModels(sec.id) as m}
-                {#if matches(m.label)}
-                  <label class="model-item">
-                    <input
-                      type="radio"
-                      name="model-pick"
-                      checked={modelId === m.id}
-                      onchange={() => setModel(m.id)}
-                    />
-                    <span class="m-label">{m.label}</span>
-                    <span class="chip {sec.id === 'paid' ? 'paid' : ''}">
-                      {sec.id === "paid" ? $t("providers.paid") : $t("providers.free")}
-                    </span>
-                    {#if m.custom}
-                      <button
-                        class="icon-btn del-model"
-                        type="button"
-                        title={$t("model.removeCustom")}
-                        aria-label={$t("model.removeCustom")}
-                        onclick={(e) => {
-                          e.preventDefault();
-                          dropCustomModel(sec.id, m.label);
-                        }}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    {/if}
-                  </label>
-                {/if}
-              {/each}
-              {#if modelAddFor === sec.id}
-                <div class="add-model">
-                  <input
-                    type="text"
-                    bind:value={newModelName}
-                    placeholder={$t("model.namePlaceholder")}
-                    aria-label={$t("model.namePlaceholder")}
-                    onkeydown={(e) => {
-                      if (e.key === "Enter") submitCustomModel(sec.id);
-                      if (e.key === "Escape") {
-                        modelAddFor = null;
-                        newModelName = "";
-                      }
-                    }}
-                  />
-                  <button
-                    class="btn-primary"
-                    type="button"
-                    onclick={() => submitCustomModel(sec.id)}
-                    disabled={!newModelName.trim()}
-                  >
-                    {$t("model.add")}
-                  </button>
-                  <button
-                    class="btn-ghost sm"
-                    type="button"
-                    onclick={() => {
-                      modelAddFor = null;
-                      newModelName = "";
-                    }}
-                  >
-                    {$t("providers.cancel")}
-                  </button>
+          <!-- FREE: model lokal dengan Download ala Xiryn -->
+          <div class="xiryn-sec">
+            <span class="group-label">Gratis — Model Lokal</span>
+            <p class="hint-sm">Download sekali, pakai selamanya. Gratis tanpa API key.</p>
+            {#each suggestedModels as sm}
+              {@const isDownloaded = downloadedModels.some((d) => d.startsWith(sm.id.split(":")[0]))}
+              <div class="xiryn-model-row">
+                <div class="xiryn-model-meta">
+                  <span class="xiryn-model-name">{sm.id}</span>
+                  <span class="xiryn-model-desc">{sm.size} · {sm.desc}</span>
                 </div>
-              {:else}
+                {#if isDownloaded}
+                  <span class="badge-ok">✓ Terinstall</span>
+                  <button class="btn-ghost sm" onclick={() => setModel(`ollama:${sm.id}`)}>
+                    Pakai
+                  </button>
+                {:else if pullingModel === sm.id}
+                  <span class="hint-sm">Mengunduh...</span>
+                {:else}
+                  <button class="btn-primary sm" onclick={() => pullModel(sm.id)}>
+                    ⬇ Download
+                  </button>
+                {/if}
+              </div>
+            {/each}
+          </div>
+
+          <!-- PREMIUM: klik untuk input API key ala Xiryn -->
+          <div class="xiryn-sec">
+            <span class="group-label">Premium — API Key</span>
+            <p class="hint-sm">Pilih provider, masukkan API key, simpan.</p>
+            {#each ["muse", "gemini", "deepseek"] as pid}
+              <div class="xiryn-prov">
                 <button
-                  class="add-model-btn"
-                  type="button"
+                  class="xiryn-prov-head"
                   onclick={() => {
-                    modelAddFor = sec.id;
-                    newModelName = "";
+                    premiumExpanded = premiumExpanded === pid ? null : pid;
+                    premiumKey = "";
+                    premiumEndpoint = "";
+                    premiumMsg = "";
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  <span>{$t("model.addModel")}</span>
+                  <span class="xiryn-prov-name">{pid === "muse" ? "Muse" : pid === "gemini" ? "Gemini" : "DeepSeek"}</span>
+                  <span class="chip paid">Berbayar</span>
+                  <span class="spacer"></span>
+                  <span class="chev">{premiumExpanded === pid ? "▾" : "▸"}</span>
                 </button>
-              {/if}
-            {/if}
-          {/each}
+                {#if premiumExpanded === pid}
+                  <div class="xiryn-prov-body">
+                    <div class="field">
+                      <label>API Key</label>
+                      <input type="password" bind:value={premiumKey}
+                        placeholder="Tempel API key" autocomplete="off" spellcheck={false} />
+                    </div>
+                    <div class="field">
+                      <label>Endpoint (opsional)</label>
+                      <input type="text" bind:value={premiumEndpoint}
+                        placeholder="https://..." spellcheck={false} />
+                    </div>
+                    <div class="row">
+                      <button class="btn-primary sm"
+                        onclick={() => savePremiumKey(pid)}
+                        disabled={premiumSaving || !premiumKey.trim()}>
+                        {premiumSaving ? "..." : "Save"}
+                      </button>
+                      {#if premiumMsg}<span class="hint-sm">{premiumMsg}</span>{/if}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
 
           {#if !anyMatch}
             <p class="empty-note">{$t("model.empty")}</p>
@@ -2239,6 +2262,24 @@
     inset: 0;
     z-index: 55;
   }
+  .xiryn-sec { margin: 16px 0; }
+  .hint-sm { font-size: 12px; color: var(--dim); margin: 4px 0 10px; }
+  .xiryn-model-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+  }
+  .xiryn-model-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .xiryn-model-name { font-family: monospace; font-size: 13px; font-weight: 600; }
+  .xiryn-model-desc { font-size: 11px; color: var(--dim); }
+  .badge-ok { font-size: 11px; color: #22c55e; font-weight: 600; }
+  .xiryn-prov { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .xiryn-prov-head {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 12px; background: none; border: none; cursor: pointer; color: var(--text); text-align: left;
+  }
+  .xiryn-prov-head:hover { background: var(--hover); }
+  .xiryn-prov-name { font-weight: 600; font-size: 14px; }
+  .xiryn-prov-body { padding: 0 12px 12px; border-top: 1px solid var(--border); }
   .model-panel {
     position: absolute;
     top: calc(100% + 8px);

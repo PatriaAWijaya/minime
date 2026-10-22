@@ -1239,3 +1239,34 @@ pub async fn fetch_provider_models(provider_id: String) -> Result<Vec<String>, S
         _ => Err(format!("Provider tidak dikenal: {}", provider_id)),
     }
 }
+
+/// Download (pull) an Ollama model. Returns when pull completes.
+#[tauri::command]
+pub async fn ollama_pull_model(model_name: String) -> Result<String, String> {
+    let base = std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(1800))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .post(format!("{}/api/pull", base))
+        .json(&serde_json::json!({ "name": model_name, "stream": false }))
+        .send()
+        .await
+        .map_err(|e| format!("Ollama tidak terjangkau: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("Pull gagal: HTTP {}", resp.status()));
+    }
+    Ok(format!("Model {} berhasil diunduh", model_name))
+}
+
+/// Suggested free models for download (Xiryn-style local models).
+#[tauri::command]
+pub fn suggested_free_models() -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({"id": "qwen3:4b", "size": "2.5 GB", "desc": "Ringan, chat dan tugas sederhana"}),
+        serde_json::json!({"id": "qwen3:8b", "size": "5.2 GB", "desc": "Seimbang untuk 16GB RAM"}),
+        serde_json::json!({"id": "deepseek-r1:7b", "size": "4.7 GB", "desc": "Reasoning kuat"}),
+        serde_json::json!({"id": "qwen2.5:3b", "size": "2.0 GB", "desc": "Paling ringan"}),
+    ]
+}

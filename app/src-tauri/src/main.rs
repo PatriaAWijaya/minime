@@ -494,6 +494,8 @@ fn main() {
             providers::get_media_tool_status,
             providers::provider_catalog,
             providers::fetch_provider_models,
+            providers::ollama_pull_model,
+            providers::suggested_free_models,
             social::create_postiz_draft,
             social::create_meta_draft,
             social::set_postiz_config,
