@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
-  import { brandKit, storyboard, scheduleQueue } from "../lib/store";
+  import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
   import VideoEditor from "./VideoEditor.svelte";
@@ -315,12 +315,29 @@
     <div class="field">
       <label for="brand-font">Font</label>
       <select id="brand-font" bind:value={$brandKit.font}>
-        <option>Inter</option>
-        <option>Poppins</option>
-        <option>Montserrat</option>
-        <option>Playfair Display</option>
-        <option>Roboto</option>
+        {#each $brandFonts as f}
+          <option value={f}>{f}</option>
+        {/each}
       </select>
+      <div class="font-add">
+        <input id="brand-font-new" type="text" placeholder="Nama font baru..."
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              addBrandFont((e.currentTarget as HTMLInputElement).value);
+              (e.currentTarget as HTMLInputElement).value = "";
+            }
+          }} />
+        <button class="btn-ghost sm" onclick={() => {
+          const el = document.getElementById("brand-font-new") as HTMLInputElement;
+          addBrandFont(el.value);
+          el.value = "";
+        }}>＋ Tambah</button>
+      </div>
+      {#if !["Inter","Poppins","Montserrat","Playfair Display","Roboto"].includes($brandKit.font)}
+        <button class="btn-ghost sm" onclick={() => { removeBrandFont($brandKit.font); $brandKit.font = "Inter"; }}>
+          Hapus "{$brandKit.font}"
+        </button>
+      {/if}
     </div>
     <div class="field">
       <label for="brand-tone">Tone of voice</label>
@@ -664,6 +681,8 @@
   .ok { color: #22c55e; font-size: 13px; margin-top: 8px; }
   .err { color: #ef4444; font-size: 13px; margin-top: 8px; }
   .result-img { width: 100%; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .font-add { display: flex; gap: 8px; margin-top: 8px; }
+  .font-add input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; }
   .photo-row { display: flex; gap: 10px; align-items: center; }
   .brand-photo { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
   .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

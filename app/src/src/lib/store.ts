@@ -220,6 +220,31 @@ brandKit.subscribe((v) => {
   } catch {}
 });
 
+/* ---------- Custom fonts (Media Studio) ---------- */
+const defaultFonts = ["Inter", "Poppins", "Montserrat", "Playfair Display", "Roboto"];
+function loadFonts(): string[] {
+  try {
+    const raw = localStorage.getItem("minime.brand-fonts");
+    if (raw) return [...defaultFonts, ...JSON.parse(raw)];
+  } catch {}
+  return [...defaultFonts];
+}
+export const brandFonts = writable<string[]>(loadFonts());
+brandFonts.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.brand-fonts", JSON.stringify(v.filter((f) => !defaultFonts.includes(f))));
+  } catch {}
+});
+export function addBrandFont(name: string): void {
+  const n = name.trim();
+  if (!n) return;
+  brandFonts.update((list) => (list.includes(n) ? list : [...list, n]));
+}
+export function removeBrandFont(name: string): void {
+  if (defaultFonts.includes(name)) return;
+  brandFonts.update((list) => list.filter((f) => f !== name));
+}
+
 /* ---------- Storyboard (Media Studio) ---------- */
 export interface Scene {
   id: number;
