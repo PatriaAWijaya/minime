@@ -158,6 +158,43 @@ mod tests {
         let j = serde_json::to_string(&r).unwrap();
         assert!(j.contains("postiz"));
     }
+
+    #[tokio::test]
+    async fn fetch_image_as_data_url_real_download() {
+        // Unduh gambar PNG nyata dan pastikan hasilnya data URL valid
+        let url = "https://httpbin.org/image/png".to_string();
+        let out = super::fetch_image_as_data_url(url).await;
+        assert!(out.is_ok(), "download gagal: {:?}", out.err());
+        let s = out.unwrap();
+        assert!(s.starts_with("data:image/png;base64,"), "prefix salah");
+        assert!(s.len() > 1000, "data terlalu kecil");
+    }
+
+    #[tokio::test]
+    async fn fetch_image_as_data_url_bad_url_errors() {
+        let out = super::fetch_image_as_data_url("https://127.0.0.1:9/tidak-ada.png".to_string()).await;
+        assert!(out.is_err(), "seharusnya error untuk URL mati");
+    }
+
+    #[tokio::test]
+    async fn pixabay_search_without_key_gives_clear_error() {
+        // Tanpa key di keychain (atau key kosong), harus error jelas bukan panic.
+        // Jika key valid tersimpan, test ini skip (hasil Ok juga valid).
+        let out = super::pixabay_search_images("masjid".to_string(), 3).await;
+        match out {
+            Ok(v) => {
+                // Key valid tersimpan: pastikan struktur respons benar
+                assert!(v.get("hits").is_some(), "respons Pixabay tak ada hits");
+            }
+            Err(e) => {
+                assert!(
+                    e.contains("Pixabay") || e.contains("key"),
+                    "pesan error tak jelas: {}",
+                    e
+                );
+            }
+        }
+    }
 }
 
 /// Cari foto stok di Pixabay. Membutuhkan PIXABAY_API_KEY di keychain.
