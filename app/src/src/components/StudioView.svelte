@@ -4,6 +4,7 @@
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
   import VideoEditor from "./VideoEditor.svelte";
+  import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
 
   let prompt = $state("");
@@ -741,6 +742,19 @@
     {/if}
   </section>
 
+
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("timeline") }>
+      <h3>Timeline Editor</h3>
+      <span class="chevron">{openSections["timeline"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["timeline"]}
+    <div class="card-body">
+      <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
+      <TimelineEditor />
+    </div>
+    {/if}
+  </section>
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("genimage") }>

@@ -502,6 +502,7 @@ fn main() {
             providers::yovoice_models,
             providers::yovoice_tts,
             providers::audio_master,
+            providers::export_timeline,
             voicestudio::voicestudio_status,
             voicestudio::voicestudio_voices,
             voicestudio::voicestudio_tts,

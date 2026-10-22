@@ -1455,3 +1455,187 @@ pub async fn audio_master(input_path: String, output_name: String) -> Result<Str
     }
     Ok(out_path.to_string_lossy().to_string())
 }
+
+/// Export multi-track timeline ke MP4 via FFmpeg.
+/// timeline_json: { tracks: [{id, kind, name}], clips: [{id, trackId, src, name, start, duration, in, volume, text}] }
+#[tauri::command]
+pub async fn export_timeline(timeline_json: String, output_name: String) -> Result<String, String> {
+    let tl: serde_json::Value =
+        serde_json::from_str(&timeline_json).map_err(|e| format!("JSON timeline tidak valid: {}", e))?;
+    let tracks = tl.get("tracks").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+    let clips = tl.get("clips").and_then(|c| c.as_array()).cloned().unwrap_or_default();
+
+    let kind_of = |track_id: &str| -> &str {
+        tracks
+            .iter()
+            .find(|t| t.get("id").and_then(|i| i.as_str()) == Some(track_id))
+            .and_then(|t| t.get("kind"))
+            .and_then(|k| k.as_str())
+            .unwrap_or("video")
+    };
+
+    // Kumpulkan klip per jenis, urut by start
+    let mut vids: Vec<&serde_json::Value> = clips.iter().filter(|c| {
+        let tid = c.get("trackId").and_then(|i| i.as_str()).unwrap_or("");
+        kind_of(tid) == "video"
+    }).collect();
+    let mut auds: Vec<&serde_json::Value> = clips.iter().filter(|c| {
+        let tid = c.get("trackId").and_then(|i| i.as_str()).unwrap_or("");
+        kind_of(tid) == "audio"
+    }).collect();
+    let texts: Vec<&serde_json::Value> = clips.iter().filter(|c| {
+        let tid = c.get("trackId").and_then(|i| i.as_str()).unwrap_or("");
+        kind_of(tid) == "text"
+    }).collect();
+    vids.sort_by(|a, b| {
+        let sa = a.get("start").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        let sb = b.get("start").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        sa.partial_cmp(&sb).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    auds.sort_by(|a, b| {
+        let sa = a.get("start").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        let sb = b.get("start").and_then(|s| s.as_f64()).unwrap_or(0.0);
+        sa.partial_cmp(&sb).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    if vids.is_empty() && auds.is_empty() && texts.is_empty() {
+        return Err("Timeline kosong.".to_string());
+    }
+
+    let tmp = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+    let out_path = tmp.join(format!("{}.mp4", output_name));
+
+    // Input unik: tiap file src sekali
+    let mut inputs: Vec<String> = Vec::new();
+    let mut input_idx: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut take_input = |src: &str, inputs: &mut Vec<String>, map: &mut std::collections::HashMap<String, usize>| -> usize {
+        if let Some(&i) = map.get(src) { return i; }
+        let i = inputs.len();
+        inputs.push(src.to_string());
+        map.insert(src.to_string(), i);
+        i
+    };
+    for c in vids.iter().chain(auds.iter()) {
+        let src = c.get("src").and_then(|s| s.as_str()).unwrap_or("");
+        if src.is_empty() {
+            return Err("Ada klip tanpa file sumber.".to_string());
+        }
+        if !std::path::Path::new(src).exists() {
+            return Err(format!("File tidak ditemukan: {}", src));
+        }
+        take_input(src, &mut inputs, &mut input_idx);
+    }
+
+    // Bangun filter_complex
+    let mut fc = String::new();
+    let mut vlabels: Vec<String> = Vec::new();
+    let mut alabels: Vec<String> = Vec::new();
+
+    for (n, c) in vids.iter().enumerate() {
+        let src = c.get("src").and_then(|s| s.as_str()).unwrap_or("");
+        let idx = input_idx[src];
+        let vin = c.get("in").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let dur = c.get("duration").and_then(|v| v.as_f64()).unwrap_or(1.0);
+        let start = c.get("start").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        // potong + set durasi + tunda ke posisi start
+        fc.push_str(&format!(
+            "[{idx}:v]trim=start={vin}:duration={dur},setpts=PTS-STARTPTS+{start}/TB,format=yuv420p[v{n}];"
+        ));
+        vlabels.push(format!("[v{n}]"));
+    }
+    for (n, c) in auds.iter().enumerate() {
+        let src = c.get("src").and_then(|s| s.as_str()).unwrap_or("");
+        let idx = input_idx[src];
+        let vin = c.get("in").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let dur = c.get("duration").and_then(|v| v.as_f64()).unwrap_or(1.0);
+        let start = c.get("start").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let vol = c.get("volume").and_then(|v| v.as_f64()).unwrap_or(100.0) / 100.0;
+        fc.push_str(&format!(
+            "[{idx}:a]atrim=start={vin}:duration={dur},asetpts=PTS-STARTPTS,volume={vol},adelay={ms}|{ms}[a{n}];",
+            ms = (start * 1000.0) as u64
+        ));
+        alabels.push(format!("[a{n}]"));
+    }
+
+    // Durasi total
+    let total = clips.iter().map(|c| {
+        let s = c.get("start").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let d = c.get("duration").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        s + d
+    }).fold(0.0_f64, f64::max);
+
+    let mut vout = "vfinal".to_string();
+    let mut aout = "afinal".to_string();
+
+    if !vlabels.is_empty() {
+        // overlay berlapis sesuai urutan start
+        let mut base = vlabels[0].clone();
+        // buat background hitam seukuran 1280x720 durasi total
+        fc.push_str(&format!("color=c=black:s=1280x720:d={total}[bg];"));
+        fc.push_str(&format!("[bg]{base}overlay=0:0:shortest=0[ov0];"));
+        base = "[ov0]".to_string();
+        for (n, lb) in vlabels.iter().enumerate().skip(1) {
+            fc.push_str(&format!("{base}{lb}overlay=0:0[ov{n}];"));
+            base = format!("[ov{n}]");
+        }
+        vout = base.trim_matches(|c| c == '[' || c == ']').to_string();
+    }
+    if !alabels.is_empty() {
+        fc.push_str(&format!("{}amix=inputs={}:normalize=0[amx];", alabels.concat(), alabels.len()));
+        aout = "amx".to_string();
+    }
+
+    // Teks overlay via drawtext
+    let mut drawtexts: Vec<String> = Vec::new();
+    for c in texts.iter() {
+        let text = c.get("text").and_then(|t| t.as_str()).unwrap_or("").replace(':', "\\:").replace('\'', "");
+        if text.is_empty() { continue; }
+        let start = c.get("start").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let end = start + c.get("duration").and_then(|v| v.as_f64()).unwrap_or(3.0);
+        drawtexts.push(format!(
+            "drawtext=text='{text}':fontsize=48:fontcolor=white:borderw=2:bordercolor=black:x=(w-text_w)/2:y=h-120:enable='between(t,{start},{end})'"
+        ));
+    }
+
+    let mut cmd = tokio::process::Command::new("ffmpeg");
+    cmd.arg("-y").arg("-loglevel").arg("error");
+    for inp in &inputs {
+        cmd.arg("-i").arg(inp);
+    }
+    // pastikan filter tidak kosong
+    if fc.is_empty() {
+        return Err("Tidak ada klip video/audio untuk diekspor.".to_string());
+    }
+    // hapus trailing ';'
+    let fc = fc.trim_end_matches(';');
+    let mut vf_chain = vout.clone();
+    if !drawtexts.is_empty() {
+        vf_chain = format!("{},{}", vout, drawtexts.join(","));
+    }
+    cmd.arg("-filter_complex").arg(fc);
+    if !vlabels.is_empty() {
+        cmd.arg("-map").arg(format!("[{}]", vf_chain));
+    }
+    if !alabels.is_empty() {
+        cmd.arg("-map").arg(format!("[{}]", aout));
+    }
+    // bila hanya teks tanpa video: butuh background
+    if vlabels.is_empty() {
+        // buat video hitam dari awal via lavfi sudah dihandle? tidak — tolak
+        return Err("Export butuh minimal satu klip video atau audio.".to_string());
+    }
+    cmd.arg("-t").arg(format!("{}", total));
+    cmd.arg("-c:v").arg("libx264").arg("-preset").arg("fast").arg("-crf").arg("20");
+    if !alabels.is_empty() {
+        cmd.arg("-c:a").arg("aac").arg("-b:a").arg("128k");
+    }
+    cmd.arg(&out_path);
+
+    let out = cmd.output().await.map_err(|e| format!("FFmpeg tidak ditemukan: {}", e))?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!("Export gagal: {}", err.chars().take(400).collect::<String>()));
+    }
+    Ok(out_path.to_string_lossy().to_string())
+}
