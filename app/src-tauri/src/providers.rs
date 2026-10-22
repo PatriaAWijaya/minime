@@ -767,8 +767,8 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
     Ok(models)
 }
 
-/// Generate image via stable-diffusion.cpp lokal (AI Media Studio).
-/// Server sd-server jalan di localhost:8080 (auto-start bila perlu).
+/// Generate image via local stable-diffusion.cpp (AI Media Studio).
+/// sd-server runs on localhost:8080 (auto-started if needed).
 #[tauri::command]
 pub async fn generate_image(prompt: String, size: String) -> Result<String, String> {
     let home = std::env::var("HOME").map_err(|_| "HOME tidak ditemukan.".to_string())?;
@@ -854,9 +854,9 @@ pub fn set_dalle_key(api_key: String) -> Result<(), String> {
     secrets::set_api_key("minime.dalle", api_key.trim()).map_err(|e| e.to_string())
 }
 
-/// Render video slideshow dari daftar image URL/path via FFmpeg.
-/// images: list path file lokal. duration_per: detik per gambar.
-/// Return: path file MP4 hasil.
+/// Render a slideshow video from image paths via FFmpeg.
+/// images: list of local paths. duration_per: seconds per image.
+/// Returns: MP4 file path.
 #[tauri::command]
 pub async fn render_slideshow(images: Vec<String>, duration_per: f64, output_name: String) -> Result<String, String> {
     if images.is_empty() {
@@ -911,9 +911,9 @@ fn which_ffmpeg() -> Option<String> {
     None
 }
 
-/// Generate subtitle otomatis dari video via auto-subtitle (Whisper + FFmpeg).
-/// video_path: path file video lokal. model: tiny/base/small/medium (default small).
-/// Return: path file video dengan subtitle burned-in.
+/// Auto-generate subtitles from video via auto-subtitle (Whisper + FFmpeg).
+/// video_path: local video path. model: tiny/base/small/medium (default small).
+/// Returns: video path with burned-in subtitles.
 #[tauri::command]
 pub async fn generate_subtitle(video_path: String, model: String) -> Result<String, String> {
     let auto_sub = which_auto_subtitle().ok_or_else(|| "auto-subtitle tidak ditemukan.".to_string())?;
@@ -972,9 +972,9 @@ fn which_auto_subtitle() -> Option<String> {
     None
 }
 
-/// Generate thumbnail YouTube via youtube-thumbnail-generator.
-/// title: teks utama, output_name: nama file.
-/// Return: path file PNG hasil.
+/// Generate a YouTube thumbnail (1600x900) via Pillow.
+/// title: main text, output_name: file name.
+/// Returns: PNG file path.
 #[tauri::command]
 pub async fn generate_thumbnail(title: String, output_name: String) -> Result<String, String> {
     let out_dir = std::env::temp_dir().join("minime-studio");
@@ -983,11 +983,11 @@ pub async fn generate_thumbnail(title: String, output_name: String) -> Result<St
     let out_path = out_dir.join(format!("{}.png", if safe_name.is_empty() { "thumb".to_string() } else { safe_name }));
 
     // Gunakan Python API langsung
-    let esc_title = title.replace('\', "\\").replace('"', '\"');
+    let esc_title: String = title.chars().filter(|c| *c != '"' && *c != '\'').collect();
+    let out_s = out_path.to_str().unwrap().replace('\'', "");
     let py_code = format!(
-        "from PIL import Image, ImageDraw; img=Image.new('RGB',(1600,900),(18,18,28)); d=ImageDraw.Draw(img); d.text((80,380), \"{}\", fill=(255,255,255)); d.text((80,480), 'Minime AI Media Studio', fill=(120,120,140)); img.save('{}')",
-        esc_title,
-        out_path.to_str().unwrap().replace('\'', "\\'")
+        "from PIL import Image, ImageDraw; img=Image.new('RGB',(1600,900),(18,18,28)); d=ImageDraw.Draw(img); d.text((80,380), \"{}\", fill=(255,255,255)); d.text((80,480), 'Minime', fill=(120,120,140)); img.save('{}')",
+        esc_title, out_s
     );
     let status = tokio::process::Command::new("python3")
         .args(["-c", &py_code])
@@ -1002,9 +1002,9 @@ pub async fn generate_thumbnail(title: String, output_name: String) -> Result<St
     out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
 }
 
-/// Generate voiceover Bahasa Indonesia via arboTTS.
-/// text: teks narasi, persona: arbo/bimo/dimas/danu/arba/sita/maya, output_name: nama file.
-/// Return: path file WAV hasil.
+/// Generate Indonesian voiceover via arboTTS.
+/// text: narration text, persona: arbo/bimo/dimas/danu/arba/sita/maya, output_name: file name.
+/// Returns: WAV file path.
 #[tauri::command]
 pub async fn generate_voiceover(text: String, persona: String, output_name: String) -> Result<String, String> {
     if text.trim().is_empty() {
@@ -1061,7 +1061,7 @@ pub struct ToolStatus {
     pub detail: String,
 }
 
-/// Status koneksi 9 tools AI Media Studio.
+/// Connection status for the 9 AI Media Studio tools.
 #[tauri::command]
 pub fn get_media_tool_status() -> Vec<ToolStatus> {
     let pixabay_ok = crate::secrets::api_key("minime.pixabay_key")
