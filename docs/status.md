@@ -2337,3 +2337,36 @@ Build: clippy 0, test 50/50, vite ✓, bundle ✓, app running ✓.
   - Footage + Subtitle + **Render** (rename dari "Rakit") → tab **Studio Video** (section baru di bawah TimelineEditor)
 - VideoPipeline.svelte dihapus; logika pindah ke StudioView.svelte.
 - Pasangan SHA: lokal 681f070 ↔ remote 69e235d; fix var: lokal 4527041 ↔ remote b84c570; docs: lokal 47000b8 ↔ remote 502ffa9 (tree identik).
+
+## 23 Okt 2026 ~01:45 — AUDIT #12 (perintah Patria: fungsi benar-benar bekerja, nol error)
+Cakupan: seluruh perubahan sesi 23 Okt (ImageEditor Doory, Upload native, Video AI Pipeline).
+
+**Backend (Rust):**
+- cargo clippy --all-targets -- -D warnings: 0 warning, 0 error ✓
+- cargo test: 50/50 passed ✓
+- 77 tauri commands terdaftar; 8 command baru sesi ini semua terdaftar:
+  pick_image_file, read_image_as_data_url, assemble_video_ai, text_to_video,
+  hyperframes_assemble, pexels_search_videos, set_pexels_key, set_video_ai_key ✓
+- Tools registry: pexels/wan/ltx ditambahkan dengan real_connected ✓
+
+**Frontend (Svelte):**
+- vite build: ✓ (2.0s)
+- Semua invoke() cocok dengan command backend ✓
+- i18n: 790 key × 3 bahasa (id/en/zh), 0 hilang ✓
+- Import mati (VideoEditor) dihapus ✓
+- Tidak ada TODO/FIXME/placeholder ✓
+
+**Perbaikan gimmick:**
+- pexels_search_videos, set_pexels_key, set_video_ai_key sebelumnya tanpa UI → kini ada form API key di Tools → Apps (Pexels, Wan 3.0, LTX-Video) ✓
+
+**Verifikasi fungsi:**
+- assemble_video_ai: pipeline FFmpeg (concat → scale/crop → audio → subtitle) diuji manual dengan file nyata → OK ✓
+- read_image_as_data_url: unit test MIME detection (PNG/JPG) → OK ✓
+- ImageEditor: semua fungsi kunci ada (addText/addShape/addQr/applyTpl/renderQr/elBounds/hitEl), QR lib tersedia ✓
+
+**Performa:**
+- Bundle debug: 58M (stabil dari audit #11: 57M)
+- Idle: CPU 0.2%, MEM 0.2% ✓
+
+**Vonis: LOLOS — nol error.**
+Pasangan SHA: lokal fa6ceb4 ↔ remote aed7e12 (tree identik).
