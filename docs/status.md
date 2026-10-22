@@ -2238,3 +2238,24 @@ Perintah Patria: "update aplikasi, cek konsistensi dan performa. jangan biarkan 
 ### Addendum 20:02 — rebuild dari HEAD terbaru
 - Sesi paralel menambah 3 commit (82996114 fix clippy unused_mut, 46639668 fix drawtext, ba8e1101 refactor gabung kartu suara); binary di-rebuild dari ba8e1101: `cargo build --release` sukses 31,62 dtk, binary 19,9MB (20:01).
 - `cargo clippy --all-targets -- -D warnings` di HEAD terbaru: 0 error/warning. Vonis tetap LOLOS.
+
+## 22 Okt 2026 ~23:55 — Koneksi Tools → Tools-Apps + Dynamic Island ke title bar (perintah Patria)
+
+### A. Koneksi Tools dihapus dari Media Studio, pindah ke Tools → Apps
+- Kartu "Koneksi Tools" dihapus total dari sidebar Media Studio (StudioView.svelte) beserta state & fungsi terkait (toolStatus, savePixabay, loadToolStatus).
+- 5 tools media didaftarkan ke registry backend tunggal (`tools.rs::known_tools`): pixabay, ffmpeg (FFmpeg), whisper (auto-subtitle), arbotts (arboTTS), sdimage (Image Gen SD) — kategori "media".
+- **Tanpa duplikat**: postiz & meta TIDAK diduplikat (sudah ada di registry); thumbnail generator & editor gambar/video built-in tidak didaftarkan (bukan koneksi).
+- **Status nyata, bukan toggle**: `real_connected()` di tools.rs cek kondisi aktual — pixabay: API key ada di keychain; ffmpeg/whisper/arbotts: binary terdeteksi; sdimage: binary + model SD-Turbo ada. `set_tool_connected` menolak toggle manual untuk tools media (anti tumpang tindih).
+- Tools → Apps: kartu media tampil dengan badge status otomatis (✓ Terhubung / Belum terhubung); kartu Pixabay berisi form input API key (pindah dari Media Studio) dengan pesan sukses/gagal eksplisit + refresh status.
+- i18n: 771 key × 3 bahasa (id=en=zh), 0 duplikat, 0 hilang — termasuk `mkt.cat.media`, `mkt.notConnected`, deskripsi 5 tools, label form Pixabay.
+- Test: 49/49 lolos (test registry diperbarui: 10 tools + asersi anti-duplikat meta/postiz). Clippy 0 warning.
+
+### B. Dynamic Island masuk ke window bar + icon aplikasi
+- Main window: `titleBarStyle: "Overlay"` (tauri.conf.json) — title bar transparan.
+- App.svelte: header `.titlebar` (40px, drag region, padding kiri 78px untuk traffic lights macOS) dengan island pill di tengah; layout konten jadi flex column.
+- IslandView.svelte: terima `payload` sebagai prop (inline) atau tetap dengar event backend (mode jendela terpisah); **logo "M" diganti gambar icon aplikasi** (`assets/app-icon.png`, 128x128 dari `app/src-tauri/icons/`).
+- Backend `island_sync` tetap dipanggil dengan mode "off" agar jendela floating lama tidak muncul ganda — island kini hanya di title bar.
+- Pengaturan → Dynamic Island: opsi posisi atas/bawah & "layar tambahan" dihapus (tak relevan); preview memakai icon aplikasi; tersisa on/off, idle, haptik, lebar.
+- Build: vite 1.95s ✓, `tauri build --debug` ✓ (2 bundles), bundle-skills.sh ✓. App di-restart dengan cache WebView dibersihkan — berjalan (APP_RUNNING).
+
+Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
