@@ -60,19 +60,25 @@
     }
   }
 
-  // Upload local image -> open in editor
-  let fileInput: HTMLInputElement;
-  function onPickFile(e: Event) {
-    const f = (e.target as HTMLInputElement).files?.[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const url = String(r.result);
+  // Upload local image -> open in editor (via native dialog, backend)
+  let picking = $state(false);
+  let pickError = $state("");
+  async function onPickFile() {
+    if (picking) return;
+    picking = true;
+    pickError = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const path = await invoke<string | null>("pick_image_file");
+      if (!path) return; // user cancelled
+      const url = await invoke<string>("read_image_as_data_url", { path });
       imageUrl = url;
       editingImage = url;
-    };
-    r.readAsDataURL(f);
-    (e.target as HTMLInputElement).value = "";
+    } catch (e) {
+      pickError = String(e);
+    } finally {
+      picking = false;
+    }
   }
 
   const SIZES = [
@@ -728,8 +734,10 @@
     <h4 class="sub-h">Edit Gambar</h4>
     <p class="hint">Buka editor untuk gambar yang sudah ada — pangkas, putar, teks, kuas, filter.</p>
     <div class="row">
-      <button class="btn-ghost sm" onclick={() => fileInput.click()}>Upload & Edit</button>
-      <input type="file" accept="image/*" class="hidden" bind:this={fileInput} onchange={onPickFile} />
+      <button class="btn-ghost sm" onclick={onPickFile} disabled={picking}>
+        {picking ? "Membuka..." : "Upload & Edit"}
+      </button>
+      {#if pickError}<p class="err">{pickError}</p>{/if}
     </div>
 
     <hr class="sep" />
@@ -874,10 +882,7 @@
   .btn-ghost.xs:disabled { opacity: 0.5; cursor: default; }
   .sep { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
   .sub-h { margin: 0 0 6px; font-size: 14px; }
-  .hidden {
-    position: absolute; width: 1px; height: 1px; opacity: 0;
-    pointer-events: none; /* dibuka via .click() dari tombol */
-  }
+
   .grow { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
   .px-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .px-item { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 4/3; }

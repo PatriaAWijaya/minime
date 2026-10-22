@@ -295,3 +295,42 @@ pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
         base64::engine::general_purpose::STANDARD.encode(&bytes)
     ))
 }
+
+/// Buka dialog pilih file native (macOS/Windows/Linux) untuk gambar.
+/// Mengembalikan path file yang dipilih, atau None bila dibatalkan.
+#[tauri::command]
+pub async fn pick_image_file() -> Result<Option<String>, String> {
+    let file = rfd::FileDialog::new()
+        .set_title("Pilih gambar")
+        .add_filter("Gambar", &["png", "jpg", "jpeg", "webp", "gif", "bmp"])
+        .pick_file();
+    Ok(file.map(|p| p.to_string_lossy().to_string()))
+}
+
+/// Baca file gambar lokal dan kembalikan sebagai data URL (base64).
+#[tauri::command]
+pub async fn read_image_as_data_url(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(path.trim()).map_err(|e| format!("Gagal membaca file: {}", e))?;
+    if bytes.is_empty() {
+        return Err("File kosong.".to_string());
+    }
+    // Deteksi tipe dari magic bytes
+    let mime = if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+        "image/png"
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        "image/jpeg"
+    } else if bytes.starts_with(b"RIFF") && bytes.len() > 11 && &bytes[8..12] == b"WEBP" {
+        "image/webp"
+    } else if bytes.starts_with(b"GIF8") {
+        "image/gif"
+    } else if bytes.starts_with(b"BM") {
+        "image/bmp"
+    } else {
+        "image/jpeg"
+    };
+    Ok(format!(
+        "data:{};base64,{}",
+        mime,
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)
+    ))
+}

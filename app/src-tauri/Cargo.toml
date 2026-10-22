@@ -27,6 +27,8 @@ sha2 = "0.10"
 getrandom = "0.2"
 tauri-plugin-wdio-webdriver = "1.5.0"
 tauri-plugin-notification = "2"
+# Native file picker dialog (macOS/Windows/Linux).
+rfd = "0.15"
 
 # Dynamic Island haptics on macOS (NSHapticFeedbackManager via FFI).
 [target.'cfg(target_os = "macos")'.dependencies]
