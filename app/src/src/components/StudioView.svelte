@@ -2,6 +2,8 @@
   import { t } from "../lib/i18n";
   import { brandKit, storyboard, scheduleQueue } from "../lib/store";
   import type { Scene } from "../lib/store";
+  import ImageEditor from "./ImageEditor.svelte";
+  import VideoEditor from "./VideoEditor.svelte";
 
   let prompt = $state("");
   let size = $state("square");
@@ -129,6 +131,17 @@
     } catch {}
   }
 
+  let editingImage = $state<string | null>(null);
+  let editingVideo = $state(false);
+  let draftApproved = $state(false);
+
+  function approveDraft() {
+    draftApproved = true;
+    try {
+      localStorage.setItem("minime.draft-approved", JSON.stringify({ at: Date.now() }));
+    } catch {}
+  }
+
   function downloadImage() {
     if (!imageUrl) return;
     const a = document.createElement("a");
@@ -240,6 +253,28 @@
   </section>
 
   <section class="card">
+    <h3>Review Draft</h3>
+    {#if $storyboard.length === 0 && !imageUrl}
+      <p class="hint">Belum ada draft. Buat storyboard atau generate gambar dulu.</p>
+    {:else}
+      <p class="hint">
+        Storyboard: {$storyboard.length} scene ·
+        Gambar: {imageUrl ? "1" : "0"}
+      </p>
+      <div class="row">
+        {#if $storyboard.length > 0}
+          <button class="btn-ghost sm" onclick={() => (editingVideo = true)}>Edit Video</button>
+        {/if}
+        {#if !draftApproved}
+          <button class="btn-primary sm" onclick={approveDraft}>Approve → Jadwal</button>
+        {:else}
+          <span class="ok">✓ Draft disetujui. Lanjut ke penjadwalan di bawah.</span>
+        {/if}
+      </div>
+    {/if}
+  </section>
+
+  <section class="card">
     <h3>API Key DALL-E</h3>
     <p class="hint">Disimpan di OS Keychain, tidak pernah di-hardcode.</p>
     <div class="row">
@@ -318,10 +353,17 @@
       <img src={imageUrl} alt="Hasil generate" class="result-img" />
       <div class="row">
         <button class="btn-ghost sm" onclick={downloadImage}>Unduh</button>
+        <button class="btn-ghost sm" onclick={() => (editingImage = imageUrl)}>Edit</button>
         <a href={imageUrl} target="_blank" rel="noopener" class="btn-ghost sm link">Buka penuh</a>
       </div>
     </section>
   {/if}
+{#if editingImage}
+  <ImageEditor src={editingImage} onClose={() => (editingImage = null)} />
+{/if}
+{#if editingVideo}
+  <VideoEditor scenes={$storyboard} onClose={() => (editingVideo = false)} />
+{/if}
 </div>
 
 <style>
