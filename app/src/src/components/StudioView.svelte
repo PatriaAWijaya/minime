@@ -132,11 +132,12 @@
   let subtitlePath = $state("");
   let subBusy = $state(false);
   // Render (dulu "Rakit")
-  let aspect = $state<"9:16" | "16:9">("9:16");
+  let aspect = $state<"9:16" | "16:9" | "4:5" | "1:1">("9:16");
   let renderMode = $state<"auto" | "hyperframes">("auto");
   let rendering = $state(false);
   let finalVideo = $state("");
   let renderError = $state("");
+  let showRenderOpts = $state(false);
 
   async function searchStock() {
     if (!vpxQuery.trim() || vpxBusy) return;
@@ -885,8 +886,8 @@
       <h4 class="sub-h">Footage</h4>
       <p class="hint">Sumber gambar bergerak: stok video atau generate dengan AI (bila tidak ada stok yang cocok).</p>
       <div class="chip-row" style="margin-bottom:12px">
-        <button class="chip" class:active={footageSrc === "stock"} onclick={() => (footageSrc = "stock")}>📦 Stok (Pixabay)</button>
-        <button class="chip" class:active={footageSrc === "ai"} onclick={() => (footageSrc = "ai")}>✨ AI Text-to-Video</button>
+        <button class="chip" class:active={footageSrc === "stock"} onclick={() => (footageSrc = "stock")}>Pixabay</button>
+        <button class="chip" class:active={footageSrc === "ai"} onclick={() => (footageSrc = "ai")}>Text to Video</button>
       </div>
       {#if footageSrc === "stock"}
         <div class="row">
@@ -914,7 +915,7 @@
         <textarea rows="2" bind:value={aiPrompt} placeholder="Deskripsikan footage: ombak pantai saat senja, sinematik..." style="width:100%"></textarea>
         <div class="row">
           <button class="btn-primary sm" onclick={genAiVideo} disabled={aiBusy || !aiPrompt.trim()}>
-            {aiBusy ? "Generating..." : "✨ Generate Footage"}
+            {aiBusy ? "Generating..." : "Generate Footage"}
           </button>
         </div>
         {#if aiError}<p class="err">{aiError}</p>{/if}
@@ -938,39 +939,47 @@
       <h4 class="sub-h">Subtitle</h4>
       <p class="hint">Subtitle otomatis dari narasi (Whisper), atau lewati bila tidak perlu.</p>
       <div class="row">
-        <button class="btn-ghost sm" onclick={() => { subtitlePath = "auto"; }}>📝 Aktifkan Subtitle Otomatis</button>
+        <button class="btn-ghost sm" onclick={() => { subtitlePath = "auto"; }}>auto-subtitle</button>
         {#if subtitlePath === "auto"}<span class="ok">✓ Aktif — dibuat saat render.</span>{/if}
       </div>
 
       <hr class="sep" />
       <h4 class="sub-h">Render</h4>
       <p class="hint">Gabungkan footage + narasi + subtitle menjadi video final.</p>
-      <div class="field">
-        <label>Rasio</label>
-        <div class="chip-row">
-          <button class="chip" class:active={aspect === "9:16"} onclick={() => (aspect = "9:16")}>9:16 (Reels/Shorts)</button>
-          <button class="chip" class:active={aspect === "16:9"} onclick={() => (aspect = "16:9")}>16:9 (Landscape)</button>
-        </div>
-      </div>
-      <div class="field" style="margin-top:10px">
-        <label>Mode render</label>
-        <div class="chip-row">
-          <button class="chip" class:active={renderMode === "auto"} onclick={() => (renderMode = "auto")}>⚡ Otomatis (FFmpeg)</button>
-          <button class="chip" class:active={renderMode === "hyperframes"} onclick={() => (renderMode = "hyperframes")}>🎨 Kustom (HyperFrames)</button>
-        </div>
-        <p class="hint" style="margin-top:6px">
-          {#if renderMode === "auto"}
-            Gaya MoneyPrinterTurbo: footage disambung, narasi ditempel, subtitle dibakar — cepat dan konsisten.
-          {:else}
-            HyperFrames: rakit tampilan sendiri via komposisi HTML — teks animasi, layout kustom, kontrol penuh.
-          {/if}
-        </p>
-      </div>
       <div class="row">
-        <button class="btn-primary sm" onclick={renderVideo} disabled={rendering || allFootage().length === 0}>
-          {rendering ? "Merender..." : "🎬 Render Video"}
+        <button class="btn-primary sm" onclick={() => (showRenderOpts = !showRenderOpts)} disabled={allFootage().length === 0}>
+          Render Video {showRenderOpts ? "▲" : "▼"}
         </button>
       </div>
+      {#if showRenderOpts}
+        <div class="render-dropdown">
+          <div class="field">
+            <label>Rasio</label>
+            <label class="radio"><input type="radio" name="rasio" checked={aspect === "9:16"} onclick={() => (aspect = "9:16")} /> 9:16 (Reels/Shorts)</label>
+            <label class="radio"><input type="radio" name="rasio" checked={aspect === "16:9"} onclick={() => (aspect = "16:9")} /> 16:9 (Landscape)</label>
+            <label class="radio"><input type="radio" name="rasio" checked={aspect === "4:5"} onclick={() => (aspect = "4:5")} /> 4:5 (Portrait)</label>
+            <label class="radio"><input type="radio" name="rasio" checked={aspect === "1:1"} onclick={() => (aspect = "1:1")} /> 1:1 (Square)</label>
+          </div>
+          <div class="field">
+            <label>Mode render</label>
+            <label class="radio"><input type="radio" name="mode" checked={renderMode === "auto"} onclick={() => (renderMode = "auto")} /> Otomatis (FFmpeg)</label>
+            <label class="radio"><input type="radio" name="mode" checked={renderMode === "hyperframes"} onclick={() => (renderMode = "hyperframes")} /> Kustom (HyperFrames)</label>
+            <p class="hint" style="margin-top:6px">
+              {#if renderMode === "auto"}
+                Gaya MoneyPrinterTurbo: footage disambung, narasi ditempel, subtitle dibakar — cepat dan konsisten.
+              {:else}
+                HyperFrames: rakit tampilan sendiri via komposisi HTML — teks animasi, layout kustom, kontrol penuh.
+              {/if}
+            </p>
+          </div>
+          <div class="row">
+            <button class="btn-primary sm" onclick={() => { showRenderOpts = false; renderVideo(); }} disabled={rendering}>
+              {rendering ? "Merender..." : "Mulai Render"}
+            </button>
+            <button class="btn-ghost sm" onclick={() => (showRenderOpts = false)}>Batal</button>
+          </div>
+        </div>
+      {/if}
       {#if renderError}<p class="err">{renderError}</p>{/if}
       {#if finalVideo}
         <p class="ok">✓ Video jadi: <code>{finalVideo}</code></p>
@@ -1138,4 +1147,24 @@
   .stage-num { width: 22px; height: 22px; border-radius: 50%; background: var(--hover); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
   .stage.done .stage-num { background: #22c55e; color: white; }
   .pipe-arrow { color: var(--dim); }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sub-h { font-size: 15px; margin: 0 0 8px; font-weight: 700; }
+  .sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .px-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .px-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+  .px-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+  .px-card button { margin: 6px; }
+  .picked { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+  .picked li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+  .mono { font-family: ui-monospace, monospace; font-size: 11px; }
+  .mini { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text); }
+  .mini.danger { color: #ef4444; }
+  .err { color: #ef4444; font-size: 13px; }
+  .ok { color: #22c55e; font-size: 13px; }
+  .grow { flex: 1; }
+  .render-dropdown { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 10px; background: var(--bg); }
+  .radio { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; font-weight: normal; }
+  .radio input[type="radio"] { accent-color: #4FA6F0; width: 16px; height: 16px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 </style>
