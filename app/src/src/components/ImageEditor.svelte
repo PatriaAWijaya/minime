@@ -481,7 +481,6 @@
       stroke: sStroke, strokeWidth: Math.max(2, Math.round(base.width / 160)),
       rotation: 0, visible: true, locked: false,
     };
-    void sShape;
     els = [...els, e];
     selId = e.id;
     commitEls();
@@ -828,16 +827,13 @@
     ctx.translate(t.width / 2, t.height / 2);
     ctx.rotate((dir * Math.PI) / 2);
     ctx.drawImage(base, -base.width / 2, -base.height / 2);
-    // rotate element coordinates too
+    // rotate element coordinates too: old (obw,obh) -> new (nbw,nbh) = (obh,obw)
     const nbw = t.width, nbh = t.height;
     const obw = base.width, obh = base.height;
     for (const e of els) {
-      const nx = dir === 1 ? obw - e.y : e.y;
-      const ny = dir === 1 ? e.x : obh - e.x;
-      // map into new dims: old (obw,obh) -> new (nbw,nbh) = (obh,obw)
-      e.x = dir === 1 ? (e.y / obh) * nbw : ((obh - e.y) / obh) * nbw;
-      e.y = dir === 1 ? ((obw - e.x) / obw) * nbh : (e.x / obw) * nbh;
-      void nx; void ny;
+      const ox = e.x, oy = e.y;
+      e.x = dir === 1 ? (oy / obh) * nbw : ((obh - oy) / obh) * nbw;
+      e.y = dir === 1 ? ((obw - ox) / obw) * nbh : (ox / obw) * nbh;
       e.rotation = (e.rotation + dir * 90) % 360;
     }
     setBase(t);
