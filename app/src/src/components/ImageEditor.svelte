@@ -194,11 +194,13 @@
 
   function drawCropOverlay(ctx: CanvasRenderingContext2D) {
     const r = cropRect!;
+    // darken everything outside the selection (evenodd keeps the rect clear)
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.clearRect(r.x, r.y, r.w, r.h);
-    // re-darken outside via evenodd path
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.rect(r.x, r.y, r.w, r.h);
+    ctx.fill("evenodd");
     ctx.restore();
     ctx.save();
     ctx.strokeStyle = "#4FA6F0";
