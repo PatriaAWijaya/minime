@@ -10,31 +10,12 @@
   let generating = $state(false);
   let imageUrl = $state<string | null>(null);
   let error = $state("");
-  let dalleKey = $state("");
-  let keySaved = $state(false);
-  let savingKey = $state(false);
 
   const SIZES = [
     { id: "square", label: "1:1 (1080×1080)" },
     { id: "portrait", label: "9:16 (1080×1920)" },
     { id: "landscape", label: "16:9 (1920×1080)" },
   ];
-
-  async function saveKey() {
-    const k = dalleKey.trim();
-    if (!k) return;
-    savingKey = true;
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_dalle_key", { apiKey: k });
-      keySaved = true;
-      dalleKey = "";
-    } catch (e) {
-      error = String(e);
-    } finally {
-      savingKey = false;
-    }
-  }
 
   async function generate() {
     const p = prompt.trim();
@@ -252,6 +233,40 @@
   </section>
 
   <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("koneksi") }>
+      <h3>Koneksi Tools</h3>
+      <span class="chevron">{openSections["koneksi"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["koneksi"]}
+    <div class="card-body">
+    <p class="hint">Status koneksi 9 tools AI Media Studio.</p>
+    <div class="conn-list">
+      {#each toolStatus as t}
+        <div class="conn-row">
+          <span class="dot {t.connected ? 'on' : 'off'}"></span>
+          <div class="conn-info">
+            <strong>{t.name}</strong>
+            <span class="conn-detail">{t.detail}</span>
+          </div>
+          <span class="badge {t.connected ? 'ok' : 'warn'}">{t.connected ? "Terhubung" : "Belum"}</span>
+        </div>
+      {/each}
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label for="px-key">Pixabay API Key (gratis di pixabay.com/api/docs)</label>
+      <div class="row">
+        <input id="px-key" type="password" bind:value={pixabayKey} placeholder="API key Pixabay" />
+        <button class="btn-primary sm" onclick={savePixabay} disabled={!pixabayKey.trim() || savingPx}>
+          {savingPx ? "..." : "Simpan"}
+        </button>
+      </div>
+    </div>
+    <button class="btn-ghost sm" onclick={loadToolStatus}>Refresh Status</button>
+    </div>
+    {/if}
+  </section>
+
+  <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("brandkit") }>
       <h3>Brand Kit</h3>
       <span class="chevron">{openSections["brandkit"] ? "▾" : "▸"}</span>
@@ -368,24 +383,6 @@
     {/if}
   </section>
 
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("dallekey") }>
-      <h3>API Key DALL-E</h3>
-      <span class="chevron">{openSections["dallekey"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["dallekey"]}
-    <div class="card-body">
-    <p class="hint">Disimpan di OS Keychain, tidak pernah di-hardcode.</p>
-    <div class="row">
-      <input type="password" bind:value={dalleKey} placeholder="sk-..." aria-label="DALL-E API Key" />
-      <button class="btn-primary sm" onclick={saveKey} disabled={!dalleKey.trim() || savingKey}>
-        {savingKey ? "..." : "Simpan"}
-      </button>
-    </div>
-    {#if keySaved}<p class="ok">API key tersimpan.</p>{/if}
-      </div>
-    {/if}
-  </section>
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("genimage") }>
@@ -548,6 +545,17 @@
   .card-toggle .chevron { font-size: 14px; color: var(--dim); }
   .card-body { padding: 0 18px 18px; }
   .card.collapsible { margin-bottom: 12px; }
+  .conn-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .conn-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .conn-row .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .conn-row .dot.on { background: #22c55e; }
+  .conn-row .dot.off { background: #ef4444; }
+  .conn-info { flex: 1; display: flex; flex-direction: column; }
+  .conn-info strong { font-size: 14px; }
+  .conn-detail { font-size: 12px; color: var(--dim); }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
+  .badge.ok { background: rgba(34,197,94,.15); color: #22c55e; }
+  .badge.warn { background: rgba(239,68,68,.15); color: #ef4444; }
   .studio-head h2 { margin: 0 0 4px; font-size: 22px; }
   .lede { color: var(--dim); margin: 0 0 20px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }

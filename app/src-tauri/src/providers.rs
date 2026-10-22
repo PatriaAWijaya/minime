@@ -767,48 +767,85 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
     Ok(models)
 }
 
-/// Generate image via OpenAI DALL-E (AI Media Studio).
-/// API key dari OS keychain (account: minime.dalle).
+/// Generate image via stable-diffusion.cpp lokal (AI Media Studio).
+/// Server sd-server jalan di localhost:8080 (auto-start bila perlu).
 #[tauri::command]
 pub async fn generate_image(prompt: String, size: String) -> Result<String, String> {
-    let api_key = secrets::api_key("minime.dalle")
-        .ok_or_else(|| "DALL-E API key belum diset. Masukkan di Pengaturan > Media Studio.".to_string())?;
-    if api_key.trim().is_empty() {
-        return Err("DALL-E API key kosong.".to_string());
+    let home = std::env::var("HOME").map_err(|_| "HOME tidak ditemukan.".to_string())?;
+    let sd_dir = format!("{}/.minime/sd", home);
+    let server_bin = format!("{}/sd-server", sd_dir);
+    let model_path = format!("{}/models/sd-turbo.safetensors", sd_dir);
+    if !std::path::Path::new(&server_bin).exists() {
+        return Err("sd-server belum terinstall di ~/.minime/sd.".to_string());
     }
-    let sz = match size.as_str() {
-        "square" => "1024x1024",
-        "portrait" => "1024x1792",
-        "landscape" => "1792x1024",
-        _ => "1024x1024",
+    if !std::path::Path::new(&model_path).exists() {
+        return Err("Model SD masih diunduh, coba lagi nanti.".to_string());
+    }
+
+    // Pastikan server jalan
+    ensure_sd_server(&server_bin, &model_path).await?;
+
+    let (w, h) = match size.as_str() {
+        "square" => (1024, 1024),
+        "portrait" => (1024, 1792),
+        "landscape" => (1792, 1024),
+        _ => (1024, 1024),
     };
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
+        .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| e.to_string())?;
     let resp = client
-        .post("https://api.openai.com/v1/images/generations")
-        .bearer_auth(api_key.trim())
+        .post("http://127.0.0.1:8080/v1/images/generations")
         .json(&serde_json::json!({
-            "model": "dall-e-3",
             "prompt": prompt,
-            "size": sz,
             "n": 1,
+            "size": format!("{}x{}", w, h),
         }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("SD server error: {}", e))?;
     if !resp.status().is_success() {
         let txt = resp.text().await.unwrap_or_default();
-        return Err(format!("DALL-E error: {}", txt.chars().take(200).collect::<String>()));
+        return Err(format!("SD error: {}", txt.chars().take(200).collect::<String>()));
     }
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    body.get("data")
-        .and_then(|d| d.get(0))
-        .and_then(|m| m.get("url"))
-        .and_then(|u| u.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| "URL gambar tidak ditemukan di respons.".to_string())
+    // sd-server bisa return b64_json atau url
+    if let Some(b64) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("b64_json")).and_then(|v| v.as_str()) {
+        use base64::Engine;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
+        let out_dir = std::env::temp_dir().join("minime-studio");
+        std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+        let out_path = out_dir.join(format!("sd-{}.png", chrono::Utc::now().timestamp()));
+        std::fs::write(&out_path, bytes).map_err(|e| e.to_string())?;
+        return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
+    }
+    if let Some(url) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("url")).and_then(|v| v.as_str()) {
+        return Ok(url.to_string());
+    }
+    Err("Respons SD tidak dikenali.".to_string())
+}
+
+async fn ensure_sd_server(server_bin: &str, model_path: &str) -> Result<(), String> {
+    // Cek apakah server sudah jalan
+    if reqwest::get("http://127.0.0.1:8080/").await.map(|r| r.status().is_success()).unwrap_or(false) {
+        return Ok(());
+    }
+    // Start server di background
+    tokio::process::Command::new(server_bin)
+        .args(["-m", model_path, "--port", "8080", "--host", "127.0.0.1"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Gagal start sd-server: {}", e))?;
+    // Tunggu sampai siap (max 60 detik)
+    for _ in 0..30 {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        if reqwest::get("http://127.0.0.1:8080/").await.map(|r| r.status().is_success()).unwrap_or(false) {
+            return Ok(());
+        }
+    }
+    Err("SD server tidak merespons.".to_string())
 }
 
 /// Simpan API key DALL-E ke keychain.
@@ -1013,4 +1050,63 @@ fn which_arbotts() -> Option<String> {
         }
     }
     None
+}
+
+#[derive(serde::Serialize)]
+pub struct ToolStatus {
+    pub id: String,
+    pub name: String,
+    pub connected: bool,
+    pub detail: String,
+}
+
+/// Status koneksi 9 tools AI Media Studio.
+#[tauri::command]
+pub fn get_tool_status() -> Vec<ToolStatus> {
+    let pixabay_ok = crate::secrets::api_key("minime.pixabay_key")
+        .map(|k| !k.trim().is_empty()).unwrap_or(false);
+    let postiz_ok = crate::secrets::api_key("minime.postiz_url")
+        .map(|u| !u.trim().is_empty()).unwrap_or(false)
+        && crate::secrets::api_key("minime.postiz_key")
+        .map(|k| !k.trim().is_empty()).unwrap_or(false);
+    let meta_ok = crate::secrets::api_key("minime.meta_page_id")
+        .map(|p| !p.trim().is_empty()).unwrap_or(false)
+        && crate::secrets::api_key("minime.meta_token")
+        .map(|t| !t.trim().is_empty()).unwrap_or(false);
+    let sd_bin = std::path::Path::new("/Users/mac/.minime/sd/sd-server").exists()
+        || std::path::Path::new(&format!("{}/.minime/sd/sd-server",
+            std::env::var("HOME").unwrap_or_default())).exists();
+    let sd_model = std::path::Path::new(&format!("{}/.minime/sd/models/sd-turbo.safetensors",
+        std::env::var("HOME").unwrap_or_default())).exists();
+
+    vec![
+        ToolStatus { id: "ffmpeg".into(), name: "FFmpeg (render video)".into(),
+            connected: which_ffmpeg().is_some(),
+            detail: if which_ffmpeg().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
+        ToolStatus { id: "subtitle".into(), name: "auto-subtitle (Whisper)".into(),
+            connected: which_auto_subtitle().is_some(),
+            detail: if which_auto_subtitle().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
+        ToolStatus { id: "pixabay".into(), name: "Pixabay API (stock media)".into(),
+            connected: pixabay_ok,
+            detail: if pixabay_ok { "API key tersimpan".into() } else { "Butuh API key gratis".into() } },
+        ToolStatus { id: "tts".into(), name: "arboTTS (voiceover ID)".into(),
+            connected: which_arbotts().is_some(),
+            detail: if which_arbotts().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
+        ToolStatus { id: "thumbnail".into(), name: "Thumbnail Generator".into(),
+            connected: true,
+            detail: "Via Python Pillow".into() },
+        ToolStatus { id: "postiz".into(), name: "Postiz (draft)".into(),
+            connected: postiz_ok,
+            detail: if postiz_ok { "Terkoneksi".into() } else { "Butuh URL + API key".into() } },
+        ToolStatus { id: "meta".into(), name: "Meta Business Suite (draft)".into(),
+            connected: meta_ok,
+            detail: if meta_ok { "Terkoneksi".into() } else { "Butuh Page ID + token".into() } },
+        ToolStatus { id: "imagegen".into(), name: "Image Gen (SD lokal)".into(),
+            connected: sd_bin && sd_model,
+            detail: if sd_bin && sd_model { "Siap".into() }
+                else if sd_bin { "Model sedang diunduh...".into() }
+                else { "Belum terinstall".into() } },
+        ToolStatus { id: "editors".into(), name: "Image & Video Editor".into(),
+            connected: true, detail: "Built-in".into() },
+    ]
 }
