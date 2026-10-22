@@ -1062,7 +1062,7 @@ pub struct ToolStatus {
 
 /// Status koneksi 9 tools AI Media Studio.
 #[tauri::command]
-pub fn get_tool_status() -> Vec<ToolStatus> {
+pub fn get_media_tool_status() -> Vec<ToolStatus> {
     let pixabay_ok = crate::secrets::api_key("minime.pixabay_key")
         .map(|k| !k.trim().is_empty()).unwrap_or(false);
     let postiz_ok = crate::secrets::api_key("minime.postiz_url")
