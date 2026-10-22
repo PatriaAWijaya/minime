@@ -245,6 +245,38 @@ export function removeBrandFont(name: string): void {
   brandFonts.update((list) => list.filter((f) => f !== name));
 }
 
+/* ---------- Research & Scripts (Media Studio) ---------- */
+export interface ResearchInput {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+export interface ProdScript {
+  id: number;
+  researchId: number | null;
+  title: string;
+  kind: string; // reels | carousel | poster | story | thumbnail | artikel
+  content: string;
+  status: "draft" | "in_production" | "done";
+  createdAt: string;
+}
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return fallback;
+}
+export const researchInputs = writable<ResearchInput[]>(loadJSON("minime.research", []));
+researchInputs.subscribe((v) => {
+  try { localStorage.setItem("minime.research", JSON.stringify(v)); } catch {}
+});
+export const prodScripts = writable<ProdScript[]>(loadJSON("minime.scripts", []));
+prodScripts.subscribe((v) => {
+  try { localStorage.setItem("minime.scripts", JSON.stringify(v)); } catch {}
+});
+
 /* ---------- Storyboard (Media Studio) ---------- */
 export interface Scene {
   id: number;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
-  import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue } from "../lib/store";
+  import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, researchInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
   import VideoEditor from "./VideoEditor.svelte";
@@ -82,6 +82,41 @@
   let schedTitle = $state("");
   let schedPlatform = $state("instagram");
   let schedAt = $state("");
+
+  let newResearchTitle = $state("");
+  let newResearchContent = $state("");
+
+  function addResearch() {
+    const t = newResearchTitle.trim();
+    const c = newResearchContent.trim();
+    if (!t || !c) return;
+    researchInputs.update((r) => [
+      ...r,
+      { id: Date.now(), title: t, content: c, createdAt: new Date().toISOString() },
+    ]);
+    newResearchTitle = "";
+    newResearchContent = "";
+  }
+
+  function removeResearch(id: number) {
+    researchInputs.update((r) => r.filter((x) => x.id !== id));
+  }
+
+  function scriptToStoryboard(script: { content: string }) {
+    // Pecah script menjadi scene per baris/paragraph
+    const lines = script.content.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const scenes = lines.map((line, i) => ({
+      id: Date.now() + i,
+      duration: 5,
+      visual: line.slice(0, 120),
+      narration: line,
+      dialogue: "", action: "", notes: "", shotType: "medium",
+    }));
+    storyboard.set(scenes);
+    prodScripts.update((ps) =>
+      ps.map((p) => p.content === script.content ? { ...p, status: "in_production" as const } : p)
+    );
+  }
 
   function addSchedule() {
     const t = schedTitle.trim();
@@ -241,6 +276,69 @@
     <h2>Media Studio</h2>
     <p class="lede">Pipeline: goal → script → storyboard → aset → edit → jadwal.</p>
   </header>
+
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("research") }>
+      <h3>📚 Riset</h3>
+      <span class="chevron">{openSections["research"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["research"]}
+    <div class="card-body">
+      <p class="hint">Hasil riset dari agen Riset. Otomatis dikembangkan agen Kreatif menjadi skrip produksi.</p>
+      {#each $researchInputs as r}
+        <div class="script-item">
+          <div class="script-head">
+            <strong>{r.title}</strong>
+            <span class="spacer"></span>
+            <button class="icon-btn danger" onclick={() => removeResearch(r.id)} aria-label="Hapus">×</button>
+          </div>
+          <p class="script-content">{r.content.slice(0, 200)}{r.content.length > 200 ? "..." : ""}</p>
+        </div>
+      {/each}
+      <div class="field">
+        <label for="res-title">Judul riset</label>
+        <input id="res-title" type="text" bind:value={newResearchTitle} placeholder="Contoh: Riset kampanye donasi Ramadhan" />
+      </div>
+      <div class="field">
+        <label for="res-content">Isi riset</label>
+        <textarea id="res-content" bind:value={newResearchContent} rows="4"
+          placeholder="Tempel hasil riset di sini..."></textarea>
+      </div>
+      <button class="btn-primary sm" onclick={addResearch} disabled={!newResearchTitle.trim() || !newResearchContent.trim()}>
+        + Tambah Riset
+      </button>
+    </div>
+    {/if}
+  </section>
+
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("scripts") }>
+      <h3>📝 Skrip Produksi</h3>
+      <span class="chevron">{openSections["scripts"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["scripts"]}
+    <div class="card-body">
+      <p class="hint">Skrip dari agen Kreatif. Setiap skrip otomatis menjadi sumber produksi media.</p>
+      {#if $prodScripts.length === 0}
+        <p class="hint">Belum ada skrip. Minta agen Kreatif di chat: "kembangkan riset menjadi skrip".</p>
+      {/if}
+      {#each $prodScripts as sc}
+        <div class="script-item">
+          <div class="script-head">
+            <strong>{sc.title}</strong>
+            <span class="tag">{sc.kind}</span>
+            <span class="status-{sc.status}">{sc.status === "draft" ? "Draft" : sc.status === "in_production" ? "Produksi" : "Selesai"}</span>
+            <span class="spacer"></span>
+            <button class="btn-ghost sm" onclick={() => scriptToStoryboard(sc)}>
+              → Storyboard
+            </button>
+          </div>
+          <p class="script-content">{sc.content.slice(0, 250)}{sc.content.length > 250 ? "..." : ""}</p>
+        </div>
+      {/each}
+    </div>
+    {/if}
+  </section>
 
   <div class="duo-row">
   <section class="card collapsible">
@@ -789,6 +887,14 @@
   .shot-type { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: monospace; }
   .scene-field { font-size: 13px; margin: 4px 0; color: var(--text); }
   .board-editor { margin-top: 10px; padding: 12px; border: 1px dashed var(--border); border-radius: 8px; background: rgba(0,0,0,.1); }
+  .script-item { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .script-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .script-content { font-size: 13px; color: var(--dim); margin: 0; white-space: pre-wrap; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: monospace; }
+  .status-draft { font-size: 10px; color: var(--dim); font-family: monospace; }
+  .status-in_production { font-size: 10px; color: #f59e0b; font-family: monospace; }
+  .status-done { font-size: 10px; color: #22c55e; font-family: monospace; }
+  textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; }
   .scene-list { list-style: none; padding: 0; margin: 0 0 16px; }
   .scene { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
   .scene-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
