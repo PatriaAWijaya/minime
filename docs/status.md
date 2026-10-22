@@ -2103,3 +2103,22 @@ Perintah Patria: cek ulang fungsi benar-benar bekerja, konsistensi + performa, n
 3. State bentrok ollamaModels/opencodeModels
 
 Nol error lolos.
+
+## 22 Okt 2026 ~18:45 — Studio Suara (yovoice)
+
+Perintah Patria: "Tambahkan pula apps semacam voiceStudio untuk sound editing full otomatis untuk melengkapi media studio"
+
+### Riset
+- **VoiceStudio** (debpalash, 81k stars): AGPL-3.0 ❌ — DITOLAK (lisensi hard stop)
+- **yovoice** (leemysw, Apache-2.0 ✅, 1791 stars): MENANG — local-first, CLI + Agent Skill + MCP, 100% offline
+
+### Implementasi
+- CLI yovoice v0.4.1 terinstall di `~/.minime/yovoice/` (MacBook)
+- Model Kokoro-82M Q8 (190MB) terdownload & teruji
+- Backend baru: `yovoice_status`, `yovoice_models`, `yovoice_tts`, `audio_master`
+- UI: kartu "Studio Suara" di Media Studio — Generate Voiceover + Mastering Otomatis
+
+### Hasil uji
+- TTS: "Halo, ini tes voiceover..." → WAV 240KB ✅
+- Mastering: loudnorm EBU R128 + denoise → WAV 883KB ✅
+- Test 33/33, clippy 0, vite build sukses ✅
