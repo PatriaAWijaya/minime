@@ -20,63 +20,6 @@
     { id: "landscape", label: "16:9 (1920×1080)" },
   ];
 
-  let yvText = $state("");
-  let yvReference = $state("");
-  let yvVoice = $state("");
-  let yvModels = $state<Array<{id: string; name: string; size: string}>>([]);
-  let yvGenerating = $state(false);
-  let yvError = $state("");
-  let yvAudio = $state("");
-  let yvAudioSrc = $state("");
-  let yvReady = $state(false);
-  let masterInput = $state("");
-  let mastering = $state(false);
-  let masterError = $state("");
-  let masterOutput = $state("");
-  let masterOutputSrc = $state("");
-
-  async function loadYvModels() {
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      const st = await invoke<string>("yovoice_status");
-      const j = JSON.parse(st);
-      yvReady = j.ready === true;
-      const raw = await invoke<string>("yovoice_models");
-      yvModels = JSON.parse(raw);
-    } catch {}
-  }
-  $effect(() => { loadYvModels(); });
-
-  async function yvGenerate() {
-    const t = yvText.trim();
-    if (!t) return;
-    yvGenerating = true; yvError = ""; yvAudio = ""; yvAudioSrc = "";
-    try {
-      const { invoke, convertFileSrc } = await import("@tauri-apps/api/core");
-      yvAudio = await invoke<string>("yovoice_tts", {
-        text: t, voice: yvVoice.trim(), reference: yvReference.trim(),
-        outputName: `yv_${Date.now()}`,
-      });
-      // Local file -> asset:// URL so the webview can actually play it.
-      yvAudioSrc = convertFileSrc(yvAudio);
-    } catch (e) { yvError = String(e); }
-    finally { yvGenerating = false; }
-  }
-
-  async function doMaster() {
-    const inp = masterInput.trim();
-    if (!inp) return;
-    mastering = true; masterError = ""; masterOutput = ""; masterOutputSrc = "";
-    try {
-      const { invoke, convertFileSrc } = await import("@tauri-apps/api/core");
-      masterOutput = await invoke<string>("audio_master", {
-        inputPath: inp, outputName: `master_${Date.now()}`,
-      });
-      masterOutputSrc = convertFileSrc(masterOutput);
-    } catch (e) { masterError = String(e); }
-    finally { mastering = false; }
-  }
-
   async function generate() {
     const p = prompt.trim();
     if (!p || generating) return;
@@ -789,63 +732,7 @@
     </button>
     {#if openSections["suara"]}
     <div class="card-body">
-      <p class="hint">Voiceover AI lokal (yovoice, Apache-2.0) + mastering audio otomatis.</p>
-      {#if !yvReady}
-        <p class="hint">yovoice belum siap — model suara perlu diunduh dulu.</p>
-      {/if}
-      <div class="field">
-        <label for="yv-text">Teks voiceover</label>
-        <textarea id="yv-text" bind:value={yvText} rows="3"
-          placeholder="Tulis naskah voiceover di sini..."></textarea>
-      </div>
-      <div class="field">
-        <label for="yv-voice">Voice (opsional)</label>
-        <select id="yv-voice" bind:value={yvVoice}>
-          <option value="">Default</option>
-          {#each yvModels as m}<option value={m.id}>{m.name} ({m.size})</option>{/each}
-        </select>
-      </div>
-      <div class="field">
-        <label for="yv-ref">Clone suara — file referensi (opsional)</label>
-        <input id="yv-ref" type="text" bind:value={yvReference}
-          placeholder="/path/ke/suara-referensi.wav (5-15 detik)" />
-        <p class="hint">Hanya clone suara yang Anda miliki izinnya.</p>
-      </div>
-      <button class="btn-primary" onclick={yvGenerate} disabled={!yvText.trim() || yvGenerating}>
-        {yvGenerating ? "Membuat suara..." : "Generate Voiceover"}
-      </button>
-      {#if yvError}<p class="err">{yvError}</p>{/if}
-      {#if yvAudio}
-        <p class="hint">Hasil: <code>{yvAudio}</code></p>
-        <audio controls src={yvAudioSrc}></audio>
-      {/if}
-      <hr />
-      <h4>Mastering Otomatis</h4>
-      <p class="hint">Normalisasi loudness (EBU R128) + denoise via FFmpeg.</p>
-      <div class="field">
-        <label for="master-in">File audio input (path)</label>
-        <input id="master-in" type="text" bind:value={masterInput}
-          placeholder="/path/ke/audio.wav" />
-      </div>
-      <button class="btn-primary" onclick={doMaster} disabled={!masterInput.trim() || mastering}>
-        {mastering ? "Memproses..." : "Master Audio"}
-      </button>
-      {#if masterError}<p class="err">{masterError}</p>{/if}
-      {#if masterOutput}
-        <p class="hint">Hasil: <code>{masterOutput}</code></p>
-        <audio controls src={masterOutputSrc}></audio>
-      {/if}
-    </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("voiceedit") }>
-      <h3>Editor Suara (Timeline)</h3>
-      <span class="chevron">{openSections["voiceedit"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["voiceedit"]}
-    <div class="card-body">
+      <p class="hint">Voiceover AI lokal + clone suara + mastering otomatis + timeline multi-track.</p>
       <VoiceEditorView />
     </div>
     {/if}
