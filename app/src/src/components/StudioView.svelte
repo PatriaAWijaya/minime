@@ -3,7 +3,6 @@
   import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, userInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
-import VideoPipeline from "./VideoPipeline.svelte";
   import VideoEditor from "./VideoEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
@@ -114,6 +113,107 @@ import VideoPipeline from "./VideoPipeline.svelte";
   let newNotes = $state("");
   let newShotType = $state("medium");
   let editingScene = $state<number | null>(null);
+
+  // --- Studio Video: Footage / Subtitle / Render (pipeline Video AI terintegrasi) ---
+  // Footage: stok (Pixabay/Pexels) atau AI text-to-video (Wan/LTX via fal.ai)
+  type FootageSrc = "stock" | "ai";
+  let footageSrc = $state<FootageSrc>("stock");
+  let pxQuery = $state("");
+  let pxResults = $state<{ url: string; preview: string }[]>([]);
+  let pxBusy = $state(false);
+  let pxError = $state("");
+  let pickedVideos = $state<string[]>([]);
+  let aiPrompt = $state("");
+  let aiModel = $state<"wan" | "ltx">("wan");
+  let aiBusy = $state(false);
+  let aiError = $state("");
+  let aiVideos = $state<string[]>([]);
+  // Subtitle
+  let subtitlePath = $state("");
+  let subBusy = $state(false);
+  // Render (dulu "Rakit")
+  let aspect = $state<"9:16" | "16:9">("9:16");
+  let renderMode = $state<"auto" | "hyperframes">("auto");
+  let rendering = $state(false);
+  let finalVideo = $state("");
+  let renderError = $state("");
+
+  async function searchStock() {
+    if (!pxQuery.trim() || pxBusy) return;
+    pxBusy = true;
+    pxError = "";
+    pxResults = [];
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const raw = await invoke<string>("pixabay_search_videos", { query: pxQuery.trim(), perPage: 12 });
+      const j = JSON.parse(raw);
+      const hits = j.hits ?? j.videos ?? [];
+      pxResults = hits.map((h: any) => ({
+        url: h.url ?? h.videos?.medium?.url ?? "",
+        preview: h.previewURL ?? h.preview ?? h.userImageURL ?? "",
+      })).filter((r: any) => r.url);
+      if (pxResults.length === 0) pxError = "Tidak ada hasil.";
+    } catch (e) {
+      pxError = String(e);
+    } finally {
+      pxBusy = false;
+    }
+  }
+  async function genAiVideo() {
+    if (!aiPrompt.trim() || aiBusy) return;
+    aiBusy = true;
+    aiError = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const path = await invoke<string>("text_to_video", {
+        prompt: aiPrompt.trim(),
+        model: aiModel,
+        aspect: aspect,
+      });
+      aiVideos = [...aiVideos, path];
+    } catch (e) {
+      aiError = String(e);
+    } finally {
+      aiBusy = false;
+    }
+  }
+  function allFootage(): string[] {
+    return [...pickedVideos, ...aiVideos];
+  }
+  async function renderVideo() {
+    const vids = allFootage();
+    if (vids.length === 0 || rendering) return;
+    rendering = true;
+    renderError = "";
+    finalVideo = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      // Cari audio narasi dari Studio Suara bila ada (disimpan di localStorage oleh VoiceEditorView)
+      const audioPath = localStorage.getItem("minime.lastNarration") || null;
+      if (renderMode === "auto") {
+        const out = await invoke<string>("assemble_video_ai", {
+          videos: vids,
+          audioPath,
+          subtitlePath: subtitlePath && subtitlePath !== "auto" ? subtitlePath : null,
+          outputName: `video-ai-${Date.now()}`,
+          aspect,
+        });
+        finalVideo = out;
+      } else {
+        const out = await invoke<string>("hyperframes_assemble", {
+          videos: vids,
+          audioPath,
+          aspect,
+          outputName: `hf-${Date.now()}`,
+        });
+        finalVideo = out;
+      }
+    } catch (e) {
+      renderError = String(e);
+    } finally {
+      rendering = false;
+    }
+  }
 
   function addScene() {
     const v = newVisual.trim();
@@ -501,14 +601,13 @@ import VideoPipeline from "./VideoPipeline.svelte";
     </aside>
     <main class="workspace">
 <nav class="tab-nav">
-  <button class="tab-btn {activeTab === 'research' ? 'active' : ''}" onclick={() => (activeTab = 'research')}>Input User</button>
+  <button class="tab-btn {activeTab === 'research' ? 'active' : ''}" onclick={() => (activeTab = 'research')}>Brief</button>
   <button class="tab-btn {activeTab === 'scripts' ? 'active' : ''}" onclick={() => (activeTab = 'scripts')}>Script</button>
   <button class="tab-btn {activeTab === 'storyboard' ? 'active' : ''}" onclick={() => (activeTab = 'storyboard')}>Storyboard</button>
   <button class="tab-btn {activeTab === 'draft' ? 'active' : ''}" onclick={() => (activeTab = 'draft')}>Review Draft</button>
   <button class="tab-btn {activeTab === 'genimage' ? 'active' : ''}" onclick={() => (activeTab = 'genimage')}>Studio Gambar</button>
   <button class="tab-btn {activeTab === 'suara' ? 'active' : ''}" onclick={() => (activeTab = 'suara')}>Studio Suara</button>
   <button class="tab-btn {activeTab === 'timeline' ? 'active' : ''}" onclick={() => (activeTab = 'timeline')}>Studio Video</button>
-  <button class="tab-btn {activeTab === 'videoai' ? 'active' : ''}" onclick={() => (activeTab = 'videoai')}>Video AI</button>
 </nav>      <div class="tab-content">
 {#if activeTab === 'research'}
       <div class="tab-pane">
@@ -781,12 +880,102 @@ import VideoPipeline from "./VideoPipeline.svelte";
       <div class="tab-pane">
       <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
       <TimelineEditor />
+
+      <hr class="sep" />
+      <h4 class="sub-h">Footage</h4>
+      <p class="hint">Sumber gambar bergerak: stok video atau generate dengan AI (bila tidak ada stok yang cocok).</p>
+      <div class="chip-row" style="margin-bottom:12px">
+        <button class="chip" class:active={footageSrc === "stock"} onclick={() => (footageSrc = "stock")}>📦 Stok (Pixabay)</button>
+        <button class="chip" class:active={footageSrc === "ai"} onclick={() => (footageSrc = "ai")}>✨ AI Text-to-Video</button>
       </div>
+      {#if footageSrc === "stock"}
+        <div class="row">
+          <input type="text" bind:value={pxQuery} placeholder="Cari footage: pantai, kota, masjid..."
+            onkeydown={(e) => { if (e.key === "Enter") searchStock(); }} class="grow" />
+          <button class="btn-primary sm" onclick={searchStock} disabled={pxBusy || !pxQuery.trim()}>
+            {pxBusy ? "..." : "Cari"}
+          </button>
+        </div>
+        {#if pxError}<p class="err">{pxError}</p>{/if}
+        <div class="px-grid">
+          {#each pxResults as r}
+            <div class="px-card">
+              {#if r.preview}<img src={r.preview} alt="preview" />{/if}
+              <button class="btn-ghost sm" onclick={() => { if (!pickedVideos.includes(r.url)) pickedVideos = [...pickedVideos, r.url]; }}>+ Pakai</button>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="chip-row" style="margin-bottom:10px">
+          <button class="chip" class:active={aiModel === "wan"} onclick={() => (aiModel = "wan")}>Wan 3.0</button>
+          <button class="chip" class:active={aiModel === "ltx"} onclick={() => (aiModel = "ltx")}>LTX-Video</button>
+        </div>
+        <p class="hint">Via fal.ai — API key milik Anda (Tools → Apps). Estimasi ±$0.10/detik.</p>
+        <textarea rows="2" bind:value={aiPrompt} placeholder="Deskripsikan footage: ombak pantai saat senja, sinematik..." style="width:100%"></textarea>
+        <div class="row">
+          <button class="btn-primary sm" onclick={genAiVideo} disabled={aiBusy || !aiPrompt.trim()}>
+            {aiBusy ? "Generating..." : "✨ Generate Footage"}
+          </button>
+        </div>
+        {#if aiError}<p class="err">{aiError}</p>{/if}
       {/if}
-{#if activeTab === 'videoai'}
-      <div class="tab-pane">
-      <p class="hint">Pipeline video AI 6 tahap: Topik → Naskah → Suara → Footage → Subtitle → Rakit. Ala MoneyPrinterTurbo, dengan opsi rakit kustom via HyperFrames.</p>
-      <VideoPipeline />
+      {#if pickedVideos.length > 0 || aiVideos.length > 0}
+        <h4 class="sub-h" style="margin-top:12px">Footage terpilih ({allFootage().length})</h4>
+        <ul class="picked">
+          {#each allFootage() as v, i}
+            <li>
+              <span class="mono">{v.slice(0, 60)}...</span>
+              <button class="mini danger" onclick={() => {
+                if (i < pickedVideos.length) pickedVideos = pickedVideos.filter((_, j) => j !== i);
+                else aiVideos = aiVideos.filter((_, j) => j !== i - pickedVideos.length);
+              }}>×</button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+
+      <hr class="sep" />
+      <h4 class="sub-h">Subtitle</h4>
+      <p class="hint">Subtitle otomatis dari narasi (Whisper), atau lewati bila tidak perlu.</p>
+      <div class="row">
+        <button class="btn-ghost sm" onclick={() => { subtitlePath = "auto"; }}>📝 Aktifkan Subtitle Otomatis</button>
+        {#if subtitlePath === "auto"}<span class="ok">✓ Aktif — dibuat saat render.</span>{/if}
+      </div>
+
+      <hr class="sep" />
+      <h4 class="sub-h">Render</h4>
+      <p class="hint">Gabungkan footage + narasi + subtitle menjadi video final.</p>
+      <div class="field">
+        <label>Rasio</label>
+        <div class="chip-row">
+          <button class="chip" class:active={aspect === "9:16"} onclick={() => (aspect = "9:16")}>9:16 (Reels/Shorts)</button>
+          <button class="chip" class:active={aspect === "16:9"} onclick={() => (aspect = "16:9")}>16:9 (Landscape)</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Mode render</label>
+        <div class="chip-row">
+          <button class="chip" class:active={renderMode === "auto"} onclick={() => (renderMode = "auto")}>⚡ Otomatis (FFmpeg)</button>
+          <button class="chip" class:active={renderMode === "hyperframes"} onclick={() => (renderMode = "hyperframes")}>🎨 Kustom (HyperFrames)</button>
+        </div>
+        <p class="hint" style="margin-top:6px">
+          {#if renderMode === "auto"}
+            Gaya MoneyPrinterTurbo: footage disambung, narasi ditempel, subtitle dibakar — cepat dan konsisten.
+          {:else}
+            HyperFrames: rakit tampilan sendiri via komposisi HTML — teks animasi, layout kustom, kontrol penuh.
+          {/if}
+        </p>
+      </div>
+      <div class="row">
+        <button class="btn-primary sm" onclick={renderVideo} disabled={rendering || allFootage().length === 0}>
+          {rendering ? "Merender..." : "🎬 Render Video"}
+        </button>
+      </div>
+      {#if renderError}<p class="err">{renderError}</p>{/if}
+      {#if finalVideo}
+        <p class="ok">✓ Video jadi: <code>{finalVideo}</code></p>
+        <video controls src={finalVideo} style="max-width:100%;max-height:400px;border-radius:8px;"></video>
+      {/if}
       </div>
       {/if}
       </div>
