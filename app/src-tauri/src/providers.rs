@@ -1260,13 +1260,71 @@ pub async fn ollama_pull_model(model_name: String) -> Result<String, String> {
     Ok(format!("Model {} berhasil diunduh", model_name))
 }
 
-/// Suggested free models for download (Xiryn-style local models).
+/// Real installed Ollama models (from /api/tags) — NOT a dummy list.
+/// Returns [{id, size_gb, modified}]. Empty if Ollama is not running.
 #[tauri::command]
-pub fn suggested_free_models() -> Vec<serde_json::Value> {
-    vec![
-        serde_json::json!({"id": "qwen3:4b", "size": "2.5 GB", "desc": "Ringan, chat dan tugas sederhana"}),
-        serde_json::json!({"id": "qwen3:8b", "size": "5.2 GB", "desc": "Seimbang untuk 16GB RAM"}),
-        serde_json::json!({"id": "deepseek-r1:7b", "size": "4.7 GB", "desc": "Reasoning kuat"}),
-        serde_json::json!({"id": "qwen2.5:3b", "size": "2.0 GB", "desc": "Paling ringan"}),
-    ]
+pub async fn ollama_installed_models() -> Vec<serde_json::Value> {
+    let base = std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build();
+    let client = match client {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    let resp = client.get(format!("{}/api/tags", base)).send().await;
+    let resp = match resp {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
+    let data: serde_json::Value = resp.json().await.unwrap_or(serde_json::Value::Null);
+    let models = data.get("models").and_then(|m| m.as_array()).cloned().unwrap_or_default();
+    models
+        .iter()
+        .map(|m| {
+            let name = m.get("name").and_then(|n| n.as_str()).unwrap_or("?");
+            let gb = m.get("size").and_then(|s| s.as_u64()).unwrap_or(0) as f64 / 1e9;
+            serde_json::json!({
+                "id": name,
+                "size": format!("{:.1} GB", gb),
+                "modified": m.get("modified_at").and_then(|t| t.as_str()).unwrap_or("").chars().take(10).collect::<String>(),
+            })
+        })
+        .collect()
+}
+
+/// Real free models from OpenCode Zen (https://opencode.ai/zen/v1/models).
+/// Models with "-free" in ID work without API key inside OpenCode. NOT a dummy list.
+#[tauri::command]
+pub async fn opencode_free_models() -> Vec<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build();
+    let client = match client {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    let resp = client.get("https://opencode.ai/zen/v1/models").send().await;
+    let resp = match resp {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
+    let data: serde_json::Value = resp.json().await.unwrap_or(serde_json::Value::Null);
+    let models: Vec<serde_json::Value> = if let Some(arr) = data.as_array() {
+        arr.clone()
+    } else {
+        data.get("models").and_then(|m| m.as_array()).cloned().unwrap_or_default()
+    };
+    models
+        .iter()
+        .filter(|m| m.get("id").and_then(|i| i.as_str()).map(|id| id.contains("-free")).unwrap_or(false))
+        .map(|m| {
+            let id = m.get("id").and_then(|i| i.as_str()).unwrap_or("?");
+            serde_json::json!({
+                "id": id,
+                "name": m.get("name").and_then(|n| n.as_str()).unwrap_or(id),
+                "context": m.get("context_length").or(m.get("contextLength")).map(|c| c.to_string()).unwrap_or_default(),
+            })
+        })
+        .collect()
 }

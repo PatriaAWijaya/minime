@@ -382,31 +382,38 @@
   let modelSectionOpen = $state<ModelSection | null>("opencode");
   let modelAddFor = $state<ModelSection | null>(null);
   let newModelName = $state("");
-  let suggestedModels = $state<Array<{id: string; size: string; desc: string}>>([]);
-  let downloadedModels = $state<string[]>([]);
+  let ollamaModels = $state<Array<{id: string; size: string; modified: string}>>([]);
+  let opencodeModels = $state<Array<{id: string; name: string; context: string}>>([]);
   let pullingModel = $state<string | null>(null);
+  let modelsLoading = $state(false);
   let premiumExpanded = $state<string | null>(null);
   let premiumKey = $state("");
   let premiumEndpoint = $state("");
   let premiumSaving = $state(false);
   let premiumMsg = $state("");
 
-  async function loadSuggested() {
+  async function loadRealModels() {
+    modelsLoading = true;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      suggestedModels = await invoke("suggested_free_models");
-      const live = await invoke<string[]>("fetch_provider_models", { providerId: "ollama" }).catch(() => []);
-      downloadedModels = live;
-    } catch {}
+      const [oll, opc] = await Promise.all([
+        invoke<Array<{id: string; size: string; modified: string}>>("ollama_installed_models").catch(() => []),
+        invoke<Array<{id: string; name: string; context: string}>>("opencode_free_models").catch(() => []),
+      ]);
+      ollamaModels = oll;
+      opencodeModels = opc;
+    } catch {} finally {
+      modelsLoading = false;
+    }
   }
-  $effect(() => { if (modelSectionOpen) loadSuggested(); });
+  $effect(() => { if (modelSectionOpen) loadRealModels(); });
 
   async function pullModel(id: string) {
     pullingModel = id;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("ollama_pull_model", { modelName: id });
-      await loadSuggested();
+      await loadRealModels();
     } catch (e) {
       alert(String(e));
     } finally {
@@ -670,29 +677,61 @@
             />
           </div>
 
-          <!-- FREE: model lokal dengan Download ala Xiryn -->
+          <!-- OLLAMA: model terinstall real (bukan dummy) -->
           <div class="xiryn-sec">
-            <span class="group-label">Gratis — Model Lokal</span>
-            <p class="hint-sm">Download sekali, pakai selamanya. Gratis tanpa API key.</p>
-            {#each suggestedModels as sm}
-              {@const isDownloaded = downloadedModels.some((d) => d.startsWith(sm.id.split(":")[0]))}
+            <div class="xiryn-sec-head">
+              <span class="group-label">Ollama — Terinstall</span>
+              <button class="btn-ghost sm" onclick={loadRealModels} disabled={modelsLoading}>
+                {modelsLoading ? "..." : "↻"}
+              </button>
+            </div>
+            {#if ollamaModels.length === 0}
+              <p class="hint-sm">{modelsLoading ? "Memuat..." : "Ollama tidak jalan atau belum ada model terinstall."}</p>
+            {/if}
+            {#each ollamaModels as m}
               <div class="xiryn-model-row">
                 <div class="xiryn-model-meta">
-                  <span class="xiryn-model-name">{sm.id}</span>
-                  <span class="xiryn-model-desc">{sm.size} · {sm.desc}</span>
+                  <span class="xiryn-model-name">{m.id}</span>
+                  <span class="xiryn-model-desc">{m.size}{m.modified ? " · " + m.modified : ""}</span>
                 </div>
-                {#if isDownloaded}
-                  <span class="badge-ok">✓ Terinstall</span>
-                  <button class="btn-ghost sm" onclick={() => setModel(`ollama:${sm.id}`)}>
-                    Pakai
-                  </button>
-                {:else if pullingModel === sm.id}
-                  <span class="hint-sm">Mengunduh...</span>
-                {:else}
-                  <button class="btn-primary sm" onclick={() => pullModel(sm.id)}>
-                    ⬇ Download
-                  </button>
-                {/if}
+                <span class="badge-ok">✓ Siap pakai</span>
+                <button class="btn-ghost sm" onclick={() => setModel(`ollama:${m.id}`)}>
+                  Pakai
+                </button>
+              </div>
+            {/each}
+            <div class="field" style="margin-top:10px">
+              <label>Download model baru (nama dari ollama.com/library)</label>
+              <div class="row">
+                <input type="text" id="ollama-pull-name" placeholder="cth: llama3.1:8b" style="flex:1" />
+                <button class="btn-primary sm" disabled={!!pullingModel}
+                  onclick={() => {
+                    const el = document.getElementById("ollama-pull-name") as HTMLInputElement;
+                    if (el?.value.trim()) pullModel(el.value.trim());
+                  }}>
+                  {pullingModel ? "Mengunduh..." : "⬇ Download"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- OPENCODE: free model real dari Zen -->
+          <div class="xiryn-sec">
+            <span class="group-label">OpenCode — Gratis (Zen)</span>
+            <p class="hint-sm">Model free dari OpenCode Zen, tanpa API key. Daftar real dari opencode.ai.</p>
+            {#if opencodeModels.length === 0}
+              <p class="hint-sm">{modelsLoading ? "Memuat..." : "Gagal memuat daftar."}</p>
+            {/if}
+            {#each opencodeModels as m}
+              <div class="xiryn-model-row">
+                <div class="xiryn-model-meta">
+                  <span class="xiryn-model-name">{m.id}</span>
+                  <span class="xiryn-model-desc">{m.name}{m.context ? " · ctx " + m.context : ""}</span>
+                </div>
+                <span class="badge-ok">Gratis</span>
+                <button class="btn-ghost sm" onclick={() => setModel(`opencode:${m.id}`)}>
+                  Pakai
+                </button>
               </div>
             {/each}
           </div>
@@ -2263,6 +2302,7 @@
     z-index: 55;
   }
   .xiryn-sec { margin: 16px 0; }
+  .xiryn-sec-head { display: flex; align-items: center; justify-content: space-between; }
   .hint-sm { font-size: 12px; color: var(--dim); margin: 4px 0 10px; }
   .xiryn-model-row {
     display: flex; align-items: center; gap: 10px;
