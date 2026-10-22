@@ -490,6 +490,7 @@ fn main() {
             providers::render_slideshow,
             providers::generate_subtitle,
             providers::generate_thumbnail,
+            providers::generate_voiceover,
             social::create_postiz_draft,
             social::create_meta_draft,
             social::set_postiz_config,

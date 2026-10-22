@@ -963,3 +963,54 @@ pub async fn generate_thumbnail(title: String, output_name: String) -> Result<St
     }
     out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
 }
+
+/// Generate voiceover Bahasa Indonesia via arboTTS.
+/// text: teks narasi, persona: arbo/bimo/dimas/danu/arba/sita/maya, output_name: nama file.
+/// Return: path file WAV hasil.
+#[tauri::command]
+pub async fn generate_voiceover(text: String, persona: String, output_name: String) -> Result<String, String> {
+    if text.trim().is_empty() {
+        return Err("Teks kosong.".to_string());
+    }
+    let arbotts = which_arbotts().ok_or_else(|| "arboTTS tidak ditemukan.".to_string())?;
+
+    let valid_persona = match persona.as_str() {
+        "arbo" | "bimo" | "dimas" | "danu" | "arba" | "sita" | "maya" => persona,
+        _ => "arbo".to_string(),
+    };
+
+    let out_dir = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let safe_name: String = output_name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
+    let out_path = out_dir.join(format!("{}.wav", if safe_name.is_empty() { "voiceover".to_string() } else { safe_name }));
+
+    let status = tokio::process::Command::new(&arbotts)
+        .args([
+            text.trim(),
+            "-o", out_path.to_str().unwrap(),
+            "-l", "id",
+            "-sp", valid_persona.as_str(),
+        ])
+        .env("PATH", format!("/opt/homebrew/bin:/usr/local/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:{}", std::env::var("PATH").unwrap_or_default()))
+        .status()
+        .await
+        .map_err(|e| format!("Gagal menjalankan arboTTS: {}", e))?;
+
+    if !status.success() || !out_path.exists() {
+        return Err("arboTTS gagal generate voiceover.".to_string());
+    }
+    out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
+}
+
+fn which_arbotts() -> Option<String> {
+    for p in [
+        "/Library/Frameworks/Python.framework/Versions/3.13/bin/arbotts",
+        "/opt/homebrew/bin/arbotts",
+        "/usr/local/bin/arbotts",
+    ] {
+        if std::path::Path::new(p).exists() {
+            return Some(p.to_string());
+        }
+    }
+    None
+}
