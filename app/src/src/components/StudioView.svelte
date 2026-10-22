@@ -808,6 +808,14 @@
   </div>
 </div>
 
+{#if editingImage}
+  <ImageEditor
+    src={editingImage}
+    onClose={() => (editingImage = null)}
+    onSave={(url) => { imageUrl = url; editingImage = null; }}
+  />
+{/if}
+
 <style>
   .studio { padding: 24px; width: 100%; height: 100%; overflow-y: auto; box-sizing: border-box; }
   .card.collapsible { padding: 0; overflow: hidden; }
