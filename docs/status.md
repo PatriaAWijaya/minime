@@ -2259,3 +2259,11 @@ Perintah Patria: "update aplikasi, cek konsistensi dan performa. jangan biarkan 
 - Build: vite 1.95s ✓, `tauri build --debug` ✓ (2 bundles), bundle-skills.sh ✓. App di-restart dengan cache WebView dibersihkan — berjalan (APP_RUNNING).
 
 Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
+
+## 23 Okt 2026 ~00:10 — Koneksi Postiz/Meta pindah dari Planner ke Tools-Apps (perintah Patria)
+- Seksi "Integrasi Postiz / Meta" dihapus dari kartu Planner Media Studio; form koneksi pindah ke kartu masing-masing di Tools → Apps.
+- Kartu Postiz: form API URL + API Key (set_postiz_config) dengan pesan sukses/gagal eksplisit. Kartu Meta: form Page ID + Page Access Token (set_meta_token).
+- Status otomatis dari keychain: postiz terhubung bila URL+key ada; meta terhubung bila page_id+token ada. Toggle manual ditolak (anti tumpang tindih).
+- Planner kini hanya berisi Buat Draft + Jadwal Konten (fungsi workflow Media Studio, tetap di tempat).
+- i18n: 781 key × 3 bahasa, 0 duplikat. Test 49/49, clippy 0. Build debug ✓, app restart ✓.
+- Pasangan SHA: lokal bfe04d5 ↔ remote 4a323c2 (tree identik).
