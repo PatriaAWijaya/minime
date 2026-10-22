@@ -2311,3 +2311,20 @@ Fitur Doory yang diadopsi ke Studio Gambar Minime:
 - Akar: `<input type="file">` memakai `display: none`; WebKit mengabaikan `.click()` programatik pada input yang display:none.
 - Perbaikan: ubah CSS `.hidden` menjadi visually-hidden (opacity 0, 1px) agar `.click()` tetap berfungsi.
 - Pasangan SHA: lokal 0c3cdb9 ↔ remote 43294e9 (tree identik).
+
+## 23 Okt 2026 ~01:30 — Video AI Pipeline 6 tahap (perintah Patria: tiru MoneyPrinterTurbo)
+Framework workflow baru di Media Studio → tab "Video AI":
+1. **Topik** → 2. **Naskah** → 3. **Suara** (VoiceStudio TTS) → 4. **Footage** → 5. **Subtitle** → 6. **Rakit**
+
+Footage 2 jalur:
+- **Stok**: Pixabay (sudah ada) + **Pexels** (baru, gratis 200 req/jam) — `pexels_search_videos` + `set_pexels_key`
+- **AI text-to-video**: Wan 3.0 / LTX-Video via fal.ai (`text_to_video` command). **Sora DIHAPUS** — API tutup Sep 2026 (riset 23 Okt).
+
+Rakit 2 mode:
+- **Otomatis** (FFmpeg, gaya MoneyPrinterTurbo): `assemble_video_ai` — concat footage + narasi + burn subtitle
+- **Kustom** (HyperFrames): `hyperframes_assemble` — komposisi HTML → MP4
+
+API key video AI: `set_video_ai_key` (keychain: minime.wan_key, minime.ltx_key).
+Riset lengkap: ~/workspace/kantor-ai-agent/referensi/moneyprinterturbo.md + text-to-video-options.md
+Pasangan SHA: lokal 5736880 ↔ remote eb9e777; fix cfg(test): lokal 239eebd ↔ remote 9d8e5b2; hapus Sora: lokal ce4f089 ↔ remote fdce945 (tree identik).
+Build: clippy 0, test 50/50, vite ✓, bundle ✓, app running ✓.
