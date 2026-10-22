@@ -1509,7 +1509,7 @@ pub async fn export_timeline(timeline_json: String, output_name: String) -> Resu
     // Input unik: tiap file src sekali
     let mut inputs: Vec<String> = Vec::new();
     let mut input_idx: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let mut take_input = |src: &str, inputs: &mut Vec<String>, map: &mut std::collections::HashMap<String, usize>| -> usize {
+    let take_input = |src: &str, inputs: &mut Vec<String>, map: &mut std::collections::HashMap<String, usize>| -> usize {
         if let Some(&i) = map.get(src) { return i; }
         let i = inputs.len();
         inputs.push(src.to_string());
