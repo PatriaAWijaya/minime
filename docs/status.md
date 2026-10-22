@@ -2328,3 +2328,12 @@ API key video AI: `set_video_ai_key` (keychain: minime.wan_key, minime.ltx_key).
 Riset lengkap: ~/workspace/kantor-ai-agent/referensi/moneyprinterturbo.md + text-to-video-options.md
 Pasangan SHA: lokal 5736880 ↔ remote eb9e777; fix cfg(test): lokal 239eebd ↔ remote 9d8e5b2; hapus Sora: lokal ce4f089 ↔ remote fdce945 (tree identik).
 Build: clippy 0, test 50/50, vite ✓, bundle ✓, app running ✓.
+
+## 23 Okt 2026 ~01:35 — Video AI terintegrasi ke workflow Media Studio (revisi Patria)
+- Tab "Video AI" tersendiri DIHAPUS. Workflow menyatu dengan tab yang sudah ada:
+  - Topik → tab **Brief** (rename dari "Input User")
+  - Naskah → tab **Script** (tetap)
+  - Suara → tab **Studio Suara** (tetap)
+  - Footage + Subtitle + **Render** (rename dari "Rakit") → tab **Studio Video** (section baru di bawah TimelineEditor)
+- VideoPipeline.svelte dihapus; logika pindah ke StudioView.svelte.
+- Pasangan SHA: lokal 681f070 ↔ remote 69e235d; fix var: lokal 4527041 ↔ remote b84c570; docs: lokal 47000b8 ↔ remote 502ffa9 (tree identik).
