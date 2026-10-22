@@ -386,6 +386,8 @@
   let opencodeFree = $state<Array<{id: string; name: string; context: string}>>([]);
   let pullingModel = $state<string | null>(null);
   let modelsLoading = $state(false);
+  let ollamaOpen = $state(true);
+  let opencodeOpen = $state(false);
   let premiumExpanded = $state<string | null>(null);
   let premiumKey = $state("");
   let premiumEndpoint = $state("");
@@ -677,14 +679,17 @@
             />
           </div>
 
-          <!-- OLLAMA: model terinstall real (bukan dummy) -->
-          <div class="xiryn-sec">
-            <div class="xiryn-sec-head">
-              <span class="group-label">Ollama — Terinstall</span>
-              <button class="btn-ghost sm" onclick={loadRealModels} disabled={modelsLoading}>
-                {modelsLoading ? "..." : "↻"}
-              </button>
-            </div>
+          <!-- OLLAMA: dropdown list real -->
+          <div class="xiryn-prov">
+            <button class="xiryn-prov-head" onclick={() => (ollamaOpen = !ollamaOpen)}>
+              <span class="xiryn-prov-name">Ollama</span>
+              <span class="chip">Gratis</span>
+              <span class="spacer"></span>
+              <span class="hint-sm">{ollamaInstalled.length} model</span>
+              <span class="chev">{ollamaOpen ? "▾" : "▸"}</span>
+            </button>
+            {#if ollamaOpen}
+            <div class="xiryn-prov-body">
             {#if ollamaInstalled.length === 0}
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Ollama tidak jalan atau belum ada model terinstall."}</p>
             {/if}
@@ -713,11 +718,21 @@
                 </button>
               </div>
             </div>
+            </div>
+            {/if}
           </div>
 
-          <!-- OPENCODE: free model real dari Zen -->
-          <div class="xiryn-sec">
-            <span class="group-label">OpenCode — Gratis (Zen)</span>
+          <!-- OPENCODE: dropdown list real -->
+          <div class="xiryn-prov">
+            <button class="xiryn-prov-head" onclick={() => (opencodeOpen = !opencodeOpen)}>
+              <span class="xiryn-prov-name">OpenCode</span>
+              <span class="chip">Gratis</span>
+              <span class="spacer"></span>
+              <span class="hint-sm">{opencodeFree.length} model</span>
+              <span class="chev">{opencodeOpen ? "▾" : "▸"}</span>
+            </button>
+            {#if opencodeOpen}
+            <div class="xiryn-prov-body">
             <p class="hint-sm">Model free dari OpenCode Zen, tanpa API key. Daftar real dari opencode.ai.</p>
             {#if opencodeFree.length === 0}
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Gagal memuat daftar."}</p>
@@ -734,6 +749,8 @@
                 </button>
               </div>
             {/each}
+            </div>
+            {/if}
           </div>
 
           <!-- PREMIUM: klik untuk input API key ala Xiryn -->
