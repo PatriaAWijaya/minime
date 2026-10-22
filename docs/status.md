@@ -2122,3 +2122,21 @@ Perintah Patria: "Tambahkan pula apps semacam voiceStudio untuk sound editing fu
 - TTS: "Halo, ini tes voiceover..." → WAV 240KB ✅
 - Mastering: loudnorm EBU R128 + denoise → WAV 883KB ✅
 - Test 33/33, clippy 0, vite build sukses ✅
+
+## 22 Okt 2026 ~19:10 — Voice Cloning
+
+Perintah Patria: "cari git untuk menambahkan fungsi untuk clone suara"
+
+### Riset
+- **VoiceStudio**: AGPL-3.0 ❌ (tetap ditolak)
+- **VoxCPM2** (OpenBMB, Apache-2.0 ✅): zero-shot voice cloning, 30 bahasa — TERSEDIA di yovoice
+- Keputusan: pakai yovoice yang sudah terinstall (`--reference AUDIO`)
+
+### Implementasi
+- Backend `yovoice_tts` tambah parameter `reference` (path file audio 5-15 detik)
+- UI Studio Suara: field "Clone suara — file referensi" + catatan izin
+- Model VoxCPM2-Q8 (3GB) sedang diunduh
+
+### Hasil uji
+- Test 33/33, clippy 0, vite build sukses, preview jalan ✅
+- Uji cloning nyata menunggu download selesai
