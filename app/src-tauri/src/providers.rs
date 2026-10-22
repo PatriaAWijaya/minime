@@ -1751,7 +1751,7 @@ pub async fn assemble_video_ai(
     );
     if let Some(sub) = &subtitle_path {
         if std::path::Path::new(sub).exists() {
-            let escaped = sub.replace('\', "/").replace(':', "\:").replace('\'', "");
+            let escaped = sub.replace('\\', "/").replace('\'', "");
             vf.push_str(&format!(",subtitles='{}'", escaped));
         }
     }
