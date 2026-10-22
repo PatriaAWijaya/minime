@@ -2278,3 +2278,18 @@ Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
 - Koreksi dari entri sebelumnya: yang diminta adalah default TIDAK aktif, bukan aktif.
 - `islandNotch` dan `islandIdle` default menjadi `false`; migrasi satu-kali me-reset keduanya ke non-aktif. User mengaktifkannya manual dari Pengaturan > Dynamic Island bila dibutuhkan.
 - Pasangan SHA: lokal 48bb057 ↔ remote a066a8b (tree identik).
+
+## 23 Okt 2026 ~00:30 — Audit #11: layar hitam + audit konsistensi menyeluruh (perintah Patria)
+### Akar masalah layar hitam
+- `vite.config.ts` tidak menyetel `base: './'`. Hasil build memakai path absolut (`/assets/...`) yang tidak ter-resolve saat Tauri memuat dari dist → JS gagal dimuat → WebView hitam.
+- Perbaikan: tambah `base: "./"` (standar Tauri). Verifikasi: `dist/index.html` kini memakai `./assets/...` (relatif).
+- Pasangan SHA: lokal 3d11d53 ↔ remote 3324419 (tree identik).
+
+### Hasil audit konsistensi
+- **Rust clippy** (`--all-targets -- -D warnings`): 0 warning, 0 error (strict).
+- **Rust test**: 49/49 lolos.
+- **Frontend vite build**: sukses, tidak ada error.
+- **i18n**: 781 key unik × 3 bahasa (id/en/zh), 0 duplikat, 0 hilang.
+- **Command registry**: semua `invoke()` frontend terdaftar di backend (12 command dicek, semua ✓ — 3 di main.rs sebagai fn privat).
+- **Bundle**: debug 57M, 2 bundles selesai, bundle-skills.sh ✓.
+- App di-restart dengan cache WebView dibersihkan — proses berjalan stabil, tanpa crash/panic di log sistem.
