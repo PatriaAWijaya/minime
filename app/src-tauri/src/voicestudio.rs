@@ -275,7 +275,7 @@ pub async fn voicestudio_tts(
         }
         Err(vs_err) => {
             // Fallback otomatis ke yovoice (CLI lokal, tanpa backend).
-            match crate::providers::yovoice_tts(text, voice, String::new(), output_name).await {
+            match crate::providers::yovoice_tts(text, voice, String::new(), output_name, String::new()).await {
                 Ok(path) => json_result_path(&path, "yovoice"),
                 Err(yo_err) => Err(format!(
                     "VoiceStudio: {vs_err} — yovoice (fallback) juga gagal: {yo_err}"
@@ -351,7 +351,7 @@ pub async fn voicestudio_clone_tts(
         }
         Err(vs_err) => {
             // Fallback otomatis ke yovoice dengan file referensi yang sama.
-            match crate::providers::yovoice_tts(text, String::new(), ref_audio_path, output_name)
+            match crate::providers::yovoice_tts(text, String::new(), ref_audio_path, output_name, String::new())
                 .await
             {
                 Ok(path) => json_result_path(&path, "yovoice"),
