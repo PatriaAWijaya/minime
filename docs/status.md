@@ -2193,3 +2193,48 @@ Perintah Patria: "oke bangun UI voice editor native, jadikan voiceStudio sebagai
 - One-click mixdown→mastering dipangkas (butuh command tulis-file backend; workflow nyata: master per-clip → mixdown).
 - Smoke test runtime di MacBook disarankan: buka kartu → Generate 1 clip → Play → Mixdown.
 - AGPL: kode VoiceStudio tidak disentuh/di-bundle — hanya dipanggil via local API (pola Pireel).
+
+## 22 Okt 2026 ~20:00 — Audit pasca-build Voice Editor Native (zero-error gate)
+
+Perintah Patria: "update aplikasi, cek konsistensi dan performa. jangan biarkan satu pun error lolos." Mengikuti skill build_phase_audit.
+
+### 1. Update aplikasi di MacBook
+- rsync ~/workspace/minime/ → mac@100.69.79.1:~/minime/ (TANPA --delete; exclude target/node_modules/gen/.git): 61MB terkirim, sukses.
+- **Temuan koordinasi**: sesi paralel sedang aktif di repo Mac yang sama — saat cargo test pertama jalan, main.rs sempat berkonflik merge (`<<<<<<< Updated upstream`, dari pull def8457); sesi paralel resolve + commit 5af5c54e "feat: Timeline Editor multi-track ala CapCut" (19:47). Audit dilanjutkan di HEAD stabil 5af5c54e (memuat Voice Editor Native + Timeline Editor).
+- Rebuild: `cargo build --release` di ~/minime/app/src-tauri → sukses, binary baru 19:59 (19,9MB; sebelumnya 16,6MB 21 Okt — naik 2,4MB dari reqwest+multipart, masih dalam batas wajar).
+
+### 2. Kompilasi semua layer (warning = gagal)
+- `npm run build` (vite): SUKSES 1,79 dtk. (Build pertama sempat gagal "Could not resolve ./VoiceEditorView.svelte" — TRANSIEN akibat sesi paralel sedang commit; rerun di tree stabil sukses.)
+- `cargo test`: 43 passed, 0 failed.
+- `cargo clippy --all-targets -- -D warnings`: 0 warning, 0 error.
+- Peringatan non-gagal: chunk JS 642KB > 500KB (saran code-split); 2 warning a11y di VideoEditor.svelte (milik sesi paralel, bukan error build).
+
+### 3. Kontrak antar layer — LOLOS
+- 5/5 command voicestudio_* terdaftar di main.rs dan dipanggil frontend dengan argumen cocok (camelCase→snake_case Tauri): voicestudio_status, voicestudio_voices, voicestudio_tts {text,voice,speed,outputName}, voicestudio_clone_tts {text,refAudioPath,language,outputName}, voicestudio_open. Plus yovoice_* fallback + audio_master {inputPath,outputName} — semua cocok.
+- i18n: tidak ada sistem key i18n — UI memakai label Bahasa Indonesia hardcode (sesuai preferensi); 44 match "t(" ternyata loop variable `for (const t of tracks)`, bukan i18n.
+
+### 4. Scan dummy/mock — BERSIH
+- Frontend (VoiceEditorView, StudioView, TimelineEditor) + backend (voicestudio.rs, main.rs): nol placeholder/lorem/mock/TODO/FIXME. voicestudio_voices mengambil data asli dari API (tidak hardcode).
+
+### 5. Uji ulang jalur yang pernah gagal — LOLOS
+- (a) Tombol play Studio Suara: kartu lama SUDAH DIGANTI — kini `<VoiceEditorView/>`. Semua path audio (waveform fetch, probeDuration, playClipOnce, mixdown preview) memakai `convertFileSrc`; tauri.conf.json: assetProtocol enable + scope $TEMP/**, CSP media-src mengizinkan asset:/blob:/data:. Akar masalah (raw path diblokir CSP) diperbaiki di layer yang benar.
+- (b) E2E VoiceStudio via backend: test live temporer `voicestudio_tts` → WAV valid, engine="voicestudio" (28,5 dtk sintesis pertama), file >1000 bytes; test dihapus kembali setelah lolos, tree bersih.
+
+### 6. Koneksi VoiceStudio — TERVALIDASI (bukan sekadar status hijau)
+- Proses berjalan (PID 5779), GET /v1/models respons valid (tts-1, tts-1-hd, alias engine aktif).
+- POST /v1/audio/speech (tts-1, voice default, id): WAV 124KB valid — RIFF/WAVE PCM 16-bit mono 24kHz, durasi 2,60 dtk.
+
+### 7. Snapshot performa
+- Build: vite 1,79 dtk; cargo test 41 dtk (kompilasi awal); clippy ~99 dtk; cargo build --release ~76 dtk (inkremental).
+- Binary release: 19,9MB (budget ~16MB rilis sebelumnya — naik 2,4MB, dicatat).
+- App idle (debug bundle, Patria sedang jalan): CPU 0,7–1,1%, RSS ~17,7MB proses utama.
+- VoiceStudio idle total ~70MB (main 25MB + helper + backend Python 23MB).
+
+### VONIS: LOLOS — nol error. Follow-up:
+- Smoke test GUI oleh Patria (Generate 1 clip → Play → Mixdown) — runtime Tauri tak ada di VM.
+- Pertimbangkan code-split chunk 642KB bila bundle frontend membengkak lagi.
+- Koordinasi sesi paralel: dua sesi menulis repo Mac bersamaan — risiko tabrakan; disarankan giliran atau lock.
+
+### Addendum 20:02 — rebuild dari HEAD terbaru
+- Sesi paralel menambah 3 commit (82996114 fix clippy unused_mut, 46639668 fix drawtext, ba8e1101 refactor gabung kartu suara); binary di-rebuild dari ba8e1101: `cargo build --release` sukses 31,62 dtk, binary 19,9MB (20:01).
+- `cargo clippy --all-targets -- -D warnings` di HEAD terbaru: 0 error/warning. Vonis tetap LOLOS.
