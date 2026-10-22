@@ -13,6 +13,68 @@
   let imageUrl = $state<string | null>(null);
   let error = $state("");
 
+  // Pixabay stock search
+  type PxHit = { id: number; preview: string; full: string; tags: string };
+  let pxQuery = $state("");
+  let pxResults = $state<PxHit[]>([]);
+  let pxSearching = $state(false);
+  let pxError = $state("");
+  let pxLoadingId = $state<number | null>(null);
+
+  async function searchPixabay() {
+    const q = pxQuery.trim();
+    if (!q || pxSearching) return;
+    pxSearching = true;
+    pxError = "";
+    pxResults = [];
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const res = await invoke<any>("pixabay_search_images", { query: q, perPage: 12 });
+      const hits = Array.isArray(res?.hits) ? res.hits : [];
+      pxResults = hits.map((h: any) => ({
+        id: h.id,
+        preview: h.previewURL || h.webformatURL,
+        full: h.largeImageURL || h.webformatURL,
+        tags: h.tags || "",
+      }));
+      if (pxResults.length === 0) pxError = "Tidak ada hasil untuk \"" + q + "\".";
+    } catch (e) {
+      pxError = String(e);
+    } finally {
+      pxSearching = false;
+    }
+  }
+
+  async function usePixabay(hit: PxHit, edit: boolean) {
+    pxLoadingId = hit.id;
+    pxError = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const dataUrl = await invoke<string>("fetch_image_as_data_url", { url: hit.full });
+      imageUrl = dataUrl;
+      if (edit) editingImage = dataUrl;
+    } catch (e) {
+      pxError = String(e);
+    } finally {
+      pxLoadingId = null;
+    }
+  }
+
+  // Upload local image -> open in editor
+  let fileInput: HTMLInputElement;
+  function onPickFile(e: Event) {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result);
+      imageUrl = url;
+      editingImage = url;
+    };
+    r.readAsDataURL(f);
+    (e.target as HTMLInputElement).value = "";
+  }
+
   const SIZES = [
     { id: "square", label: "1:1 (1080×1080)" },
     { id: "portrait45", label: "4:5 (1080×1350)" },
@@ -776,6 +838,42 @@
       {generating ? "Membuat gambar..." : "Generate"}
     </button>
     {#if error}<p class="err">{error}</p>{/if}
+
+    <hr class="sep" />
+    <h4 class="sub-h">Edit Gambar</h4>
+    <p class="hint">Buka editor untuk gambar yang sudah ada — pangkas, putar, teks, kuas, filter.</p>
+    <div class="row">
+      <button class="btn-ghost sm" onclick={() => fileInput.click()}>Upload & Edit</button>
+      <input type="file" accept="image/*" class="hidden" bind:this={fileInput} onchange={onPickFile} />
+    </div>
+
+    <hr class="sep" />
+    <h4 class="sub-h">Stok Foto Pixabay</h4>
+    <div class="row">
+      <input type="text" bind:value={pxQuery} placeholder="Cari foto: masjid, donasi, anak..."
+        onkeydown={(e) => { if (e.key === "Enter") searchPixabay(); }} class="grow" />
+      <button class="btn-primary sm" onclick={searchPixabay} disabled={!pxQuery.trim() || pxSearching}>
+        {pxSearching ? "..." : "Cari"}
+      </button>
+    </div>
+    {#if pxError}<p class="err">{pxError}</p>{/if}
+    {#if pxResults.length > 0}
+      <div class="px-grid">
+        {#each pxResults as h}
+          <div class="px-item">
+            <img src={h.preview} alt={h.tags} loading="lazy" />
+            <div class="px-actions">
+              <button class="btn-ghost xs" onclick={() => usePixabay(h, false)} disabled={pxLoadingId === h.id}>
+                {pxLoadingId === h.id ? "..." : "Pakai"}
+              </button>
+              <button class="btn-ghost xs" onclick={() => usePixabay(h, true)} disabled={pxLoadingId === h.id}>
+                Edit
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
       </div>
       {/if}
 {#if activeTab === 'suara'}
@@ -886,6 +984,17 @@
   .btn-primary.sm { padding: 8px 16px; font-size: 13px; }
   .btn-ghost.sm { padding: 8px 16px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; text-decoration: none; display: inline-block; }
   .btn-ghost.sm:hover { background: var(--hover); }
+  .btn-ghost.xs { padding: 4px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.55); color: #fff; cursor: pointer; }
+  .btn-ghost.xs:hover { background: #4FA6F0; border-color: #4FA6F0; }
+  .btn-ghost.xs:disabled { opacity: 0.5; cursor: default; }
+  .sep { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
+  .sub-h { margin: 0 0 6px; font-size: 14px; }
+  .hidden { display: none; }
+  .grow { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+  .px-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .px-item { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 4/3; }
+  .px-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .px-actions { position: absolute; bottom: 6px; left: 6px; right: 6px; display: flex; gap: 6px; justify-content: center; }
   .ok { color: #22c55e; font-size: 13px; margin-top: 8px; }
   .err { color: #ef4444; font-size: 13px; margin-top: 8px; }
   .result-img { width: 100%; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); }

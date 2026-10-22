@@ -224,3 +224,37 @@ pub async fn pixabay_search_videos(query: String, per_page: u8) -> Result<serde_
 pub fn set_pixabay_key(api_key: String) -> Result<(), String> {
     crate::secrets::set_api_key("minime.pixabay_key", api_key.trim()).map_err(|e| e.to_string())
 }
+
+/// Unduh gambar dari URL dan kembalikan sebagai data URL (base64).
+/// Dipakai agar gambar dari CDN (mis. Pixabay) bisa dibuka di editor tanpa masalah CORS.
+#[tauri::command]
+pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(url.trim())
+        .send()
+        .await
+        .map_err(|e| format!("Gagal mengunduh gambar: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("image/jpeg")
+        .to_string();
+    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.is_empty() {
+        return Err("Gambar kosong.".to_string());
+    }
+    use base64::Engine;
+    Ok(format!(
+        "data:{};base64,{}",
+        ct,
+        base64::engine::general_purpose::STANDARD.encode(&bytes)
+    ))
+}

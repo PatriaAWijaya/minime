@@ -515,6 +515,7 @@ fn main() {
             social::pixabay_search_images,
             social::pixabay_search_videos,
             social::set_pixabay_key,
+            social::fetch_image_as_data_url,
             agent_chat,
             chat_history,
             usage_summary,

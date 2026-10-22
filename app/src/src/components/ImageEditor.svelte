@@ -14,6 +14,7 @@
   let canvas: HTMLCanvasElement;
   let base: HTMLCanvasElement | null = null;
   let loaded = $state(false);
+  let loadError = $state("");
 
   type Tool = "adjust" | "crop" | "rotate" | "text" | "draw" | "filter";
   let tool = $state<Tool>("adjust");
@@ -137,6 +138,7 @@
 
   // --- load ---
   function loadImage() {
+    loadError = "";
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -148,6 +150,9 @@
       pushHist();
       loaded = true;
       render();
+    };
+    img.onerror = () => {
+      loadError = "Gambar gagal dimuat. Coba unduh dulu lalu upload ulang.";
     };
     img.src = src;
   }
@@ -412,7 +417,8 @@
           onpointerup={onPointerUp}
           onpointercancel={onPointerUp}
         ></canvas>
-        {#if !loaded}<p class="hint">Memuat...</p>{/if}
+        {#if !loaded && !loadError}<p class="hint">Memuat...</p>{/if}
+        {#if loadError}<p class="err">{loadError}</p>{/if}
       </div>
 
       <aside class="options">
@@ -553,6 +559,7 @@
   .canvas-area canvas { max-width: 100%; max-height: 56vh; display: block; }
   .canvas-area canvas.crosshair { cursor: crosshair; }
   .hint { color: var(--dim); padding: 20px; }
+  .err { color: #ef4444; padding: 20px; font-size: 13px; }
   .options { width: 220px; min-width: 220px; }
   .options .field { margin-bottom: 12px; }
   .options label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
