@@ -185,6 +185,78 @@ export const agentProvider = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-provider", agentProvider);
 
+/* ---------- Brand Kit (AI Media Studio) ---------- */
+export interface BrandKit {
+  primary: string;
+  secondary: string;
+  font: string;
+  tone: string;
+}
+const defaultBrand: BrandKit = {
+  primary: "#4FA6F0",
+  secondary: "#1a1a1a",
+  font: "Inter",
+  tone: "profesional dan hangat",
+};
+function loadBrand(): BrandKit {
+  try {
+    const raw = localStorage.getItem("minime.brand-kit");
+    if (raw) return { ...defaultBrand, ...JSON.parse(raw) };
+  } catch {}
+  return { ...defaultBrand };
+}
+export const brandKit = writable<BrandKit>(loadBrand());
+brandKit.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.brand-kit", JSON.stringify(v));
+  } catch {}
+});
+
+/* ---------- Storyboard (AI Media Studio) ---------- */
+export interface Scene {
+  id: number;
+  duration: number;
+  visual: string;
+  narration: string;
+}
+function loadScenes(): Scene[] {
+  try {
+    const raw = localStorage.getItem("minime.storyboard");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+export const storyboard = writable<Scene[]>(loadScenes());
+storyboard.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.storyboard", JSON.stringify(v));
+  } catch {}
+});
+let sceneSeq = 1;
+
+/* ---------- Scheduler (AI Media Studio) ----------
+   Aturan keras: TIDAK ADA auto-posting. Scheduler hanya membuat DRAFT. */
+export interface ScheduledItem {
+  id: number;
+  title: string;
+  platform: string;
+  scheduledAt: string;
+  status: "draft" | "scheduled";
+}
+function loadSchedule(): ScheduledItem[] {
+  try {
+    const raw = localStorage.getItem("minime.schedule-queue");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+export const scheduleQueue = writable<ScheduledItem[]>(loadSchedule());
+scheduleQueue.subscribe((v) => {
+  try {
+    localStorage.setItem("minime.schedule-queue", JSON.stringify(v));
+  } catch {}
+});
+
 export interface ModelOption {
   id: string;
   providerId: string;
