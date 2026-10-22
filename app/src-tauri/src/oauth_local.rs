@@ -262,6 +262,7 @@ pub fn security_cli_read(service: &str, account: &str) -> Option<String> {
         Some(pw)
     }
 }
+#[cfg(test)]
 mod tests {
     use super::*;
 
