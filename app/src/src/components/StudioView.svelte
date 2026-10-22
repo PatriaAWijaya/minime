@@ -252,7 +252,8 @@
   $effect(() => { loadToolStatus(); });
 
   // Collapsible sections
-  let openSections = $state<Record<string, boolean>>({ pipeline: true });
+  let openSections = $state<Record<string, boolean>>({ pipeline: true, planner: true });
+  let activeTab = $state("research");
   function toggleSection(id: string) {
     openSections[id] = !openSections[id];
   }
@@ -280,90 +281,15 @@
     <p class="lede">Pipeline: goal → script → storyboard → aset → edit → jadwal.</p>
   </header>
 
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("research") }>
-      <h3>📥 Input User</h3>
-      <span class="chevron">{openSections["research"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["research"]}
-    <div class="card-body">
-      <p class="hint">Tambahkan apa saja yang diinginkan — selebihnya OTOMATIS ditangani agen Kreatif.</p>
-      {#each $userInputs as r}
-        <div class="script-item">
-          <div class="script-head">
-            <strong>{r.title}</strong>
-            <span class="tag">{r.kind}</span>
-            <span class="spacer"></span>
-            <button class="icon-btn danger" onclick={() => removeInput(r.id)} aria-label="Hapus">×</button>
-          </div>
-          <p class="script-content">{r.content.slice(0, 200)}{r.content.length > 200 ? "..." : ""}</p>
-        </div>
-      {/each}
-      <div class="row">
-        <div class="field" style="flex:1">
-          <label for="inp-kind">Jenis</label>
-          <select id="inp-kind" bind:value={newInputKind}>
-            <option value="riset">Riset</option>
-            <option value="goal">Goal / Tujuan</option>
-            <option value="preferensi">Preferensi</option>
-            <option value="materi">Materi mentah</option>
-            <option value="lain">Lainnya</option>
-          </select>
-        </div>
-        <div class="field" style="flex:2">
-          <label for="inp-title">Judul</label>
-          <input id="inp-title" type="text" bind:value={newInputTitle} placeholder="Contoh: Kampanye donasi Ramadhan" />
-        </div>
-      </div>
-      <div class="field">
-        <label for="inp-content">Isi</label>
-        <textarea id="inp-content" bind:value={newInputContent} rows="4"
-          placeholder="Tulis atau tempel di sini..."></textarea>
-      </div>
-      <button class="btn-primary sm" onclick={addInput} disabled={!newInputTitle.trim() || !newInputContent.trim()}>
-        + Tambah Input
-      </button>
-    </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("scripts") }>
-      <h3>📝 Skrip Produksi</h3>
-      <span class="chevron">{openSections["scripts"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["scripts"]}
-    <div class="card-body">
-      <p class="hint">Dihasilkan OTOMATIS oleh agen Kreatif dari input di atas. Setiap skrip otomatis menjadi sumber produksi media.</p>
-      {#if $prodScripts.length === 0}
-        <p class="hint">Belum ada skrip. Minta agen Kreatif di chat: "kembangkan riset menjadi skrip".</p>
-      {/if}
-      {#each $prodScripts as sc}
-        <div class="script-item">
-          <div class="script-head">
-            <strong>{sc.title}</strong>
-            <span class="tag">{sc.kind}</span>
-            <span class="status-{sc.status}">{sc.status === "draft" ? "Draft" : sc.status === "in_production" ? "Produksi" : "Selesai"}</span>
-            <span class="spacer"></span>
-            <button class="btn-ghost sm" onclick={() => scriptToStoryboard(sc)}>
-              → Storyboard
-            </button>
-          </div>
-          <p class="script-content">{sc.content.slice(0, 250)}{sc.content.length > 250 ? "..." : ""}</p>
-        </div>
-      {/each}
-    </div>
-    {/if}
-  </section>
-
-  <div class="duo-row">
-  <section class="card collapsible">
+  <div class="studio-layout">
+    <aside class="sidebar">
+  <section class="card collapsible side-card">
     <button class="card-toggle" onclick={() => toggleSection("pipeline") }>
       <h3>Pipeline</h3>
       <span class="chevron">{openSections["pipeline"] ? "▾" : "▸"}</span>
     </button>
     {#if openSections["pipeline"]}
-    <div class="card-body">
+    <div class="card-body side-body">
     <div class="row" style="margin-bottom:12px">
       <span class="hint" style="margin:0">Klik tahap untuk menandai selesai.</span>
       <span style="flex:1"></span>
@@ -382,17 +308,16 @@
         {#if i < STAGES.length - 1}<span class="pipe-arrow">→</span>{/if}
       {/each}
     </div>
-      </div>
+    </div>
     {/if}
   </section>
-
-  <section class="card collapsible">
+  <section class="card collapsible side-card">
     <button class="card-toggle" onclick={() => toggleSection("koneksi") }>
       <h3>Koneksi Tools</h3>
       <span class="chevron">{openSections["koneksi"] ? "▾" : "▸"}</span>
     </button>
     {#if openSections["koneksi"]}
-    <div class="card-body">
+    <div class="card-body side-body">
     <p class="hint">Status koneksi 9 tools Media Studio.</p>
     <div class="conn-list">
       {#each toolStatus as t}
@@ -419,15 +344,13 @@
     </div>
     {/if}
   </section>
-  </div>
-
-  <section class="card collapsible">
+  <section class="card collapsible side-card">
     <button class="card-toggle" onclick={() => toggleSection("brandkit") }>
       <h3>Brand Kit</h3>
       <span class="chevron">{openSections["brandkit"] ? "▾" : "▸"}</span>
     </button>
     {#if openSections["brandkit"]}
-    <div class="card-body">
+    <div class="card-body side-body">
     <p class="hint">Dipakai untuk konsistensi visual di semua konten.</p>
     <div class="brand-grid">
       <div class="field">
@@ -525,18 +448,178 @@
         <option value="thumbnail">Thumbnail</option>
       </select>
     </div>
-      </div>
+    </div>
     {/if}
   </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("storyboard") }>
-      <h3>Storyboard</h3>
-      <span class="chevron">{openSections["storyboard"] ? "▾" : "▸"}</span>
+  <section class="card collapsible side-card">
+    <button class="card-toggle" onclick={() => toggleSection("planner") }>
+      <h3>📅 Planner</h3>
+      <span class="chevron">{openSections["planner"] ? "▾" : "▸"}</span>
     </button>
-    {#if openSections["storyboard"]}
-    <div class="card-body">
-    <p class="hint">Susun shot per scene ala storyboard film. Klik scene untuk edit detail.</p>
+    {#if openSections["planner"]}
+    <div class="card-body side-body">
+    <h4>Integrasi Postiz / Meta</h4>
+    <p class="hint">Hanya membuat <strong>draft</strong> — tidak ada auto-posting.</p>
+    <h4>Postiz</h4>
+    <div class="field">
+      <label for="pz-url">API URL</label>
+      <input id="pz-url" type="text" bind:value={postizUrl} placeholder="https://postiz.example.com" />
+    </div>
+    <div class="field">
+      <label for="pz-key">API Key</label>
+      <input id="pz-key" type="password" bind:value={postizKey} placeholder="API key Postiz" />
+    </div>
+    <button class="btn-primary sm" onclick={savePostiz} disabled={!postizUrl.trim() || !postizKey.trim() || savingSocial}>
+      Simpan Postiz
+    </button>
+    <h4 style="margin-top:16px">Meta Business Suite</h4>
+    <div class="field">
+      <label for="mt-page">Page ID</label>
+      <input id="mt-page" type="text" bind:value={metaPageId} placeholder="Facebook Page ID" />
+    </div>
+    <div class="field">
+      <label for="mt-token">Page Access Token</label>
+      <input id="mt-token" type="password" bind:value={metaToken} placeholder="Token" />
+    </div>
+    <button class="btn-primary sm" onclick={saveMeta} disabled={!metaPageId.trim() || !metaToken.trim() || savingSocial}>
+      Simpan Meta
+    </button>
+    {#if socialSaved}<p class="ok">{socialSaved}</p>{/if}
+    <h4 style="margin-top:16px">Buat Draft</h4>
+    <div class="field">
+      <label for="dc-content">Konten</label>
+      <textarea id="dc-content" bind:value={draftContent} rows="3" placeholder="Tulis konten..."></textarea>
+    </div>
+    <div class="field">
+      <label for="dc-platform">Platform</label>
+      <select id="dc-platform" bind:value={draftPlatform}>
+        <option value="postiz">Postiz</option>
+        <option value="meta">Meta</option>
+      </select>
+    </div>
+    <button class="btn-primary sm" onclick={createDraft} disabled={!draftContent.trim() || creatingDraft}>
+      {creatingDraft ? "Membuat..." : "Buat Draft"}
+    </button>
+    {#if draftResult}<p class="ok">{draftResult}</p>{/if}
+    <hr />
+    <h4>Jadwal Konten</h4>
+    <p class="hint">Dijadwalkan sebagai <strong>draft</strong> — tidak ada auto-posting (aturan keras).</p>
+    {#if $scheduleQueue.length === 0}
+      <p class="hint">Belum ada jadwal.</p>
+    {:else}
+      <ul class="sched-list">
+        {#each $scheduleQueue as item}
+          <li class="sched-item">
+            <div>
+              <strong>{item.title}</strong>
+              <span class="meta">{item.platform} · {item.scheduledAt}</span>
+            </div>
+            <span class="badge warn">draft</span>
+            <button class="icon-btn danger" onclick={() => removeSchedule(item.id)} aria-label="Hapus">×</button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    <div class="field">
+      <label for="sched-title">Judul konten</label>
+      <input id="sched-title" type="text" bind:value={schedTitle} placeholder="Contoh: Poster donasi Ramadhan" />
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label for="sched-platform">Platform</label>
+        <select id="sched-platform" bind:value={schedPlatform}>
+          <option value="instagram">Instagram</option>
+          <option value="threads">Threads</option>
+          <option value="facebook">Facebook</option>
+        </select>
+      </div>
+      <div class="field" style="flex:2">
+        <label for="sched-at">Jadwal</label>
+        <input id="sched-at" type="datetime-local" bind:value={schedAt} />
+      </div>
+    </div>
+    <button class="btn-primary sm" onclick={addSchedule} disabled={!schedTitle.trim() || !schedAt}>
+      + Jadwalkan Draft
+    </button>
+    </div>
+    {/if}
+  </section>
+    </aside>
+    <main class="workspace">
+<nav class="tab-nav">
+  <button class="tab-btn {activeTab === 'research' ? 'active' : ''}" onclick={() => (activeTab = 'research')}>📥 Input User</button>
+  <button class="tab-btn {activeTab === 'scripts' ? 'active' : ''}" onclick={() => (activeTab = 'scripts')}>📝 Script</button>
+  <button class="tab-btn {activeTab === 'storyboard' ? 'active' : ''}" onclick={() => (activeTab = 'storyboard')}>🎬 Storyboard</button>
+  <button class="tab-btn {activeTab === 'draft' ? 'active' : ''}" onclick={() => (activeTab = 'draft')}>👁 Review Draft</button>
+  <button class="tab-btn {activeTab === 'genimage' ? 'active' : ''}" onclick={() => (activeTab = 'genimage')}>🖼 Studio Gambar</button>
+  <button class="tab-btn {activeTab === 'suara' ? 'active' : ''}" onclick={() => (activeTab = 'suara')}>🎙 Studio Suara</button>
+  <button class="tab-btn {activeTab === 'timeline' ? 'active' : ''}" onclick={() => (activeTab = 'timeline')}>🎞 Studio Video</button>
+</nav>      <div class="tab-content">
+{#if activeTab === 'research'}
+      <div class="tab-pane">
+      <p class="hint">Tambahkan apa saja yang diinginkan — selebihnya OTOMATIS ditangani agen Kreatif.</p>
+      {#each $userInputs as r}
+        <div class="script-item">
+          <div class="script-head">
+            <strong>{r.title}</strong>
+            <span class="tag">{r.kind}</span>
+            <span class="spacer"></span>
+            <button class="icon-btn danger" onclick={() => removeInput(r.id)} aria-label="Hapus">×</button>
+          </div>
+          <p class="script-content">{r.content.slice(0, 200)}{r.content.length > 200 ? "..." : ""}</p>
+        </div>
+      {/each}
+      <div class="row">
+        <div class="field" style="flex:1">
+          <label for="inp-kind">Jenis</label>
+          <select id="inp-kind" bind:value={newInputKind}>
+            <option value="riset">Riset</option>
+            <option value="goal">Goal / Tujuan</option>
+            <option value="preferensi">Preferensi</option>
+            <option value="materi">Materi mentah</option>
+            <option value="lain">Lainnya</option>
+          </select>
+        </div>
+        <div class="field" style="flex:2">
+          <label for="inp-title">Judul</label>
+          <input id="inp-title" type="text" bind:value={newInputTitle} placeholder="Contoh: Kampanye donasi Ramadhan" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="inp-content">Isi</label>
+        <textarea id="inp-content" bind:value={newInputContent} rows="4"
+          placeholder="Tulis atau tempel di sini..."></textarea>
+      </div>
+      <button class="btn-primary sm" onclick={addInput} disabled={!newInputTitle.trim() || !newInputContent.trim()}>
+        + Tambah Input
+      </button>
+      </div>
+      {/if}
+{#if activeTab === 'scripts'}
+      <div class="tab-pane">
+      <p class="hint">Dihasilkan OTOMATIS oleh agen Kreatif dari input di atas. Setiap skrip otomatis menjadi sumber produksi media.</p>
+      {#if $prodScripts.length === 0}
+        <p class="hint">Belum ada skrip. Minta agen Kreatif di chat: "kembangkan riset menjadi skrip".</p>
+      {/if}
+      {#each $prodScripts as sc}
+        <div class="script-item">
+          <div class="script-head">
+            <strong>{sc.title}</strong>
+            <span class="tag">{sc.kind}</span>
+            <span class="status-{sc.status}">{sc.status === "draft" ? "Draft" : sc.status === "in_production" ? "Produksi" : "Selesai"}</span>
+            <span class="spacer"></span>
+            <button class="btn-ghost sm" onclick={() => scriptToStoryboard(sc)}>
+              → Storyboard
+            </button>
+          </div>
+          <p class="script-content">{sc.content.slice(0, 250)}{sc.content.length > 250 ? "..." : ""}</p>
+        </div>
+      {/each}
+      </div>
+      {/if}
+{#if activeTab === 'storyboard'}
+      <div class="tab-pane">
+      <p class="hint">Susun shot per scene ala storyboard film. Klik scene untuk edit detail.</p>
 
     {#if $storyboard.length > 0}
       <!-- Timeline strip ala Storyboarder -->
@@ -653,17 +736,10 @@
       </button>
     </div>
       </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("draft") }>
-      <h3>Review Draft</h3>
-      <span class="chevron">{openSections["draft"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["draft"]}
-    <div class="card-body">
-    {#if $storyboard.length === 0 && !imageUrl}
+      {/if}
+{#if activeTab === 'draft'}
+      <div class="tab-pane">
+      {#if $storyboard.length === 0 && !imageUrl}
       <p class="hint">Belum ada draft. Buat storyboard atau generate gambar dulu.</p>
     {:else}
       <p class="hint">
@@ -682,31 +758,10 @@
       </div>
     {/if}
       </div>
-    {/if}
-  </section>
-
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("timeline") }>
-      <h3>Timeline Editor</h3>
-      <span class="chevron">{openSections["timeline"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["timeline"]}
-    <div class="card-body">
-      <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
-      <TimelineEditor />
-    </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("genimage") }>
-      <h3>Generate Gambar</h3>
-      <span class="chevron">{openSections["genimage"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["genimage"]}
-    <div class="card-body">
-    <div class="field">
+      {/if}
+{#if activeTab === 'genimage'}
+      <div class="tab-pane">
+      <div class="field">
       <label for="studio-prompt">Prompt</label>
       <textarea id="studio-prompt" bind:value={prompt} rows="3"
         placeholder="Contoh: poster minimalis untuk kampanye donasi Ramadhan, warna biru dan emas"></textarea>
@@ -722,125 +777,21 @@
     </button>
     {#if error}<p class="err">{error}</p>{/if}
       </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("suara") }>
-      <h3>Studio Suara</h3>
-      <span class="chevron">{openSections["suara"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["suara"]}
-    <div class="card-body">
+      {/if}
+{#if activeTab === 'suara'}
+      <div class="tab-pane">
       <p class="hint">Voiceover AI lokal + clone suara + mastering otomatis + timeline multi-track.</p>
       <VoiceEditorView />
-    </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("social") }>
-      <h3>Integrasi Postiz / Meta</h3>
-      <span class="chevron">{openSections["social"] ? "\u25be" : "\u25b8"}</span>
-    </button>
-    {#if openSections["social"]}
-    <div class="card-body">
-    <p class="hint">Hanya membuat <strong>draft</strong> — tidak ada auto-posting.</p>
-    <h4>Postiz</h4>
-    <div class="field">
-      <label for="pz-url">API URL</label>
-      <input id="pz-url" type="text" bind:value={postizUrl} placeholder="https://postiz.example.com" />
-    </div>
-    <div class="field">
-      <label for="pz-key">API Key</label>
-      <input id="pz-key" type="password" bind:value={postizKey} placeholder="API key Postiz" />
-    </div>
-    <button class="btn-primary sm" onclick={savePostiz} disabled={!postizUrl.trim() || !postizKey.trim() || savingSocial}>
-      Simpan Postiz
-    </button>
-    <h4 style="margin-top:16px">Meta Business Suite</h4>
-    <div class="field">
-      <label for="mt-page">Page ID</label>
-      <input id="mt-page" type="text" bind:value={metaPageId} placeholder="Facebook Page ID" />
-    </div>
-    <div class="field">
-      <label for="mt-token">Page Access Token</label>
-      <input id="mt-token" type="password" bind:value={metaToken} placeholder="Token" />
-    </div>
-    <button class="btn-primary sm" onclick={saveMeta} disabled={!metaPageId.trim() || !metaToken.trim() || savingSocial}>
-      Simpan Meta
-    </button>
-    {#if socialSaved}<p class="ok">{socialSaved}</p>{/if}
-    <h4 style="margin-top:16px">Buat Draft</h4>
-    <div class="field">
-      <label for="dc-content">Konten</label>
-      <textarea id="dc-content" bind:value={draftContent} rows="3" placeholder="Tulis konten..."></textarea>
-    </div>
-    <div class="field">
-      <label for="dc-platform">Platform</label>
-      <select id="dc-platform" bind:value={draftPlatform}>
-        <option value="postiz">Postiz</option>
-        <option value="meta">Meta</option>
-      </select>
-    </div>
-    <button class="btn-primary sm" onclick={createDraft} disabled={!draftContent.trim() || creatingDraft}>
-      {creatingDraft ? "Membuat..." : "Buat Draft"}
-    </button>
-    {#if draftResult}<p class="ok">{draftResult}</p>{/if}
-    </div>
-    {/if}
-  </section>
-
-  <section class="card collapsible">
-    <button class="card-toggle" onclick={() => toggleSection("schedule") }>
-      <h3>Jadwal Konten</h3>
-      <span class="chevron">{openSections["schedule"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["schedule"]}
-    <div class="card-body">
-    <p class="hint">Dijadwalkan sebagai <strong>draft</strong> — tidak ada auto-posting (aturan keras).</p>
-    {#if $scheduleQueue.length === 0}
-      <p class="hint">Belum ada jadwal.</p>
-    {:else}
-      <ul class="sched-list">
-        {#each $scheduleQueue as item}
-          <li class="sched-item">
-            <div>
-              <strong>{item.title}</strong>
-              <span class="meta">{item.platform} · {item.scheduledAt}</span>
-            </div>
-            <span class="badge warn">draft</span>
-            <button class="icon-btn danger" onclick={() => removeSchedule(item.id)} aria-label="Hapus">×</button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-    <div class="field">
-      <label for="sched-title">Judul konten</label>
-      <input id="sched-title" type="text" bind:value={schedTitle} placeholder="Contoh: Poster donasi Ramadhan" />
-    </div>
-    <div class="row">
-      <div class="field" style="flex:1">
-        <label for="sched-platform">Platform</label>
-        <select id="sched-platform" bind:value={schedPlatform}>
-          <option value="instagram">Instagram</option>
-          <option value="threads">Threads</option>
-          <option value="facebook">Facebook</option>
-        </select>
       </div>
-      <div class="field" style="flex:2">
-        <label for="sched-at">Jadwal</label>
-        <input id="sched-at" type="datetime-local" bind:value={schedAt} />
+      {/if}
+{#if activeTab === 'timeline'}
+      <div class="tab-pane">
+      <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
+      <TimelineEditor />
       </div>
-    </div>
-    <button class="btn-primary sm" onclick={addSchedule} disabled={!schedTitle.trim() || !schedAt}>
-      + Jadwalkan Draft
-    </button>
+      {/if}
       </div>
-    {/if}
-  </section>
-
-  {#if imageUrl}
+      {#if imageUrl}
     <section class="card">
       <h3>Hasil</h3>
       <div class="card-body">
@@ -852,13 +803,8 @@
       </div>
       </div>
   </section>
-  {/if}
-{#if editingImage}
-  <ImageEditor src={editingImage} onClose={() => (editingImage = null)} />
-{/if}
-{#if editingVideo}
-  <VideoEditor scenes={$storyboard} onClose={() => (editingVideo = false)} />
-{/if}
+    </main>
+  </div>
 </div>
 
 <style>
@@ -892,6 +838,26 @@
   .row { display: flex; gap: 8px; align-items: center; }
   .row input { flex: 1; }
   .duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 12px; }
+  .studio-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  .sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto; }
+  .side-card { margin-bottom: 0 !important; }
+  .side-card .card-toggle h3 { font-size: 14px; }
+  .side-body { font-size: 13px; }
+  .side-body h4 { margin: 12px 0 8px; font-size: 14px; }
+  .side-body h4:first-child { margin-top: 0; }
+  .side-body hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .workspace { min-width: 0; }
+  .tab-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab-btn { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .tab-btn:hover { background: var(--hover); }
+  .tab-btn.active { background: #4FA6F0; border-color: #4FA6F0; color: #fff; }
+  .tab-content { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .tab-pane { animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @media (max-width: 900px) {
+    .studio-layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; max-height: none; }
+  }
   .duo-row .card.collapsible { margin-bottom: 0; }
   @media (max-width: 860px) { .duo-row { grid-template-columns: 1fr; } }
   .field { margin-bottom: 12px; }
