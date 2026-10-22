@@ -25,13 +25,13 @@
     const q = pxQuery.trim();
     if (!q || pxSearching) return;
     pxSearching = true;
-    pxError = "";
-    pxResults = [];
+    vpxError = "";
+    vpxResults = [];
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const res = await invoke<any>("pixabay_search_images", { query: q, perPage: 12 });
       const hits = Array.isArray(res?.hits) ? res.hits : [];
-      pxResults = hits.map((h: any) => ({
+      vpxResults = hits.map((h: any) => ({
         id: h.id,
         preview: h.previewURL || h.webformatURL,
         full: h.largeImageURL || h.webformatURL,
@@ -39,7 +39,7 @@
       }));
       if (pxResults.length === 0) pxError = "Tidak ada hasil untuk \"" + q + "\".";
     } catch (e) {
-      pxError = String(e);
+      vpxError = String(e);
     } finally {
       pxSearching = false;
     }
@@ -118,10 +118,10 @@
   // Footage: stok (Pixabay/Pexels) atau AI text-to-video (Wan/LTX via fal.ai)
   type FootageSrc = "stock" | "ai";
   let footageSrc = $state<FootageSrc>("stock");
-  let pxQuery = $state("");
-  let pxResults = $state<{ url: string; preview: string }[]>([]);
-  let pxBusy = $state(false);
-  let pxError = $state("");
+  let vpxQuery = $state("");
+  let vpxResults = $state<{ url: string; preview: string }[]>([]);
+  let vpxBusy = $state(false);
+  let vpxError = $state("");
   let pickedVideos = $state<string[]>([]);
   let aiPrompt = $state("");
   let aiModel = $state<"wan" | "ltx">("wan");
@@ -139,24 +139,24 @@
   let renderError = $state("");
 
   async function searchStock() {
-    if (!pxQuery.trim() || pxBusy) return;
-    pxBusy = true;
+    if (!vpxQuery.trim() || vpxBusy) return;
+    vpxBusy = true;
     pxError = "";
     pxResults = [];
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const raw = await invoke<string>("pixabay_search_videos", { query: pxQuery.trim(), perPage: 12 });
+      const raw = await invoke<string>("pixabay_search_videos", { query: vpxQuery.trim(), perPage: 12 });
       const j = JSON.parse(raw);
       const hits = j.hits ?? j.videos ?? [];
       pxResults = hits.map((h: any) => ({
         url: h.url ?? h.videos?.medium?.url ?? "",
         preview: h.previewURL ?? h.preview ?? h.userImageURL ?? "",
       })).filter((r: any) => r.url);
-      if (pxResults.length === 0) pxError = "Tidak ada hasil.";
+      if (vpxResults.length === 0) vpxError = "Tidak ada hasil.";
     } catch (e) {
       pxError = String(e);
     } finally {
-      pxBusy = false;
+      vpxBusy = false;
     }
   }
   async function genAiVideo() {
@@ -850,7 +850,7 @@
         {pxSearching ? "..." : "Cari"}
       </button>
     </div>
-    {#if pxError}<p class="err">{pxError}</p>{/if}
+    {#if vpxError}<p class="err">{vpxError}</p>{/if}
     {#if pxResults.length > 0}
       <div class="px-grid">
         {#each pxResults as h}
@@ -890,15 +890,15 @@
       </div>
       {#if footageSrc === "stock"}
         <div class="row">
-          <input type="text" bind:value={pxQuery} placeholder="Cari footage: pantai, kota, masjid..."
+          <input type="text" bind:value={vpxQuery} placeholder="Cari footage: pantai, kota, masjid..."
             onkeydown={(e) => { if (e.key === "Enter") searchStock(); }} class="grow" />
-          <button class="btn-primary sm" onclick={searchStock} disabled={pxBusy || !pxQuery.trim()}>
-            {pxBusy ? "..." : "Cari"}
+          <button class="btn-primary sm" onclick={searchStock} disabled={vpxBusy || !vpxQuery.trim()}>
+            {vpxBusy ? "..." : "Cari"}
           </button>
         </div>
         {#if pxError}<p class="err">{pxError}</p>{/if}
         <div class="px-grid">
-          {#each pxResults as r}
+          {#each vpxResults as r}
             <div class="px-card">
               {#if r.preview}<img src={r.preview} alt="preview" />{/if}
               <button class="btn-ghost sm" onclick={() => { if (!pickedVideos.includes(r.url)) pickedVideos = [...pickedVideos, r.url]; }}>+ Pakai</button>
