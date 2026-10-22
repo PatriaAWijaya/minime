@@ -185,7 +185,7 @@ export const agentProvider = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-provider", agentProvider);
 
-/* ---------- Brand Kit (AI Media Studio) ---------- */
+/* ---------- Brand Kit (Media Studio) ---------- */
 export interface BrandKit {
   primary: string;
   secondary: string;
@@ -212,7 +212,7 @@ brandKit.subscribe((v) => {
   } catch {}
 });
 
-/* ---------- Storyboard (AI Media Studio) ---------- */
+/* ---------- Storyboard (Media Studio) ---------- */
 export interface Scene {
   id: number;
   duration: number;
@@ -234,7 +234,7 @@ storyboard.subscribe((v) => {
 });
 let sceneSeq = 1;
 
-/* ---------- Scheduler (AI Media Studio) ----------
+/* ---------- Scheduler (Media Studio) ----------
    Aturan keras: TIDAK ADA auto-posting. Scheduler hanya membuat DRAFT. */
 export interface ScheduledItem {
   id: number;

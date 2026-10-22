@@ -225,7 +225,7 @@
 
 <div class="studio">
   <header class="studio-head">
-    <h2>AI Media Studio</h2>
+    <h2>Media Studio</h2>
     <p class="lede">Pipeline: goal → script → storyboard → aset → edit → jadwal.</p>
   </header>
 
@@ -265,7 +265,7 @@
     </button>
     {#if openSections["koneksi"]}
     <div class="card-body">
-    <p class="hint">Status koneksi 9 tools AI Media Studio.</p>
+    <p class="hint">Status koneksi 9 tools Media Studio.</p>
     <div class="conn-list">
       {#each toolStatus as t}
         <div class="conn-row">
@@ -560,7 +560,7 @@
 </div>
 
 <style>
-  .studio { padding: 24px; max-width: 720px; height: 100%; overflow-y: auto; }
+  .studio { padding: 24px; width: 100%; height: 100%; overflow-y: auto; box-sizing: border-box; }
   .card.collapsible { padding: 0; overflow: hidden; }
   .card-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between;
