@@ -209,40 +209,6 @@ pub fn now_epoch() -> u64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn b64url_vectors() {
-        assert_eq!(b64url(b""), "");
-        assert_eq!(b64url(b"f"), "Zg");
-        assert_eq!(b64url(b"fo"), "Zm8");
-        assert_eq!(b64url(b"foo"), "Zm9v");
-        assert_eq!(b64url(&[0xfb, 0xff]), "-_8");
-    }
-
-    #[test]
-    fn pkce_matches_rfc7636_vector() {
-        // RFC 7636 Appendix B.
-        assert_eq!(
-            pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
-            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
-        );
-    }
-
-    #[test]
-    fn url_roundtrip() {
-        assert_eq!(url_decode("a+b%20c%2F"), "a b c/");
-        assert_eq!(url_encode("a b/c"), "a%20b%2Fc");
-    }
-
-    #[test]
-    fn query_parsing() {
-        let m = parse_query("code=abc&state=xyz&empty=");
-        assert_eq!(m["code"], "abc");
-        assert_eq!(m["state"], "xyz");
-    }
-}
 
 /// Write a secret to the macOS keychain via Apple's `security` CLI.
 /// Fallback for ad-hoc-signed binaries where the keyring crate fails closed
@@ -294,5 +260,39 @@ pub fn security_cli_read(service: &str, account: &str) -> Option<String> {
         None
     } else {
         Some(pw)
+    }
+}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn b64url_vectors() {
+        assert_eq!(b64url(b""), "");
+        assert_eq!(b64url(b"f"), "Zg");
+        assert_eq!(b64url(b"fo"), "Zm8");
+        assert_eq!(b64url(b"foo"), "Zm9v");
+        assert_eq!(b64url(&[0xfb, 0xff]), "-_8");
+    }
+
+    #[test]
+    fn pkce_matches_rfc7636_vector() {
+        // RFC 7636 Appendix B.
+        assert_eq!(
+            pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+        );
+    }
+
+    #[test]
+    fn url_roundtrip() {
+        assert_eq!(url_decode("a+b%20c%2F"), "a b c/");
+        assert_eq!(url_encode("a b/c"), "a%20b%2Fc");
+    }
+
+    #[test]
+    fn query_parsing() {
+        let m = parse_query("code=abc&state=xyz&empty=");
+        assert_eq!(m["code"], "abc");
+        assert_eq!(m["state"], "xyz");
     }
 }

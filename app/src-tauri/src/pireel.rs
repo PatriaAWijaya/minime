@@ -6,7 +6,7 @@
 //!   - Resource metadata:  `https://pireel.com/.well-known/oauth-protected-resource`
 //!   - Server metadata:    `https://pireel.com/.well-known/oauth-authorization-server`
 //!     (authorization / token / dynamic-client-registration endpoints,
-//!    public clients via `token_endpoint_auth_method: none` + PKCE S256)
+//!     public clients via `token_endpoint_auth_method: none` + PKCE S256)
 //!
 //! Each Minime user connects their OWN Pireel account (Free tier: 20
 //! credits/day). Tokens are stored in the OS keychain (service
