@@ -109,13 +109,47 @@ fn default_allowlists() -> HashMap<String, Vec<String>> {
 fn known_tools() -> Vec<(String, String, String, bool, bool)> {
     // Patria 21 Okt: hanya tool yang benar-benar ada dan terbukti bekerja.
     // meta/postiz = draft-only by design; pireel/drive = OAuth nyata; browser = fetch nyata.
+    // 22 Okt: tools Media Studio dipindah ke sini (satu registry, tanpa duplikat).
+    // postiz & meta TIDAK diduplikat — sudah ada di atas.
     vec![
         ("meta".into(), "Meta".into(), "social".into(), true, true),
         ("postiz".into(), "Postiz".into(), "social".into(), true, true),
         ("pireel".into(), "Pireel".into(), "video".into(), true, false),
         ("drive".into(), "Google Drive".into(), "storage".into(), true, false),
         ("browser".into(), "Browser".into(), "web".into(), false, false),
+        ("pixabay".into(), "Pixabay".into(), "media".into(), true, false),
+        ("ffmpeg".into(), "FFmpeg".into(), "media".into(), false, false),
+        ("whisper".into(), "auto-subtitle".into(), "media".into(), false, false),
+        ("arbotts".into(), "arboTTS".into(), "media".into(), false, false),
+        ("sdimage".into(), "Image Gen (SD)".into(), "media".into(), false, false),
     ]
+}
+
+/// Status koneksi NYATA untuk tools media (cek kondisi aktual, bukan toggle manual).
+/// Tools lain tetap memakai toggle registry.
+fn real_connected(tool_id: &str) -> Option<bool> {
+    match tool_id {
+        "pixabay" => Some(
+            crate::secrets::api_key("minime.pixabay_key")
+                .map(|k| !k.trim().is_empty())
+                .unwrap_or(false),
+        ),
+        "ffmpeg" => Some(crate::providers::which_ffmpeg().is_some()),
+        "whisper" => Some(crate::providers::which_auto_subtitle().is_some()),
+        "arbotts" => Some(crate::providers::which_arbotts().is_some()),
+        "sdimage" => {
+            let home = std::env::var("HOME").unwrap_or_default();
+            let bin = std::path::Path::new("/Users/mac/.minime/sd/sd-server").exists()
+                || std::path::Path::new(&format!("{}/.minime/sd/sd-server", home)).exists();
+            let model = std::path::Path::new(&format!(
+                "{}/.minime/sd/models/sd-turbo.safetensors",
+                home
+            ))
+            .exists();
+            Some(bin && model)
+        }
+        _ => None,
+    }
 }
 
 #[tauri::command]
@@ -124,7 +158,8 @@ pub fn list_tools(registry: State<ToolRegistry>) -> Vec<ToolInfo> {
     known_tools()
         .into_iter()
         .map(|(id, name, category, requires_auth, draft_only)| ToolInfo {
-            connected: status.get(&id).copied().unwrap_or(false),
+            // Tools media: status nyata dari kondisi aktual; lainnya dari toggle.
+            connected: real_connected(&id).unwrap_or_else(|| status.get(&id).copied().unwrap_or(false)),
             id,
             name,
             category,
@@ -136,6 +171,9 @@ pub fn list_tools(registry: State<ToolRegistry>) -> Vec<ToolInfo> {
 
 #[tauri::command]
 pub fn get_tool_status(tool_id: String, registry: State<ToolRegistry>) -> bool {
+    if let Some(real) = real_connected(&tool_id) {
+        return real;
+    }
     registry
         .status
         .lock()
@@ -154,6 +192,10 @@ pub fn set_tool_connected(
     let known: Vec<String> = known_tools().into_iter().map(|(id, _, _, _, _)| id).collect();
     if !known.contains(&tool_id) {
         return Err(format!("Tool tidak dikenal: {}", tool_id));
+    }
+    // Tools media memakai status nyata — toggle manual ditolak agar tidak tumpang tindih.
+    if real_connected(&tool_id).is_some() {
+        return Err("Status tool ini otomatis dari kondisi aktual.".to_string());
     }
     registry
         .status

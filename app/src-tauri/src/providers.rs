@@ -903,7 +903,7 @@ pub async fn render_slideshow(images: Vec<String>, duration_per: f64, output_nam
     out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path output tidak valid.".to_string())
 }
 
-fn which_ffmpeg() -> Option<String> {
+pub(crate) fn which_ffmpeg() -> Option<String> {
     for p in ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"] {
         if std::path::Path::new(p).exists() {
             return Some(p.to_string());
@@ -960,7 +960,7 @@ pub async fn generate_subtitle(video_path: String, model: String) -> Result<Stri
     Err("File output tidak ditemukan.".to_string())
 }
 
-fn which_auto_subtitle() -> Option<String> {
+pub(crate) fn which_auto_subtitle() -> Option<String> {
     for p in [
         "/Library/Frameworks/Python.framework/Versions/3.13/bin/auto_subtitle",
         "/opt/homebrew/bin/auto_subtitle",
@@ -1041,7 +1041,7 @@ pub async fn generate_voiceover(text: String, persona: String, output_name: Stri
     out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
 }
 
-fn which_arbotts() -> Option<String> {
+pub(crate) fn which_arbotts() -> Option<String> {
     for p in [
         "/Library/Frameworks/Python.framework/Versions/3.13/bin/arbotts",
         "/opt/homebrew/bin/arbotts",
@@ -1052,65 +1052,6 @@ fn which_arbotts() -> Option<String> {
         }
     }
     None
-}
-
-#[derive(serde::Serialize)]
-pub struct ToolStatus {
-    pub id: String,
-    pub name: String,
-    pub connected: bool,
-    pub detail: String,
-}
-
-/// Connection status for the 9 AI Media Studio tools.
-#[tauri::command]
-pub fn get_media_tool_status() -> Vec<ToolStatus> {
-    let pixabay_ok = crate::secrets::api_key("minime.pixabay_key")
-        .map(|k| !k.trim().is_empty()).unwrap_or(false);
-    let postiz_ok = crate::secrets::api_key("minime.postiz_url")
-        .map(|u| !u.trim().is_empty()).unwrap_or(false)
-        && crate::secrets::api_key("minime.postiz_key")
-        .map(|k| !k.trim().is_empty()).unwrap_or(false);
-    let meta_ok = crate::secrets::api_key("minime.meta_page_id")
-        .map(|p| !p.trim().is_empty()).unwrap_or(false)
-        && crate::secrets::api_key("minime.meta_token")
-        .map(|t| !t.trim().is_empty()).unwrap_or(false);
-    let sd_bin = std::path::Path::new("/Users/mac/.minime/sd/sd-server").exists()
-        || std::path::Path::new(&format!("{}/.minime/sd/sd-server",
-            std::env::var("HOME").unwrap_or_default())).exists();
-    let sd_model = std::path::Path::new(&format!("{}/.minime/sd/models/sd-turbo.safetensors",
-        std::env::var("HOME").unwrap_or_default())).exists();
-
-    vec![
-        ToolStatus { id: "ffmpeg".into(), name: "FFmpeg (render video)".into(),
-            connected: which_ffmpeg().is_some(),
-            detail: if which_ffmpeg().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
-        ToolStatus { id: "subtitle".into(), name: "auto-subtitle (Whisper)".into(),
-            connected: which_auto_subtitle().is_some(),
-            detail: if which_auto_subtitle().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
-        ToolStatus { id: "pixabay".into(), name: "Pixabay API (stock media)".into(),
-            connected: pixabay_ok,
-            detail: if pixabay_ok { "API key tersimpan".into() } else { "Butuh API key gratis".into() } },
-        ToolStatus { id: "tts".into(), name: "arboTTS (voiceover ID)".into(),
-            connected: which_arbotts().is_some(),
-            detail: if which_arbotts().is_some() { "Terinstall".into() } else { "Belum terinstall".into() } },
-        ToolStatus { id: "thumbnail".into(), name: "Thumbnail Generator".into(),
-            connected: true,
-            detail: "Via Python Pillow".into() },
-        ToolStatus { id: "postiz".into(), name: "Postiz (draft)".into(),
-            connected: postiz_ok,
-            detail: if postiz_ok { "Terkoneksi".into() } else { "Butuh URL + API key".into() } },
-        ToolStatus { id: "meta".into(), name: "Meta Business Suite (draft)".into(),
-            connected: meta_ok,
-            detail: if meta_ok { "Terkoneksi".into() } else { "Butuh Page ID + token".into() } },
-        ToolStatus { id: "imagegen".into(), name: "Image Gen (SD lokal)".into(),
-            connected: sd_bin && sd_model,
-            detail: if sd_bin && sd_model { "Siap".into() }
-                else if sd_bin { "Model sedang diunduh...".into() }
-                else { "Belum terinstall".into() } },
-        ToolStatus { id: "editors".into(), name: "Image & Video Editor".into(),
-            connected: true, detail: "Built-in".into() },
-    ]
 }
 
 // ---------------------------------------------------------------------------

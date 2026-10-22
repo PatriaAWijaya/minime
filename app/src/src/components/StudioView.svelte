@@ -287,40 +287,6 @@
     finally { creatingDraft = false; }
   }
 
-  let toolStatus = $state<Array<{id:string;name:string;connected:boolean;detail:string}>>([]);
-  let pixabayKey = $state("");
-  let savingPx = $state(false);
-  let pxSaveMsg = $state("");
-  let pxSaveOk = $state(false);
-
-  async function loadToolStatus() {
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      toolStatus = await invoke("get_media_tool_status");
-    } catch (e) { console.error(e); }
-  }
-
-  async function savePixabay() {
-    const k = pixabayKey.trim();
-    if (!k) return;
-    savingPx = true;
-    pxSaveMsg = "";
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_pixabay_key", { apiKey: k });
-      pixabayKey = "";
-      pxSaveOk = true;
-      pxSaveMsg = "API key tersimpan di keychain.";
-      await loadToolStatus();
-    } catch (e) {
-      pxSaveOk = false;
-      pxSaveMsg = "Gagal menyimpan: " + String(e);
-    }
-    finally { savingPx = false; }
-  }
-
-  $effect(() => { loadToolStatus(); });
-
   // Collapsible sections
   let openSections = $state<Record<string, boolean>>({ pipeline: true, planner: true });
   let activeTab = $state("research");
@@ -378,40 +344,6 @@
         {#if i < STAGES.length - 1}<span class="pipe-arrow">→</span>{/if}
       {/each}
     </div>
-    </div>
-    {/if}
-  </section>
-  <section class="card collapsible side-card">
-    <button class="card-toggle" onclick={() => toggleSection("koneksi") }>
-      <h3>Koneksi Tools</h3>
-      <span class="chevron">{openSections["koneksi"] ? "▾" : "▸"}</span>
-    </button>
-    {#if openSections["koneksi"]}
-    <div class="card-body side-body">
-    <p class="hint">Status koneksi 9 tools Media Studio.</p>
-    <div class="conn-list">
-      {#each toolStatus as t}
-        <div class="conn-row">
-          <span class="dot {t.connected ? 'on' : 'off'}"></span>
-          <div class="conn-info">
-            <strong>{t.name}</strong>
-            <span class="conn-detail">{t.detail}</span>
-          </div>
-          <span class="badge {t.connected ? 'ok' : 'warn'}">{t.connected ? "Terhubung" : "Belum"}</span>
-        </div>
-      {/each}
-    </div>
-    <div class="field" style="margin-top:12px">
-      <label for="px-key">Pixabay API Key (gratis di pixabay.com/api/docs)</label>
-      <div class="row">
-        <input id="px-key" type="password" bind:value={pixabayKey} placeholder="API key Pixabay" />
-        <button class="btn-primary sm" onclick={savePixabay} disabled={!pixabayKey.trim() || savingPx}>
-          {savingPx ? "..." : "Simpan"}
-        </button>
-      </div>
-      {#if pxSaveMsg}<p class={pxSaveOk ? "ok" : "err"}>{pxSaveMsg}</p>{/if}
-    </div>
-    <button class="btn-ghost sm" onclick={loadToolStatus}>Refresh Status</button>
     </div>
     {/if}
   </section>

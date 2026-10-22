@@ -492,7 +492,6 @@ fn main() {
             providers::generate_subtitle,
             providers::generate_thumbnail,
             providers::generate_voiceover,
-            providers::get_media_tool_status,
             providers::provider_catalog,
             providers::fetch_provider_models,
             providers::ollama_pull_model,

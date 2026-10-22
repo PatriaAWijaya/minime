@@ -110,6 +110,8 @@
   }
 
   /* ---------------- Apps tab ---------------- */
+  /** Tools media: status otomatis dari kondisi aktual (tanpa toggle manual). */
+  const MEDIA_TOOLS = ["pixabay", "ffmpeg", "whisper", "arbotts", "sdimage"];
   const apps = $derived(
     ($toolInfos ?? [])
       .map((ti) => ({
@@ -149,6 +151,31 @@
   });
   function connectRuangapiForm() {
     connectRuangapi(raKey);
+  }
+
+  // Pixabay API key form (pindah dari Media Studio, Patria 22 Okt).
+  let pxKey = $state("");
+  let pxSaving = $state(false);
+  let pxMsg = $state("");
+  let pxOk = $state(false);
+  async function savePixabayKey() {
+    const k = pxKey.trim();
+    if (!k || pxSaving) return;
+    pxSaving = true;
+    pxMsg = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_pixabay_key", { apiKey: k });
+      pxKey = "";
+      pxOk = true;
+      pxMsg = $t("tools.pixabay.saved");
+      await refreshTools();
+    } catch (e) {
+      pxOk = false;
+      pxMsg = $t("tools.pixabay.saveFail") + ": " + String(e);
+    } finally {
+      pxSaving = false;
+    }
   }
 
   /* ---------------- Skills tab ---------------- */
@@ -362,6 +389,14 @@
                     {$t("mkt.drive.connect")}
                   </button>
                 {/if}
+              {:else if MEDIA_TOOLS.includes(app.id)}
+              <span class="mkt-add" class:added={app.connected} role="status">
+                {#if app.connected}
+                  ✓ {$t("mkt.connected")}
+                {:else}
+                  {$t("mkt.notConnected")}
+                {/if}
+              </span>
               {:else}
               <button
                 class="mkt-add"
@@ -508,6 +543,32 @@
                 </div>
                 {#if $ruangapiConnected}
                   <span class="ok-note" role="status">{$t("tools.ruangapi.connected")}</span>
+                {/if}
+              </div>
+            {/if}
+            {#if app.id === "pixabay"}
+              <div class="ra-form">
+                <div class="field">
+                  <label for="px-key">{$t("tools.pixabay.key")}</label>
+                  <input
+                    id="px-key"
+                    type="password"
+                    bind:value={pxKey}
+                    placeholder={$t("tools.pixabay.keyPh")}
+                    autocomplete="off"
+                    spellcheck={false}
+                  />
+                </div>
+                <div class="ra-actions">
+                  <button class="btn-ghost" onclick={savePixabayKey} disabled={!pxKey.trim() || pxSaving}>
+                    {pxSaving ? "..." : $t("tools.connect")}
+                  </button>
+                  <a class="link" href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">
+                    {$t("tools.pixabay.docs")}
+                  </a>
+                </div>
+                {#if pxMsg}
+                  <span class={pxOk ? "ok-note" : "err-note"} role="status">{pxMsg}</span>
                 {/if}
               </div>
             {/if}

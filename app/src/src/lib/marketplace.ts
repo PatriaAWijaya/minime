@@ -47,6 +47,11 @@ export const APP_TILES: Record<string, { color: string; glyph: string }> = {
   canva: { color: "#0EA5E9", glyph: "C" },
   ruangapi: { color: "#0EA5E9", glyph: "R" },
   browser: { color: "#4FA6F0", glyph: "B" },
+  pixabay: { color: "#2EC66D", glyph: "Px" },
+  ffmpeg: { color: "#1F2937", glyph: "Ff" },
+  whisper: { color: "#7C3AED", glyph: "Wh" },
+  arbotts: { color: "#EA580C", glyph: "Ar" },
+  sdimage: { color: "#4FA6F0", glyph: "Sd" },
 };
 
 /** Backend category id -> i18n label key. */
@@ -60,6 +65,7 @@ export const APP_CAT_KEYS: Record<string, string> = {
   design: "mkt.cat.design",
   api: "mkt.cat.data",
   web: "mkt.cat.research",
+  media: "mkt.cat.media",
 };
 
 /** Which tools have a per-language description key (tools.<id>Desc). */
