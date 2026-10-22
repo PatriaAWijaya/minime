@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="branding/minime-logo.png" alt="Minime" width="320" />
+</p>
+
 # Minime — AI Studio with Purpose
 
 Minime adalah AI studio dengan tujuan: aplikasi desktop local-first yang
