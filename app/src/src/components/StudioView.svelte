@@ -453,7 +453,7 @@
   </section>
   <section class="card collapsible side-card">
     <button class="card-toggle" onclick={() => toggleSection("planner") }>
-      <h3>📅 Planner</h3>
+      <h3>Planner</h3>
       <span class="chevron">{openSections["planner"] ? "▾" : "▸"}</span>
     </button>
     {#if openSections["planner"]}
@@ -843,7 +843,11 @@
   .sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto; }
   .side-card { margin-bottom: 0 !important; }
   .side-card .card-toggle h3 { font-size: 14px; }
-  .side-body { font-size: 13px; }
+  .side-body { font-size: 13px; max-height: 320px; overflow-y: auto; padding-right: 8px; }
+  .side-body::-webkit-scrollbar { width: 8px; }
+  .side-body::-webkit-scrollbar-track { background: transparent; }
+  .side-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .side-body::-webkit-scrollbar-thumb:hover { background: #4FA6F0; }
   .side-body h4 { margin: 12px 0 8px; font-size: 14px; }
   .side-body h4:first-child { margin-top: 0; }
   .side-body hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
