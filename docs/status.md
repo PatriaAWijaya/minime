@@ -2293,3 +2293,15 @@ Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
 - **Command registry**: semua `invoke()` frontend terdaftar di backend (12 command dicek, semua ✓ — 3 di main.rs sebagai fn privat).
 - **Bundle**: debug 57M, 2 bundles selesai, bundle-skills.sh ✓.
 - App di-restart dengan cache WebView dibersihkan — proses berjalan stabil, tanpa crash/panic di log sistem.
+
+## 23 Okt 2026 ~00:45 — ImageEditor ala Doory (tiru ide, kode clean-room; perintah Patria)
+Fitur Doory yang diadopsi ke Studio Gambar Minime:
+- **Lapisan (Layers)**: model object — teks/bentuk/QR sebagai elemen terpisah yang bisa diklik, diseret, di-resize (sudut), di-duplikat. Panel Lapisan: tampil/sembunyi, kunci, naik/turun urutan, hapus.
+- **Bentuk (Shapes)**: kotak, lingkaran, garis, panah — isi/garis warna, tebal garis, putar.
+- **Teks++**: font (4 pilihan), bold/italic, outline, bayangan, latar pill, putar. Elemen teks bisa dipindah/di-resize langsung di kanvas.
+- **QR Code**: generator QR (lib qrcode) — warna & latar kustom, jadi elemen movable.
+- **Template**: 6 starter (Kutipan, Promo, Story, Thumbnail, Undangan, Kosong) — satu klik mengisi kanvas.
+- Elemen ikut berputar/terbalik/crop dengan benar; undo/redo mencakup elemen (serialisasi JSON).
+- Yang lama tetap: Sesuaikan, Pangkas, Putar/Balik, Kuas, Filter.
+- Build: vite ✓, clippy 0, test 49/49, bundle debug ✓, app restart ✓.
+- Pasangan SHA: lokal 674cb02 ↔ remote c07db15; chore: lokal ffda2d5 ↔ remote 8ec49b4 (tree identik).
