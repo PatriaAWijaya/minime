@@ -2273,3 +2273,8 @@ Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
 - Solusi: migrasi satu-kali (`islandMigrated23Okt`) — saat app dibuka, `islandNotch` dan `islandIdle` di-reset ke `true` bila belum pernah dimigrasi. Setelah itu user bebas mematikannya dari Pengaturan > Dynamic Island.
 - Mode "idle" menampilkan pill "Halo, Patria / Minime siap membantu" di bawah menu bar (posisi notch-style).
 - Pasangan SHA: lokal f81c27c ↔ remote bffdd74 (tree identik).
+
+## 23 Okt 2026 ~00:20 — Koreksi: default Dynamic Island NON-AKTIF (perintah Patria)
+- Koreksi dari entri sebelumnya: yang diminta adalah default TIDAK aktif, bukan aktif.
+- `islandNotch` dan `islandIdle` default menjadi `false`; migrasi satu-kali me-reset keduanya ke non-aktif. User mengaktifkannya manual dari Pengaturan > Dynamic Island bila dibutuhkan.
+- Pasangan SHA: lokal 48bb057 ↔ remote a066a8b (tree identik).
