@@ -934,3 +934,32 @@ fn which_auto_subtitle() -> Option<String> {
     }
     None
 }
+
+/// Generate thumbnail YouTube via youtube-thumbnail-generator.
+/// title: teks utama, output_name: nama file.
+/// Return: path file PNG hasil.
+#[tauri::command]
+pub async fn generate_thumbnail(title: String, output_name: String) -> Result<String, String> {
+    let out_dir = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let safe_name: String = output_name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
+    let out_path = out_dir.join(format!("{}.png", if safe_name.is_empty() { "thumb".to_string() } else { safe_name }));
+
+    // Gunakan Python API langsung
+    let py_code = format!(
+        "from youtube_thumbnail_generator import generate_thumbnail as gen; gen('{}', '{}')",
+        title.replace('\'', "\\'"),
+        out_path.to_str().unwrap().replace('\'', "\\'")
+    );
+    let status = tokio::process::Command::new("python3")
+        .args(["-c", &py_code])
+        .env("PATH", format!("/Library/Frameworks/Python.framework/Versions/3.13/bin:/opt/homebrew/bin:/usr/local/bin:{}", std::env::var("PATH").unwrap_or_default()))
+        .status()
+        .await
+        .map_err(|e| format!("Gagal menjalankan thumbnail generator: {}", e))?;
+
+    if !status.success() || !out_path.exists() {
+        return Err("Thumbnail generator gagal.".to_string());
+    }
+    out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
+}

@@ -489,6 +489,7 @@ fn main() {
             providers::set_dalle_key,
             providers::render_slideshow,
             providers::generate_subtitle,
+            providers::generate_thumbnail,
             social::create_postiz_draft,
             social::create_meta_draft,
             social::set_postiz_config,
