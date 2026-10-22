@@ -382,8 +382,8 @@
   let modelSectionOpen = $state<ModelSection | null>("opencode");
   let modelAddFor = $state<ModelSection | null>(null);
   let newModelName = $state("");
-  let ollamaModels = $state<Array<{id: string; size: string; modified: string}>>([]);
-  let opencodeModels = $state<Array<{id: string; name: string; context: string}>>([]);
+  let ollamaInstalled = $state<Array<{id: string; size: string; modified: string}>>([]);
+  let opencodeFree = $state<Array<{id: string; name: string; context: string}>>([]);
   let pullingModel = $state<string | null>(null);
   let modelsLoading = $state(false);
   let premiumExpanded = $state<string | null>(null);
@@ -400,8 +400,8 @@
         invoke<Array<{id: string; size: string; modified: string}>>("ollama_installed_models").catch(() => []),
         invoke<Array<{id: string; name: string; context: string}>>("opencode_free_models").catch(() => []),
       ]);
-      ollamaModels = oll;
-      opencodeModels = opc;
+      ollamaInstalled = oll;
+      opencodeFree = opc;
     } catch {} finally {
       modelsLoading = false;
     }
@@ -685,10 +685,10 @@
                 {modelsLoading ? "..." : "↻"}
               </button>
             </div>
-            {#if ollamaModels.length === 0}
+            {#if ollamaInstalled.length === 0}
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Ollama tidak jalan atau belum ada model terinstall."}</p>
             {/if}
-            {#each ollamaModels as m}
+            {#each ollamaInstalled as m}
               <div class="xiryn-model-row">
                 <div class="xiryn-model-meta">
                   <span class="xiryn-model-name">{m.id}</span>
@@ -719,10 +719,10 @@
           <div class="xiryn-sec">
             <span class="group-label">OpenCode — Gratis (Zen)</span>
             <p class="hint-sm">Model free dari OpenCode Zen, tanpa API key. Daftar real dari opencode.ai.</p>
-            {#if opencodeModels.length === 0}
+            {#if opencodeFree.length === 0}
               <p class="hint-sm">{modelsLoading ? "Memuat..." : "Gagal memuat daftar."}</p>
             {/if}
-            {#each opencodeModels as m}
+            {#each opencodeFree as m}
               <div class="xiryn-model-row">
                 <div class="xiryn-model-meta">
                   <span class="xiryn-model-name">{m.id}</span>
