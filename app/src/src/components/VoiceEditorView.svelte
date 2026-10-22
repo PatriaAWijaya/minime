@@ -118,6 +118,8 @@
   let openingVs = $state(false);
   let vsMsg = $state("");
   let voices = $state<Voice[]>([{ id: "default", name: "Default", lang: "" }]);
+  let yvModels = $state<Array<{ id: string; name: string }>>([]);
+  let yvModel = $state("");
 
   async function checkStatus() {
     checking = true;
@@ -168,11 +170,22 @@
           })),
         ];
       } else if (engine === "yovoice") {
-        const arr = JSON.parse(await invoke<string>("yovoice_models"));
+        const [modelsArr, voicesArr] = await Promise.all([
+          JSON.parse(await invoke<string>("yovoice_models")).catch(() => []),
+          JSON.parse(await invoke<string>("yovoice_voices")).catch(() => []),
+        ]);
+        yvModels = (Array.isArray(modelsArr) ? modelsArr : []).map((m: any) => ({
+          id: String(m.id), name: String(m.name || m.id),
+        }));
+        if (!yvModels.some((m) => m.id === yvModel)) {
+          yvModel = yvModels[0]?.id ?? "";
+        }
         voices = [
           { id: "default", name: "Default", lang: "" },
-          ...(Array.isArray(arr) ? arr : []).map((m: any) => ({
-            id: String(m.id), name: String(m.name || m.id), lang: "",
+          ...(Array.isArray(voicesArr) ? voicesArr : []).map((v: any) => ({
+            id: String(v.id),
+            name: String(v.name || v.id) + (v.kind === "saved" ? " (klon)" : ""),
+            lang: "",
           })),
         ];
       } else {
@@ -365,6 +378,7 @@
           voice: clip.voice === "default" ? "" : clip.voice,
           reference: clip.refAudio.trim(),
           outputName: outName,
+          model: yvModel,
         });
         if (!path) throw new Error("Backend tidak mengembalikan path file.");
         clip.audioPath = path;
@@ -729,6 +743,13 @@
         {:else if engine === "yovoice"}
           <strong>🟡 Fallback yovoice</strong>
           <span class="meta">VoiceStudio tidak terjangkau</span>
+          {#if yvModels.length > 0}
+            <label class="meta" for="yv-model">Model:
+              <select id="yv-model" bind:value={yvModel} onchange={persist}>
+                {#each yvModels as m}<option value={m.id}>{m.name}</option>{/each}
+              </select>
+            </label>
+          {/if}
         {:else}
           <strong>🔴 Tidak ada engine</strong>
           <span class="meta">Generate suara nonaktif</span>

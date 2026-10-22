@@ -500,6 +500,7 @@ fn main() {
             providers::opencode_free_models,
             providers::yovoice_status,
             providers::yovoice_models,
+            providers::yovoice_voices,
             providers::yovoice_tts,
             providers::audio_master,
             providers::export_timeline,
