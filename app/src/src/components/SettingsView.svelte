@@ -815,8 +815,6 @@
         </div>
       </div>
 
-        {@render switchRow("islandFutureServers", "island.future", "island.future.desc")}
-      </div>
 
       <div class="sec-head">
         <h3 class="sec-title">{$t("island.sec.size")}</h3>
