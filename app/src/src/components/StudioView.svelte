@@ -536,7 +536,10 @@
       <button class="btn-primary sm" onclick={addScene} disabled={!newVisual.trim()}>
         + Tambah Shot
       </button>
-    </div>  </section>
+    </div>
+      </div>
+    {/if}
+  </section>
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("draft") }>
