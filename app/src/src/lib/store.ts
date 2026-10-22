@@ -246,8 +246,9 @@ export function removeBrandFont(name: string): void {
 }
 
 /* ---------- Research & Scripts (Media Studio) ---------- */
-export interface ResearchInput {
+export interface UserInput {
   id: number;
+  kind: string; // riset | goal | preferensi | materi | lain
   title: string;
   content: string;
   createdAt: string;
@@ -268,9 +269,9 @@ function loadJSON<T>(key: string, fallback: T): T {
   } catch {}
   return fallback;
 }
-export const researchInputs = writable<ResearchInput[]>(loadJSON("minime.research", []));
-researchInputs.subscribe((v) => {
-  try { localStorage.setItem("minime.research", JSON.stringify(v)); } catch {}
+export const userInputs = writable<UserInput[]>(loadJSON("minime.inputs", loadJSON("minime.research", [])));
+userInputs.subscribe((v) => {
+  try { localStorage.setItem("minime.inputs", JSON.stringify(v)); } catch {}
 });
 export const prodScripts = writable<ProdScript[]>(loadJSON("minime.scripts", []));
 prodScripts.subscribe((v) => {

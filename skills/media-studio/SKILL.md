@@ -1,27 +1,29 @@
 # Media Studio Pipeline Skill
 
 Media Studio adalah tempat agen Kreatif memproduksi aneka konten yang diinginkan user.
-Hasil riset OTOMATIS dikembangkan agen Kreatif menjadi berbagai macam script produksi konten.
-Masing-masing script yang diproduksi OTOMATIS diinput menjadi source untuk produksi media.
 
-## Pipeline
+PRINSIP: User menambahkan beberapa hal yang diinginkan sebagai input.
+Otomasi SEPENUHNYA ditangani oleh agen Kreatif — user tidak perlu mengerjakan
+langkah manual apapun setelah input diberikan.
 
-### 1. Riset (input)
-- Terima hasil riset dari agen Riset atau user (tempel teks).
-- Simpan ke localStorage `minime.research` sebagai JSON array:
-  `[{id, title, content, createdAt}]`
-- Satu riset bisa menghasilkan BANYAK script.
+## Pipeline (otomatis penuh oleh agen Kreatif)
 
-### 2. Script Produksi (agen Kreatif)
-Untuk SETIAP riset, kembangkan menjadi beberapa script sesuai kebutuhan:
+### 1. Input User
+- Baca semua input dari localStorage `minime.inputs`:
+  `[{id, kind, title, content, createdAt}]`
+- Jenis input: riset, goal/tujuan, preferensi, materi mentah, lainnya.
+- User boleh menambah banyak input; agen menggabungkan semuanya sebagai brief.
+
+### 2. Script Produksi (otomatis)
+Untuk SETIAP input (atau gabungannya), kembangkan menjadi beberapa script:
 - Jenis: reels, carousel, poster, story, thumbnail, artikel
 - Format per script: hook (3 detik) → isi → CTA
 - Hormati brand kit (warna, font, tone, template) dari `minime.brand-kit`
-- Simpan ke localStorage `minime.scripts` sebagai JSON array:
+- Simpan ke localStorage `minime.scripts`:
   `[{id, researchId, title, kind, content, status: "draft", createdAt}]`
 
 ### 3. Produksi Media (otomatis per script)
-Setiap script OTOMATIS menjadi source produksi:
+Setiap script OTOMATIS menjadi source produksi tanpa campur tangan user:
 - **Storyboard**: pecah script per baris/paragraf menjadi scene
   → simpan ke `minime.storyboard`:
   `[{id, duration, visual, narration, dialogue, action, notes, shotType}]`
@@ -42,4 +44,4 @@ Jika user approve, arahkan ke tab Studio bagian Jadwal Konten.
 - JANGAN auto-posting. Semua konten berhenti di draft.
 - Hormati brand kit user dari localStorage `minime.brand-kit`.
 - Bahasa: Indonesia (default), ikuti preferensi user.
-- Satu riset → banyak script → setiap script diproduksi independen.
+- User cukup beri input; SEMUA langkah setelahnya otomatis oleh agen Kreatif.

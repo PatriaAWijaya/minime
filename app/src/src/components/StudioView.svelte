@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
-  import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, researchInputs, prodScripts } from "../lib/store";
+  import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, userInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
   import VideoEditor from "./VideoEditor.svelte";
@@ -83,23 +83,24 @@
   let schedPlatform = $state("instagram");
   let schedAt = $state("");
 
-  let newResearchTitle = $state("");
-  let newResearchContent = $state("");
+  let newInputKind = $state("riset");
+  let newInputTitle = $state("");
+  let newInputContent = $state("");
 
-  function addResearch() {
-    const t = newResearchTitle.trim();
-    const c = newResearchContent.trim();
+  function addInput() {
+    const t = newInputTitle.trim();
+    const c = newInputContent.trim();
     if (!t || !c) return;
-    researchInputs.update((r) => [
+    userInputs.update((r) => [
       ...r,
-      { id: Date.now(), title: t, content: c, createdAt: new Date().toISOString() },
+      { id: Date.now(), kind: newInputKind, title: t, content: c, createdAt: new Date().toISOString() },
     ]);
-    newResearchTitle = "";
-    newResearchContent = "";
+    newInputTitle = "";
+    newInputContent = "";
   }
 
-  function removeResearch(id: number) {
-    researchInputs.update((r) => r.filter((x) => x.id !== id));
+  function removeInput(id: number) {
+    userInputs.update((r) => r.filter((x) => x.id !== id));
   }
 
   function scriptToStoryboard(script: { content: string }) {
@@ -279,33 +280,46 @@
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("research") }>
-      <h3>📚 Riset</h3>
+      <h3>📥 Input User</h3>
       <span class="chevron">{openSections["research"] ? "▾" : "▸"}</span>
     </button>
     {#if openSections["research"]}
     <div class="card-body">
-      <p class="hint">Hasil riset dari agen Riset. Otomatis dikembangkan agen Kreatif menjadi skrip produksi.</p>
-      {#each $researchInputs as r}
+      <p class="hint">Tambahkan apa saja yang diinginkan — selebihnya OTOMATIS ditangani agen Kreatif.</p>
+      {#each $userInputs as r}
         <div class="script-item">
           <div class="script-head">
             <strong>{r.title}</strong>
+            <span class="tag">{r.kind}</span>
             <span class="spacer"></span>
-            <button class="icon-btn danger" onclick={() => removeResearch(r.id)} aria-label="Hapus">×</button>
+            <button class="icon-btn danger" onclick={() => removeInput(r.id)} aria-label="Hapus">×</button>
           </div>
           <p class="script-content">{r.content.slice(0, 200)}{r.content.length > 200 ? "..." : ""}</p>
         </div>
       {/each}
-      <div class="field">
-        <label for="res-title">Judul riset</label>
-        <input id="res-title" type="text" bind:value={newResearchTitle} placeholder="Contoh: Riset kampanye donasi Ramadhan" />
+      <div class="row">
+        <div class="field" style="flex:1">
+          <label for="inp-kind">Jenis</label>
+          <select id="inp-kind" bind:value={newInputKind}>
+            <option value="riset">Riset</option>
+            <option value="goal">Goal / Tujuan</option>
+            <option value="preferensi">Preferensi</option>
+            <option value="materi">Materi mentah</option>
+            <option value="lain">Lainnya</option>
+          </select>
+        </div>
+        <div class="field" style="flex:2">
+          <label for="inp-title">Judul</label>
+          <input id="inp-title" type="text" bind:value={newInputTitle} placeholder="Contoh: Kampanye donasi Ramadhan" />
+        </div>
       </div>
       <div class="field">
-        <label for="res-content">Isi riset</label>
-        <textarea id="res-content" bind:value={newResearchContent} rows="4"
-          placeholder="Tempel hasil riset di sini..."></textarea>
+        <label for="inp-content">Isi</label>
+        <textarea id="inp-content" bind:value={newInputContent} rows="4"
+          placeholder="Tulis atau tempel di sini..."></textarea>
       </div>
-      <button class="btn-primary sm" onclick={addResearch} disabled={!newResearchTitle.trim() || !newResearchContent.trim()}>
-        + Tambah Riset
+      <button class="btn-primary sm" onclick={addInput} disabled={!newInputTitle.trim() || !newInputContent.trim()}>
+        + Tambah Input
       </button>
     </div>
     {/if}
@@ -318,7 +332,7 @@
     </button>
     {#if openSections["scripts"]}
     <div class="card-body">
-      <p class="hint">Skrip dari agen Kreatif. Setiap skrip otomatis menjadi sumber produksi media.</p>
+      <p class="hint">Dihasilkan OTOMATIS oleh agen Kreatif dari input di atas. Setiap skrip otomatis menjadi sumber produksi media.</p>
       {#if $prodScripts.length === 0}
         <p class="hint">Belum ada skrip. Minta agen Kreatif di chat: "kembangkan riset menjadi skrip".</p>
       {/if}
