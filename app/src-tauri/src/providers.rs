@@ -873,3 +873,64 @@ fn which_ffmpeg() -> Option<String> {
     }
     None
 }
+
+/// Generate subtitle otomatis dari video via auto-subtitle (Whisper + FFmpeg).
+/// video_path: path file video lokal. model: tiny/base/small/medium (default small).
+/// Return: path file video dengan subtitle burned-in.
+#[tauri::command]
+pub async fn generate_subtitle(video_path: String, model: String) -> Result<String, String> {
+    let auto_sub = which_auto_subtitle().ok_or_else(|| "auto-subtitle tidak ditemukan.".to_string())?;
+    let ffmpeg = which_ffmpeg().ok_or_else(|| "FFmpeg tidak ditemukan.".to_string())?;
+    let _ = ffmpeg; // auto-subtitle butuh ffmpeg di PATH
+
+    if !std::path::Path::new(&video_path).exists() {
+        return Err("File video tidak ditemukan.".to_string());
+    }
+
+    let model = match model.as_str() {
+        "tiny" | "base" | "small" | "medium" => model,
+        _ => "small".to_string(),
+    };
+
+    let out_dir = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+
+    // auto_subtitle <video> -o <out_dir> --model <model>
+    let status = tokio::process::Command::new(&auto_sub)
+        .args([video_path.as_str(), "-o", out_dir.to_str().unwrap(), "--model", model.as_str()])
+        .env("PATH", format!("/opt/homebrew/bin:/usr/local/bin:{}", std::env::var("PATH").unwrap_or_default()))
+        .status()
+        .await
+        .map_err(|e| format!("Gagal menjalankan auto-subtitle: {}", e))?;
+
+    if !status.success() {
+        return Err("auto-subtitle gagal memproses video.".to_string());
+    }
+
+    // Cari file output (nama sama + _subtitled atau sejenisnya)
+    let video_name = std::path::Path::new(&video_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("video");
+    for entry in std::fs::read_dir(&out_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        if name.contains(video_name) && name.ends_with(".mp4") && !name.contains("_tmp") {
+            return Ok(entry.path().to_string_lossy().to_string());
+        }
+    }
+    Err("File output tidak ditemukan.".to_string())
+}
+
+fn which_auto_subtitle() -> Option<String> {
+    for p in [
+        "/Library/Frameworks/Python.framework/Versions/3.13/bin/auto_subtitle",
+        "/opt/homebrew/bin/auto_subtitle",
+        "/usr/local/bin/auto_subtitle",
+    ] {
+        if std::path::Path::new(p).exists() {
+            return Some(p.to_string());
+        }
+    }
+    None
+}
