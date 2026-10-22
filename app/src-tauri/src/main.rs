@@ -12,6 +12,7 @@ mod secrets;
 mod skills;
 mod tools;
 mod social;
+mod voicestudio;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
@@ -501,6 +502,11 @@ fn main() {
             providers::yovoice_models,
             providers::yovoice_tts,
             providers::audio_master,
+            voicestudio::voicestudio_status,
+            voicestudio::voicestudio_voices,
+            voicestudio::voicestudio_tts,
+            voicestudio::voicestudio_clone_tts,
+            voicestudio::voicestudio_open,
             social::create_postiz_draft,
             social::create_meta_draft,
             social::set_postiz_config,

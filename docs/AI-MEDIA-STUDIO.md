@@ -32,3 +32,4 @@ Hasil edit → kembali ke Draft → Approve → Jadwal
 2. **Image Editor** — canvas-based: tambah teks, crop, filter, undo
 3. **Video Editor** — timeline sederhana: trim, tambah teks overlay, preview
 4. **Agent Integration** — chat command untuk trigger pipeline
+5. **Voice Editor** (22 Okt 2026, perintah Patria) — timeline multi-track native di Media Studio; engine = VoiceStudio via local API (127.0.0.1:3900, proses terpisah — pola Pireel, tidak di-bundle), fallback yovoice → edge-tts. Fitur: clip TTS per segmen (teks/voice/speed/voice-cloning), volume + trim, waveform, preview, mixdown + export WAV, auto-mastering.

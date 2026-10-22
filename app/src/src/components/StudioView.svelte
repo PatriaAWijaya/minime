@@ -4,6 +4,7 @@
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
   import VideoEditor from "./VideoEditor.svelte";
+  import VoiceEditorView from "./VoiceEditorView.svelte";
 
   let prompt = $state("");
   let size = $state("square");
@@ -25,11 +26,13 @@
   let yvGenerating = $state(false);
   let yvError = $state("");
   let yvAudio = $state("");
+  let yvAudioSrc = $state("");
   let yvReady = $state(false);
   let masterInput = $state("");
   let mastering = $state(false);
   let masterError = $state("");
   let masterOutput = $state("");
+  let masterOutputSrc = $state("");
 
   async function loadYvModels() {
     try {
@@ -46,13 +49,15 @@
   async function yvGenerate() {
     const t = yvText.trim();
     if (!t) return;
-    yvGenerating = true; yvError = ""; yvAudio = "";
+    yvGenerating = true; yvError = ""; yvAudio = ""; yvAudioSrc = "";
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke, convertFileSrc } = await import("@tauri-apps/api/core");
       yvAudio = await invoke<string>("yovoice_tts", {
         text: t, voice: yvVoice.trim(), reference: yvReference.trim(),
         outputName: `yv_${Date.now()}`,
       });
+      // Local file -> asset:// URL so the webview can actually play it.
+      yvAudioSrc = convertFileSrc(yvAudio);
     } catch (e) { yvError = String(e); }
     finally { yvGenerating = false; }
   }
@@ -60,12 +65,13 @@
   async function doMaster() {
     const inp = masterInput.trim();
     if (!inp) return;
-    mastering = true; masterError = ""; masterOutput = "";
+    mastering = true; masterError = ""; masterOutput = ""; masterOutputSrc = "";
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke, convertFileSrc } = await import("@tauri-apps/api/core");
       masterOutput = await invoke<string>("audio_master", {
         inputPath: inp, outputName: `master_${Date.now()}`,
       });
+      masterOutputSrc = convertFileSrc(masterOutput);
     } catch (e) { masterError = String(e); }
     finally { mastering = false; }
   }
@@ -797,7 +803,7 @@
       {#if yvError}<p class="err">{yvError}</p>{/if}
       {#if yvAudio}
         <p class="hint">Hasil: <code>{yvAudio}</code></p>
-        <audio controls src={yvAudio}></audio>
+        <audio controls src={yvAudioSrc}></audio>
       {/if}
       <hr />
       <h4>Mastering Otomatis</h4>
@@ -813,8 +819,20 @@
       {#if masterError}<p class="err">{masterError}</p>{/if}
       {#if masterOutput}
         <p class="hint">Hasil: <code>{masterOutput}</code></p>
-        <audio controls src={masterOutput}></audio>
+        <audio controls src={masterOutputSrc}></audio>
       {/if}
+    </div>
+    {/if}
+  </section>
+
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("voiceedit") }>
+      <h3>Editor Suara (Timeline)</h3>
+      <span class="chevron">{openSections["voiceedit"] ? "▾" : "▸"}</span>
+    </button>
+    {#if openSections["voiceedit"]}
+    <div class="card-body">
+      <VoiceEditorView />
     </div>
     {/if}
   </section>

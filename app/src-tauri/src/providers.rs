@@ -1334,7 +1334,7 @@ pub async fn opencode_free_models() -> Vec<serde_json::Value> {
 }
 
 /// Path to yovoice CLI binary.
-fn yovoice_bin() -> String {
+pub(crate) fn yovoice_bin() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     format!("{}/.minime/yovoice/yovoice", home)
 }

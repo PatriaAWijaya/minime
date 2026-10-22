@@ -2140,3 +2140,30 @@ Perintah Patria: "cari git untuk menambahkan fungsi untuk clone suara"
 ### Hasil uji
 - Test 33/33, clippy 0, vite build sukses, preview jalan ✅
 - Uji cloning nyata menunggu download selesai
+
+## 22 Okt 2026 ~19:25 — Voice Editor Native (VoiceStudio sebagai engine)
+
+Perintah Patria: "oke bangun UI voice editor native, jadikan voiceStudio sebagai engine yang terhubung via api lokal"
+
+### Keputusan (final, Patria 19:20)
+- **VoiceStudio (debpalash, AGPL-3.0, v0.5.6) = ENGINE UTAMA via local API saja** — proses terpisah di 127.0.0.1:3900, TIDAK di-bundle ke Minime (pola sama seperti Pireel). Ini **override** penolakan AGPL sesi paralel 18:45.
+- **yovoice TETAP sebagai fallback** bila backend VoiceStudio tidak jalan (lalu edge-tts sebagai fallback terakhir).
+- JANGAN sentuh kode VoiceStudio; JANGAN campur kodenya ke Minime.
+
+### Spesifikasi API (terverifikasi dari source backend di Mac)
+- GET /v1/models → health check; GET /v1/audio/voices → {voices:[{voice_id,name,type,language}], engines}
+- POST /v1/audio/speech → JSON {model,input (maks 4096 char),voice,response_format,speed,language} → audio bytes
+- POST /generate → multipart {text,language,ref_audio,ref_text,speed,profile_id,engine} → audio (voice cloning)
+- Backend HANYA jalan saat VoiceStudio.app dibuka.
+
+### Fase build
+1. **Backend Rust** — modul baru `voicestudio.rs`: `voicestudio_status`, `voicestudio_voices`, `voicestudio_tts` (fallback otomatis yovoice, hasil catat engine), `voicestudio_clone_tts` (via /generate), `voicestudio_open` (open -a VoiceStudio). Daftarkan di main.rs.
+2. **UI VoiceEditorView.svelte** — timeline multi-track: tambah/hapus/susun clip; per clip = segmen TTS (teks, voice, speed, clone opsional); volume + trim; waveform canvas; preview; mixdown + export WAV; auto-mastering via `audio_master`; indikator status engine + tombol "Buka VoiceStudio".
+3. **Skill** — update `skills/voice-studio/SKILL.md`: engine utama VoiceStudio local API, fallback yovoice → edge-tts.
+4. **Kualitas** — cargo test lolos, clippy 0 warning, vite build sukses, nol error lolos.
+
+## 22 Okt 2026 ~19:40 — Voice Cloning TERUJI
+
+- Model VoxCPM2-Q8 (3GB) berhasil diunduh via source huggingface (modelscope gagal 2x)
+- Uji cloning: referensi /tmp/yv_test.wav → output 345KB WAV ✅
+- Fitur clone suara di Studio Suara sudah fungsional penuh
