@@ -177,6 +177,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn read_image_as_data_url_detects_mime() {
+        // Buat file PNG dan JPEG minimal di temp, pastikan deteksi MIME benar
+        let dir = std::env::temp_dir();
+        let png_path = dir.join("minime-test.png");
+        let jpg_path = dir.join("minime-test.jpg");
+        // PNG minimal: signature + IHDR + IEND
+        let png: Vec<u8> = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
+            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54,
+            0x08, 0xD7, 0x63, 0xF8, 0x0F, 0x00, 0x00, 0x01,
+            0x00, 0x01, 0x5C, 0xC2, 0x8A, 0x8B,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            0xAE, 0x42, 0x60, 0x82,
+        ];
+        std::fs::write(&png_path, &png).unwrap();
+        let out = super::read_image_as_data_url(png_path.to_string_lossy().to_string()).await;
+        assert!(out.is_ok(), "baca PNG gagal: {:?}", out.err());
+        assert!(out.unwrap().starts_with("data:image/png;base64,"), "MIME PNG salah");
+
+        let jpg: Vec<u8> = vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00];
+        std::fs::write(&jpg_path, &jpg).unwrap();
+        let out = super::read_image_as_data_url(jpg_path.to_string_lossy().to_string()).await;
+        assert!(out.is_ok(), "baca JPG gagal: {:?}", out.err());
+        assert!(out.unwrap().starts_with("data:image/jpeg;base64,"), "MIME JPG salah");
+
+        let out = super::read_image_as_data_url("/tidak/ada/file.png".to_string()).await;
+        assert!(out.is_err(), "seharusnya error untuk file tidak ada");
+
+        let _ = std::fs::remove_file(&png_path);
+        let _ = std::fs::remove_file(&jpg_path);
+    }
+
+    #[tokio::test]
     async fn pixabay_search_without_key_gives_clear_error() {
         // Tanpa key di keychain (atau key kosong), harus error jelas bukan panic.
         // Jika key valid tersimpan, test ini skip (hasil Ok juga valid).
