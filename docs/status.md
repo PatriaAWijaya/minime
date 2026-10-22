@@ -2081,3 +2081,25 @@ Perintah Patria: "pada menu Model AI gunakan pendekatan seperti Xiryn, untuk mod
 - Test 33/33 lolos, preview jalan ✅
 
 Nol error lolos.
+
+## 22 Okt 2026 ~18:30 — Audit penuh #9
+
+Perintah Patria: cek ulang fungsi benar-benar bekerja, konsistensi + performa, nol error lolos.
+
+### Hasil audit
+- **Backend**: clippy 0 warning/error ✅, test 33/33 ✅
+- **Frontend**: vite build sukses (1.67s), i18n 0 key hilang ✅
+- **Fungsional terverifikasi**:
+  - OpenCode Zen API: 86 total, 9 free ✅
+  - Ollama API: 5 model terinstall ✅
+  - SD server: jalan ✅
+  - Sinkron bar & list: getModel buat entri dinamis untuk ID opencode ✅
+- **Performa**: bundle 56M, RAM idle 25.2MB ✅
+- **UI**: tombol "Terpakai" biru, hijau→biru tema ✅
+
+### Bug yang diperbaiki sesi ini
+1. OpenCode list kosong — parsing key "data" bukan "models"
+2. Bar & list tidak sinkron — getModel fallback ke catalog[0]
+3. State bentrok ollamaModels/opencodeModels
+
+Nol error lolos.
