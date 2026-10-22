@@ -1749,3 +1749,69 @@ pub async fn export_timeline(timeline_json: String, output_name: String) -> Resu
     }
     Ok(out_path.to_string_lossy().to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_img(path: &std::path::Path) {
+        // Buat gambar uji 320x240 via FFmpeg (test pattern)
+        let out = std::process::Command::new("ffmpeg")
+            .args([
+                "-y", "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=1",
+                "-frames:v", "1",
+            ])
+            .arg(path)
+            .output()
+            .expect("ffmpeg harus tersedia untuk test");
+        assert!(out.status.success(), "ffmpeg testsrc gagal");
+    }
+
+    #[tokio::test]
+    async fn export_timeline_single_image_clip() {
+        let tmp = std::env::temp_dir().join("minime-audit");
+        std::fs::create_dir_all(&tmp).unwrap();
+        let img = tmp.join("audit_frame.png");
+        test_img(&img);
+        let tl = serde_json::json!({
+            "tracks": [{ "id": "v1", "kind": "video" }],
+            "clips": [{
+                "id": "c1", "trackId": "v1",
+                "src": img.to_string_lossy(),
+                "start": 0.0, "duration": 2.0,
+            }],
+        });
+        let out = export_timeline(tl.to_string(), "audit_timeline".to_string()).await;
+        assert!(out.is_ok(), "export_timeline gagal: {:?}", out.err());
+        let p = std::path::Path::new(out.unwrap().as_str());
+        assert!(p.exists(), "file output tidak ada");
+        assert!(p.metadata().unwrap().len() > 1000, "output terlalu kecil");
+    }
+
+    #[tokio::test]
+    async fn render_slideshow_two_images() {
+        let tmp = std::env::temp_dir().join("minime-audit");
+        std::fs::create_dir_all(&tmp).unwrap();
+        let img1 = tmp.join("audit_slide1.png");
+        let img2 = tmp.join("audit_slide2.png");
+        test_img(&img1);
+        test_img(&img2);
+        let out = render_slideshow(
+            vec![img1.to_string_lossy().to_string(), img2.to_string_lossy().to_string()],
+            1.0,
+            "audit_slideshow".to_string(),
+        )
+        .await;
+        assert!(out.is_ok(), "render_slideshow gagal: {:?}", out.err());
+        let p = std::path::Path::new(out.unwrap().as_str());
+        assert!(p.exists() && p.metadata().unwrap().len() > 1000);
+    }
+
+    #[tokio::test]
+    async fn generate_thumbnail_produces_png() {
+        let out = generate_thumbnail("Audit Judul".to_string(), "audit_thumb".to_string()).await;
+        assert!(out.is_ok(), "generate_thumbnail gagal: {:?}", out.err());
+        let p = std::path::Path::new(out.unwrap().as_str());
+        assert!(p.exists() && p.metadata().unwrap().len() > 1000);
+    }
+}
