@@ -1586,9 +1586,15 @@ pub async fn export_timeline(timeline_json: String, output_name: String) -> Resu
         aout = "amx".to_string();
     }
 
-    // Teks overlay via drawtext
+    // Teks overlay via drawtext (opsional — lewati bila filter tak tersedia)
+    let has_drawtext = std::process::Command::new("ffmpeg")
+        .args(["-hide_banner", "-filters"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).contains("drawtext"))
+        .unwrap_or(false);
     let mut drawtexts: Vec<String> = Vec::new();
     for c in texts.iter() {
+        if !has_drawtext { continue; }
         let text = c.get("text").and_then(|t| t.as_str()).unwrap_or("").replace(':', "\\:").replace('\'', "");
         if text.is_empty() { continue; }
         let start = c.get("start").and_then(|v| v.as_f64()).unwrap_or(0.0);
