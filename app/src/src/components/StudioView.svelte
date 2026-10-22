@@ -327,6 +327,60 @@
       <input id="brand-tone" type="text" bind:value={$brandKit.tone}
         placeholder="Contoh: profesional dan hangat" />
     </div>
+    <div class="field">
+      <label for="brand-photo">Foto / Logo brand</label>
+      <div class="photo-row">
+        {#if $brandKit.photo}
+          <img src={$brandKit.photo} alt="Brand" class="brand-photo" />
+          <button class="btn-ghost sm" onclick={() => ($brandKit.photo = "")}>Hapus</button>
+        {:else}
+          <input id="brand-photo" type="file" accept="image/*"
+            onchange={(e) => {
+              const f = (e.currentTarget as HTMLInputElement).files?.[0];
+              if (!f) return;
+              if (f.size > 500 * 1024) { alert("Maksimal 500KB"); return; }
+              const r = new FileReader();
+              r.onload = () => { $brandKit.photo = r.result as string; };
+              r.readAsDataURL(f);
+            }} />
+        {/if}
+      </div>
+    </div>
+    <div class="field">
+      <label for="brand-visual">Grafik / Elemen visual</label>
+      <input id="brand-visual" type="text" bind:value={$brandKit.visualElement}
+        placeholder="Contoh: pola batik halus, gradien biru, shape organik" />
+    </div>
+    <div class="field">
+      <label for="brand-icon">Gaya ikon</label>
+      <select id="brand-icon" bind:value={$brandKit.iconStyle}>
+        <option value="minimal">Minimal</option>
+        <option value="rounded">Rounded</option>
+        <option value="filled">Filled</option>
+        <option value="outline">Outline</option>
+        <option value="3d">3D</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="brand-layout">Layout</label>
+      <select id="brand-layout" bind:value={$brandKit.layout}>
+        <option value="center">Tengah</option>
+        <option value="left">Kiri</option>
+        <option value="grid">Grid</option>
+        <option value="split">Split</option>
+        <option value="full">Full-bleed</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="brand-template">Template</label>
+      <select id="brand-template" bind:value={$brandKit.template}>
+        <option value="carousel">Carousel</option>
+        <option value="reels">Reels</option>
+        <option value="story">Story</option>
+        <option value="poster">Poster</option>
+        <option value="thumbnail">Thumbnail</option>
+      </select>
+    </div>
       </div>
     {/if}
   </section>
@@ -610,6 +664,8 @@
   .ok { color: #22c55e; font-size: 13px; margin-top: 8px; }
   .err { color: #ef4444; font-size: 13px; margin-top: 8px; }
   .result-img { width: 100%; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .photo-row { display: flex; gap: 10px; align-items: center; }
+  .brand-photo { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
   .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   input[type="color"] { width: 100%; height: 40px; padding: 4px; cursor: pointer; }
   .scene-list { list-style: none; padding: 0; margin: 0 0 16px; }

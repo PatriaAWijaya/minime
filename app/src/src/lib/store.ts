@@ -189,12 +189,22 @@ export interface BrandKit {
   secondary: string;
   font: string;
   tone: string;
+  photo: string;        // data URL foto/logo brand
+  visualElement: string; // deskripsi elemen visual/grafis
+  iconStyle: string;    // gaya ikon
+  layout: string;       // preferensi layout
+  template: string;     // template konten
 }
 const defaultBrand: BrandKit = {
   primary: "#4FA6F0",
   secondary: "#1a1a1a",
   font: "Inter",
   tone: "profesional dan hangat",
+  photo: "",
+  visualElement: "",
+  iconStyle: "minimal",
+  layout: "center",
+  template: "carousel",
 };
 function loadBrand(): BrandKit {
   try {
