@@ -1313,7 +1313,11 @@ pub async fn opencode_free_models() -> Vec<serde_json::Value> {
     let models: Vec<serde_json::Value> = if let Some(arr) = data.as_array() {
         arr.clone()
     } else {
-        data.get("models").and_then(|m| m.as_array()).cloned().unwrap_or_default()
+        data.get("data")
+            .or(data.get("models"))
+            .and_then(|m| m.as_array())
+            .cloned()
+            .unwrap_or_default()
     };
     models
         .iter()
