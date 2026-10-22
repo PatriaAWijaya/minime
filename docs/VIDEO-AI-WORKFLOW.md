@@ -3,20 +3,29 @@
 > Diadopsi 23 Okt 2026 atas perintah Patria. Pola ditiru dari MoneyPrinterTurbo
 > (harry0703, MIT — ide & arsitektur saja, kode ditulis ulang clean-room di Rust).
 
-## Alur Kerja (6 Tahap)
+## Alur Kerja — Terintegrasi ke Tab Media Studio
 
-```
-Topik → Naskah → Suara → Footage → Subtitle → Rakit
-```
+> Revisi 23 Okt 2026 (perintah Patria): Video AI BUKAN menu tersendiri,
+> melainkan menyatu dengan workflow Media Studio yang sudah ada.
 
-| Tahap | Input | Output | Command backend |
-|-------|-------|--------|-----------------|
-| 1. Topik | Teks topik (dari user langsung atau via agen Kreatif) | Topik | — (UI) |
-| 2. Naskah | Topik | Naskah narasi (teks) | — (UI, agen Kreatif via skill) |
-| 3. Suara | Naskah | File audio narasi (MP3/WAV) | `voicestudio_tts` / `yovoice_tts` |
-| 4. Footage | Keyword / prompt | Daftar file video | `pixabay_search_videos`, `pexels_search_videos`, `text_to_video` |
-| 5. Subtitle | Audio narasi | File SRT / burn-in | `generate_subtitle` (Whisper) |
-| 6. Rakit | Footage + audio + subtitle | MP4 final | `assemble_video_ai` / `hyperframes_assemble` |
+| Tahap Video AI | Tab Media Studio | Keterangan |
+|----------------|------------------|------------|
+| Topik | **Brief** (dulu "Input User") | Input topik/brief dari user atau agen Kreatif |
+| Naskah | **Script** | Naskah narasi |
+| Suara | **Studio Suara** | TTS via VoiceStudio → audio narasi |
+| Footage | **Studio Video** § Footage | Stok (Pixabay/Pexels) atau AI text-to-video |
+| Subtitle | **Studio Video** § Subtitle | Otomatis via Whisper |
+| Render (dulu "Rakit") | **Studio Video** § Render | FFmpeg otomatis atau HyperFrames kustom |
+
+### Command backend per tahap
+
+| Tahap | Command backend |
+|-------|-----------------|
+| Suara | `voicestudio_tts` / `yovoice_tts` |
+| Footage (stok) | `pixabay_search_videos`, `pexels_search_videos` |
+| Footage (AI) | `text_to_video` (Wan 3.0 / LTX-Video via fal.ai) |
+| Subtitle | `generate_subtitle` (Whisper) |
+| Render | `assemble_video_ai` (FFmpeg) / `hyperframes_assemble` |
 
 ## Jalur Footage (dipilih per tahap 4)
 
@@ -57,8 +66,9 @@ layout kustom) → render MP4 via HyperFrames CLI. Aset harus lokal
 
 ## File Terkait
 
-- UI: `app/src/src/components/VideoPipeline.svelte`
-- Tab: Media Studio → "Video AI" (`StudioView.svelte`)
+- UI: terintegrasi di `app/src/src/components/StudioView.svelte`
+  - Tab "Brief" (dulu "Input User"), tab "Script", tab "Studio Suara" (tetap)
+  - Tab "Studio Video": section Footage + Subtitle + Render (di bawah TimelineEditor)
 - Backend: `app/src-tauri/src/providers.rs` (`assemble_video_ai`, `text_to_video`, `hyperframes_assemble`)
 - Backend: `app/src-tauri/src/social.rs` (`pexels_search_videos`, `set_pexels_key`, `set_video_ai_key`)
 - Skill agen: `skills/media-studio/SKILL.md` (pipeline Kreatif)
