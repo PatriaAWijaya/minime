@@ -874,7 +874,10 @@
   .btn-ghost.xs:disabled { opacity: 0.5; cursor: default; }
   .sep { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
   .sub-h { margin: 0 0 6px; font-size: 14px; }
-  .hidden { display: none; }
+  .hidden {
+    position: absolute; width: 1px; height: 1px; opacity: 0;
+    pointer-events: none; /* dibuka via .click() dari tombol */
+  }
   .grow { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
   .px-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .px-item { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 4/3; }
