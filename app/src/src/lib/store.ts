@@ -25,6 +25,7 @@ import type {
 export type View =
   | "agents"
   | "tasks"
+  | "studio"
   | "schedule"
   | "library"
   | "cost"

@@ -766,3 +766,53 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
         .unwrap_or_default();
     Ok(models)
 }
+
+/// Generate image via OpenAI DALL-E (AI Media Studio).
+/// API key dari OS keychain (account: minime.dalle).
+#[tauri::command]
+pub async fn generate_image(prompt: String, size: String) -> Result<String, String> {
+    let api_key = secrets::api_key("minime.dalle")
+        .ok_or_else(|| "DALL-E API key belum diset. Masukkan di Pengaturan > Media Studio.".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("DALL-E API key kosong.".to_string());
+    }
+    let sz = match size.as_str() {
+        "square" => "1024x1024",
+        "portrait" => "1024x1792",
+        "landscape" => "1792x1024",
+        _ => "1024x1024",
+    };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .post("https://api.openai.com/v1/images/generations")
+        .bearer_auth(api_key.trim())
+        .json(&serde_json::json!({
+            "model": "dall-e-3",
+            "prompt": prompt,
+            "size": sz,
+            "n": 1,
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("DALL-E error: {}", txt.chars().take(200).collect::<String>()));
+    }
+    let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    body.get("data")
+        .and_then(|d| d.get(0))
+        .and_then(|m| m.get("url"))
+        .and_then(|u| u.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "URL gambar tidak ditemukan di respons.".to_string())
+}
+
+/// Simpan API key DALL-E ke keychain.
+#[tauri::command]
+pub fn set_dalle_key(api_key: String) -> Result<(), String> {
+    secrets::set_api_key("minime.dalle", api_key.trim()).map_err(|e| e.to_string())
+}

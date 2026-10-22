@@ -43,6 +43,12 @@
       icon: '<path d="M18 20V10M12 20V4M6 20v-6"/>',
     },
     {
+      id: "studio",
+      labelKey: "nav.studio",
+      descKey: "nav.studio.desc",
+      icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+    },
+    {
       id: "tools",
       labelKey: "nav.tools",
       descKey: "nav.tools.desc",

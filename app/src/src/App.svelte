@@ -6,6 +6,7 @@
   import LibraryView from "./components/LibraryView.svelte";
   import CostView from "./components/CostView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
+  import StudioView from "./components/StudioView.svelte";
   import SettingsView from "./components/SettingsView.svelte";
   import IslandView from "./components/IslandView.svelte";
   import {
@@ -159,6 +160,8 @@
       <AgentsView />
     {:else if $activeView === "tasks"}
       <TasksView />
+    {:else if $activeView === "studio"}
+      <StudioView />
     {:else if $activeView === "schedule"}
       <ScheduleView />
     {:else if $activeView === "library"}

@@ -484,6 +484,8 @@ fn main() {
             get_app_info,
             provider_probe,
             providers::discover_models,
+            providers::generate_image,
+            providers::set_dalle_key,
             agent_chat,
             chat_history,
             usage_summary,
