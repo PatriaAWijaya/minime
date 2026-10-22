@@ -1805,66 +1805,6 @@ pub async fn text_to_video(prompt: String, model: String, aspect: String) -> Res
     }
 }
 
-async fn text_to_video_sora(prompt: &str, aspect: &str, tmp: &std::path::Path) -> Result<String, String> {
-    let api_key = crate::secrets::api_key("minime.sora_key")
-        .ok_or_else(|| "API key Sora belum diset (Tools → Apps).".to_string())?;
-    if api_key.trim().is_empty() {
-        return Err("API key Sora belum diset (Tools → Apps).".to_string());
-    }
-    // OpenAI Sora API: POST https://api.openai.com/v1/videos
-    let size = if aspect == "16:9" { "1280x720" } else { "720x1280" };
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(600))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let resp = client
-        .post("https://api.openai.com/v1/videos")
-        .bearer_auth(api_key.trim())
-        .json(&serde_json::json!({
-            "model": "sora-2",
-            "prompt": prompt,
-            "size": size,
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Gagal memanggil Sora API: {}", e))?;
-    if !resp.status().is_success() {
-        let t = resp.text().await.unwrap_or_default();
-        return Err(format!("Sora API error: {}", t.chars().take(300).collect::<String>()));
-    }
-    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    // Sora mengembalikan video ID; polling hingga selesai lalu unduh
-    let video_id = j.get("id").and_then(|v| v.as_str()).ok_or_else(|| "Respons Sora tidak valid.".to_string())?;
-    // Polling status (maks 10 menit)
-    let out_path = tmp.join(format!("sora-{}.mp4", video_id));
-    for _ in 0..60 {
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-        let st = client
-            .get(format!("https://api.openai.com/v1/videos/{}", video_id))
-            .bearer_auth(api_key.trim())
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        let sj: serde_json::Value = st.json().await.map_err(|e| e.to_string())?;
-        let status = sj.get("status").and_then(|v| v.as_str()).unwrap_or("");
-        if status == "completed" {
-            // Unduh konten video
-            let dl = client
-                .get(format!("https://api.openai.com/v1/videos/{}/content", video_id))
-                .bearer_auth(api_key.trim())
-                .send()
-                .await
-                .map_err(|e| e.to_string())?;
-            let bytes = dl.bytes().await.map_err(|e| e.to_string())?;
-            std::fs::write(&out_path, &bytes).map_err(|e| e.to_string())?;
-            return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
-        } else if status == "failed" {
-            return Err("Sora gagal generate video.".to_string());
-        }
-    }
-    Err("Sora timeout (10 menit). Coba lagi.".to_string())
-}
-
 async fn text_to_video_wan(prompt: &str, aspect: &str, tmp: &std::path::Path) -> Result<String, String> {
     // Wan 2.3 via API (Alibaba Model Studio atau fal.ai)
     let api_key = crate::secrets::api_key("minime.wan_key")
