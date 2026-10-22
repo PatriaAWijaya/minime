@@ -4,7 +4,6 @@
   import {
     PROVIDERS,
     activeAgentId,
-    activeServer,
     activeView,
     addCustomAgent,
     addCustomModel,
@@ -33,12 +32,6 @@
     confirmAutopost,
     cancelAutopost,
     autopostPending,
-    serverList,
-    addServer,
-    serverMuted,
-    setServerMuted,
-    serverNotif,
-    setServerNotif,
     skillCatalog,
     agentModel,
     agentProvider,
@@ -58,7 +51,6 @@
     projects,
     removeAgentFile,
     removeCustomModel,
-    serverLayout,
     folderOpen,
     activateAgent,
     deactivateAgent,
@@ -72,7 +64,7 @@
     isFolderOpen,
   } from "../lib/store";
   import type { ModelSection } from "../lib/store";
-  import type { Agent, ServerKind, FlowProject } from "../lib/types";
+  import type { Agent, FlowProject } from "../lib/types";
   import { t } from "../lib/i18n";
   import { get } from "svelte/store";
 
@@ -110,9 +102,7 @@
 
   // Dropdown / menu state
   let panelOpen = $state(false);
-  let serverOpen = $state(false);
-  // Server menu flyouts (per Patria's reference screenshots): one flyout at
-  // a time — "srv:<kind>" | "add" | "layout"; subFly = nested "mute"|"notif".
+  // Menu flyouts: one at a time — "add" | "layout"; subFly = nested submenu.
   let flyout = $state<string | null>(null);
   let subFly = $state<string | null>(null);
   let addOpen = $state(false);
@@ -131,7 +121,6 @@
 
   function closeAll() {
     panelOpen = false;
-    serverOpen = false;
     addOpen = false;
     flyout = null;
     subFly = null;
@@ -146,34 +135,8 @@
     panelOpen = true;
   }
 
-  /** Click on a server row: select it AND open its detail flyout, keeping
-      the menu open (bug fix 20 Oct: previously the row closed the whole
-      menu, so the flyout blinked and vanished on click). */
-  function openServerRow(kind: ServerKind) {
-    activeServer.set(kind);
-    flyout = `srv:${kind}`;
-    subFly = null;
-  }
 
-  function serverName(kind: ServerKind): string {
-    return $t(
-      kind === "local"
-        ? "server.local"
-        : kind === "cloud"
-          ? "server.cloud"
-          : "server.independent",
-    );
-  }
 
-  function notifLabel(level: string): string {
-    return $t(
-      level === "all"
-        ? "server.notif.all"
-        : level === "mentions"
-          ? "server.notif.mentions"
-          : "server.notif.nothing",
-    );
-  }
 
   // Agent extras: browser toggle, files, task creation (per active agent)
   const browserOn = $derived($agentBrowserOn[agent.id] ?? false);
@@ -588,196 +551,10 @@
 {/snippet}
 
 <div class="agents-view">
-  <!-- Top bar: server dropdown | active agent | model shortcut | panel controls -->
+  <!-- Top bar: active agent | model shortcut | panel controls -->
   <div class="topbar">
     <div class="tb-left">
-      <!-- Server selector -->
-      <div class="menu-wrap">
-        <button
-          class="pill"
-          onclick={() => {
-            const next = !serverOpen;
-            closeAll();
-            serverOpen = next;
-          }}
-          aria-haspopup="menu"
-          aria-expanded={serverOpen}
-          aria-label={$t("server.title")}
-        >
-          <svg class="srv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="7" rx="2" />
-            <rect x="3" y="13" width="18" height="7" rx="2" />
-            <path d="M7 7.5h.01M7 16.5h.01" stroke-width="2.6" stroke-linecap="round" />
-          </svg>
-          <span>{serverName($activeServer)}</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
-        {#if serverOpen}
-          <div class="scrim" onclick={closeAll} aria-hidden="true"></div>
-          <div class="menu" role="menu" aria-label={$t("server.title")}>
-            <span class="menu-label">{$t("server.title")}</span>
-            {#each $serverList as kind (kind)}
-              <div class="menu-wrap-sub" onmouseenter={() => { flyout = `srv:${kind}`; subFly = null; }}>
-                <button class="menu-item" role="menuitemradio" aria-checked={$activeServer === kind} onclick={() => openServerRow(kind)}>
-                  <span class="check" aria-hidden="true">{#if $activeServer === kind}✓{/if}</span>
-                  {#if kind === "local"}
-                    <svg class="srv-kind-icon local" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3z" />
-                    </svg>
-                  {:else if kind === "cloud"}
-                    <svg class="srv-kind-icon cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <path d="M7 18h10a4 4 0 0 0 .9-7.9A6 6 0 0 0 6.2 8.6 4.5 4.5 0 0 0 7 18z" />
-                    </svg>
-                  {:else}
-                    <svg class="srv-kind-icon independent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <rect x="3" y="4" width="18" height="12" rx="2" />
-                      <path d="M9 20h6M12 16v4" />
-                    </svg>
-                  {/if}
-                  <span class="sub-label-text">{serverName(kind)}</span>
-                  <span class="sub-caret" aria-hidden="true">›</span>
-                </button>
-                {#if flyout === `srv:${kind}`}
-                  <div class="menu sub" role="menu" aria-label={serverName(kind)}>
-                    <span class="menu-label">{serverName(kind)}</span>
-                    <div class="menu-wrap-sub" onmouseenter={() => (subFly = "mute")}>
-                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "mute"} onclick={() => (subFly = "mute")}>
-                        <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 0 0 3.4 0" />
-                          <path d="M3 3l18 18" />
-                        </svg>
-                        <span class="sub-label-text">{$t("server.mute")}{#if $serverMuted[kind]} · {$t("server.muted")}{/if}</span>
-                        <span class="sub-caret" aria-hidden="true">›</span>
-                      </button>
-                      {#if subFly === "mute"}
-                        <div class="menu sub" role="menu" aria-label={$t("server.mute")}>
-                          {#if $serverMuted[kind]}
-                            <button class="menu-item" onclick={() => { setServerMuted(kind, false); closeAll(); }}>
-                              <span class="check" aria-hidden="true"></span>
-                              <span>{$t("server.unmute")}</span>
-                            </button>
-                            <div class="menu-sep" aria-hidden="true"></div>
-                          {/if}
-                          <button class="menu-item" onclick={() => { setServerMuted(kind, true); closeAll(); }}>
-                            <span class="check" aria-hidden="true"></span>
-                            <span>{$t("server.mute.1h")}</span>
-                          </button>
-                          <button class="menu-item" onclick={() => { setServerMuted(kind, true); closeAll(); }}>
-                            <span class="check" aria-hidden="true"></span>
-                            <span>{$t("server.mute.tomorrow")}</span>
-                          </button>
-                          <button class="menu-item" onclick={() => { setServerMuted(kind, true); closeAll(); }}>
-                            <span class="check" aria-hidden="true"></span>
-                            <span>{$t("server.mute.forever")}</span>
-                          </button>
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="menu-wrap-sub" onmouseenter={() => (subFly = "notif")}>
-                      <button class="menu-item" aria-haspopup="menu" aria-expanded={subFly === "notif"} onclick={() => (subFly = "notif")}>
-                        <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 21a2 2 0 0 0 3.4 0" />
-                        </svg>
-                        <span class="sub-label-text col">
-                          <span>{$t("server.notif")}</span>
-                          <span class="sub-note">{notifLabel($serverNotif[kind] ?? "all")}</span>
-                        </span>
-                        <span class="sub-caret" aria-hidden="true">›</span>
-                      </button>
-                      {#if subFly === "notif"}
-                        <div class="menu sub" role="menu" aria-label={$t("server.notif")}>
-                          {#each ["all", "mentions", "nothing"] as level (level)}
-                            <button class="menu-item" role="menuitemradio" aria-checked={($serverNotif[kind] ?? "all") === level} onclick={() => { setServerNotif(kind, level as "all" | "mentions" | "nothing"); closeAll(); }}>
-                              <span class="check" aria-hidden="true">{#if ($serverNotif[kind] ?? "all") === level}✓{/if}</span>
-                              <span>{notifLabel(level)}</span>
-                            </button>
-                          {/each}
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="menu-sep" aria-hidden="true"></div>
-                    <button class="menu-item" onclick={closeAll}>
-                      <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="7" rx="2" />
-                        <rect x="3" y="13" width="18" height="7" rx="2" />
-                        <path d="M7 7.5h.01M7 16.5h.01" stroke-width="2.6" stroke-linecap="round" />
-                      </svg>
-                      <span>{$t("server.settings")}</span>
-                    </button>
-                  </div>
-                {/if}
-              </div>
-            {/each}
-            <div class="menu-wrap-sub" onmouseenter={() => { flyout = "add"; subFly = null; }}>
-              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "add"} onclick={() => { flyout = "add"; subFly = null; }}>
-                <span class="check" aria-hidden="true"></span>
-                <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" stroke-dasharray="4 3" />
-                  <path d="M12 8v8M8 12h8" />
-                </svg>
-                <span class="sub-label-text">{$t("server.add")}</span>
-                <span class="sub-caret" aria-hidden="true">›</span>
-              </button>
-              {#if flyout === "add"}
-                <div class="menu sub" role="menu" aria-label={$t("server.add")}>
-                  {#each ["local", "cloud", "independent"] as kind (kind)}
-                    <button class="menu-item" disabled={$serverList.includes(kind as ServerKind)} onclick={() => { addServer(kind as ServerKind); closeAll(); }}>
-                      <span class="check" aria-hidden="true">{#if $serverList.includes(kind as ServerKind)}✓{/if}</span>
-                      <span>{serverName(kind as ServerKind)}</span>
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-            <div class="menu-sep" aria-hidden="true"></div>
-            <button class="menu-item" onclick={closeAll}>
-              <span class="check" aria-hidden="true"></span>
-              <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="7" rx="2" />
-                <rect x="3" y="13" width="18" height="7" rx="2" />
-                <path d="M7 7.5h.01M7 16.5h.01" stroke-width="2.6" stroke-linecap="round" />
-              </svg>
-              <span>{$t("server.settings")}</span>
-            </button>
-            <div class="menu-wrap-sub" onmouseenter={() => { flyout = "layout"; subFly = null; }}>
-              <button class="menu-item" aria-haspopup="menu" aria-expanded={flyout === "layout"} onclick={() => { flyout = "layout"; subFly = null; }}>
-                <span class="check" aria-hidden="true"></span>
-                <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <path d="M9.5 4v16" />
-                </svg>
-                <span class="sub-label-text">{$t("server.layout")}</span>
-                <span class="sub-note-inline">{$t($serverLayout === "rail" ? "server.layout.rail" : "server.layout.menu")}</span>
-                <span class="sub-caret" aria-hidden="true">›</span>
-              </button>
-              {#if flyout === "layout"}
-                <div class="menu sub" role="menu" aria-label={$t("server.layout")}>
-                  <button class="menu-item" role="menuitemradio" aria-checked={$serverLayout === "rail"} onclick={() => { serverLayout.set("rail"); closeAll(); }}>
-                    <span class="check" aria-hidden="true">{#if $serverLayout === "rail"}✓{:else}<span class="radio-empty"></span>{/if}</span>
-                    <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <rect x="3" y="4" width="18" height="16" rx="2" />
-                      <path d="M9.5 4v16" />
-                    </svg>
-                    <span>{$t("server.layout.rail")}</span>
-                  </button>
-                  <button class="menu-item" role="menuitemradio" aria-checked={$serverLayout === "menu"} onclick={() => { serverLayout.set("menu"); closeAll(); }}>
-                    <span class="check" aria-hidden="true">{#if $serverLayout === "menu"}✓{:else}<span class="radio-empty"></span>{/if}</span>
-                    <svg class="srv-kind-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                      <path d="M8 4L4 8l4 4M4 8h13M16 20l4-4-4-4M20 16H7" transform="rotate(90 12 12)" />
-                    </svg>
-                    <span>{$t("server.layout.menu")}</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Active agent identity -->
+<!-- Active agent identity -->
       <div class="tb-agent">
         {#if agentAvatar(agent, $agentAvatars)}<img class="badge-img sm" src={agentAvatar(agent, $agentAvatars)} alt={agent.name} />{:else}<span class="badge sm" style:background={agent.color}>{agent.badge}</span>{/if}
         <span class="tb-agent-meta">

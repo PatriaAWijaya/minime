@@ -114,10 +114,8 @@ export interface ProviderInfo {
 }
 
 /** Which model server is in use (mock). */
-export type ServerKind = "local" | "cloud" | "independent";
 
 /** Server menu layout preference (mock). */
-export type ServerLayout = "rail" | "menu";
 
 /** Kanban column id (mock task board). */
 export interface AgentFile {

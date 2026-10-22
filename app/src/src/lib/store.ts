@@ -16,8 +16,6 @@ import type {
   Message,
   ProviderInfo,
   ScheduledItem,
-  ServerKind,
-  ServerLayout,
   ToolInfo,
   LibraryType,
 } from "./types";
@@ -1272,86 +1270,6 @@ export function toggleCustomProvider(id: number, active: boolean) {
   );
 }
 
-/* ---------- Server selector (mock, persisted) ---------- */
-
-/** Which AI model server is in use: local device or cloud. */
-export const activeServer = writable<ServerKind>(
-  loadString("minime.server", "local") as ServerKind,
-);
-activeServer.subscribe((v) => {
-  try {
-    localStorage.setItem("minime.server", v);
-  } catch {
-    /* ignore */
-  }
-});
-
-/** Server menu layout preference (mock). */
-export const serverLayout = writable<ServerLayout>(
-  loadString("minime.server-layout", "menu") as ServerLayout,
-);
-serverLayout.subscribe((v) => {
-  try {
-    localStorage.setItem("minime.server-layout", v);
-  } catch {
-    /* ignore */
-  }
-});
-
-/** Servers the user has added (Phase: server menu per Patria's reference).
-    "local" always exists; Cloud/VPS and Independent are added on demand. */
-export const serverList = writable<ServerKind[]>(
-  (() => {
-    try {
-      const raw = localStorage.getItem("minime.server-list");
-      const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed)) {
-        const valid = parsed.filter(
-          (k): k is ServerKind => k === "local" || k === "cloud" || k === "independent",
-        );
-        if (!valid.includes("local")) valid.unshift("local");
-        return valid.length ? valid : ["local"];
-      }
-    } catch {
-      /* fall through to default */
-    }
-    return ["local"];
-  })(),
-);
-serverList.subscribe((v) => {
-  try {
-    localStorage.setItem("minime.server-list", JSON.stringify(v));
-  } catch {
-    /* ignore */
-  }
-});
-
-/** Add a server location and switch to it. */
-export function addServer(kind: ServerKind): void {
-  serverList.update((list) => (list.includes(kind) ? list : [...list, kind]));
-  activeServer.set(kind);
-}
-
-/** Per-server mute state (server menu, Local submenu). */
-export const serverMuted = writable<Record<string, boolean>>(
-  loadRecord<boolean>("minime.server-muted"),
-);
-persistRecord("minime.server-muted", serverMuted);
-
-export function setServerMuted(kind: ServerKind, muted: boolean): void {
-  serverMuted.update((m) => ({ ...m, [kind]: muted }));
-}
-
-/** Per-server notification level: all | mentions | nothing. */
-export type ServerNotifLevel = "all" | "mentions" | "nothing";export const serverNotif = writable<Record<string, ServerNotifLevel>>(
-  loadRecord<ServerNotifLevel>("minime.server-notif"),
-);
-persistRecord("minime.server-notif", serverNotif);
-
-export function setServerNotif(kind: ServerKind, level: ServerNotifLevel): void {
-  serverNotif.update((m) => ({ ...m, [kind]: level }));
-}
-
 /* ---------- App settings (Settings view, two-column layout) ---------- */
 
 export interface SettingsPrefs {
@@ -1382,8 +1300,6 @@ export interface SettingsPrefs {
   islandExtra: boolean;
   islandHaptics: boolean;
   islandPosition: "top" | "bottom";
-  islandServers: Record<string, boolean>;
-  islandFutureServers: boolean;
   islandWidth: number;
   islandHeight: number;
   computerBrowser: boolean;
@@ -1422,8 +1338,6 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   islandExtra: true,
   islandHaptics: true,
   islandPosition: "top",
-  islandServers: {},
-  islandFutureServers: true,
   islandWidth: 100,
   islandHeight: 100,
   computerBrowser: true,

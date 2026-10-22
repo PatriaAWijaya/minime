@@ -19,14 +19,12 @@
     settingsPrefs,
     setPref,
     profileStore,
-    serverList,
     islandStatus,
     fetchSystemPermissions,
     openPrivacySettings,
     type SystemPermissions,
     fetchDeviceInfo,
     type DeviceInfo,
-    addServer,
     agentStatus,
     updateInfo,
     checkForUpdate,
@@ -229,7 +227,6 @@
   }
 
   /* ---------- Billing: add-server chooser ---------- */
-  let showAddServer = $state(false);
 
   /* ---------- Updates: check on open, install when idle ---------- */
   let showWhatsNew = $state(false);
@@ -818,40 +815,6 @@
         </div>
       </div>
 
-      <h3 class="sec-title">{$t("island.sec.servers")}</h3>
-      <p class="lede">{$t("island.servers.desc")}</p>
-      <div class="card">
-        {#each $serverList as kind (kind)}
-          <div class="srow">
-            <span
-              class="server-tile"
-              style:background={kind === "local"
-                ? "linear-gradient(135deg,#B7E33C,#3FA7D6)"
-                : kind === "cloud"
-                  ? "linear-gradient(135deg,#6CA8D9,#7A5FD0)"
-                  : "linear-gradient(135deg,#D98AB5,#7A5FD0)"}
-              aria-hidden="true"
-            ></span>
-            <div class="srow-meta">
-              <span class="srow-label">
-                {$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
-              </span>
-            </div>
-            <label class="switch">
-              <input
-                type="checkbox"
-                checked={$settingsPrefs.islandServers[kind] ?? $settingsPrefs.islandFutureServers}
-                onchange={(e) =>
-                  setPref("islandServers", {
-                    ...$settingsPrefs.islandServers,
-                    [kind]: (e.currentTarget as HTMLInputElement).checked,
-                  })}
-                aria-label={$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
-              />
-              <span class="track" aria-hidden="true"></span>
-            </label>
-          </div>
-        {/each}
         {@render switchRow("islandFutureServers", "island.future", "island.future.desc")}
       </div>
 
@@ -1087,49 +1050,7 @@
       <h2>{$t("set.cat.billing")}</h2>
 
       <h3 class="sec-title">{$t("bill.sec.plans")}</h3>
-      <button class="btn-ghost wide" onclick={() => (showAddServer = !showAddServer)}>
-        ＋ {$t("bill.add")}
-      </button>
-      {#if showAddServer}
-        <div class="add-server-row">
-          {#each ["cloud", "independent"] as const as kind (kind)}
-            <button
-              class="btn-ghost"
-              disabled={$serverList.includes(kind)}
-              onclick={() => {
-                addServer(kind);
-                showAddServer = false;
-              }}
-            >
-              {$t(kind === "cloud" ? "server.cloud" : "server.independent")}
-            </button>
-          {/each}
-        </div>
-      {/if}
-      <div class="card">
-        {#each $serverList as kind (kind)}
-          <div class="srow">
-            <span
-              class="server-tile"
-              style:background={kind === "local"
-                ? "linear-gradient(135deg,#B7E33C,#3FA7D6)"
-                : kind === "cloud"
-                  ? "linear-gradient(135deg,#6CA8D9,#7A5FD0)"
-                  : "linear-gradient(135deg,#D98AB5,#7A5FD0)"}
-              aria-hidden="true"
-            ></span>
-            <div class="srow-meta">
-              <span class="srow-label">
-                {$t(kind === "local" ? "server.local" : kind === "cloud" ? "server.cloud" : "server.independent")}
-              </span>
-              <span class="srow-desc">
-                {$t(kind === "local" ? "bill.local.desc" : kind === "cloud" ? "bill.cloud.desc" : "bill.independent.desc")}
-              </span>
-            </div>
-            <span class="perm-badge granted">{$t("bill.free")}</span>
-          </div>
-        {/each}
-      </div>
+
       <div class="empty-box">{$t("bill.none")}</div>
 
       <h3 class="sec-title">{$t("bill.sec.other")}</h3>

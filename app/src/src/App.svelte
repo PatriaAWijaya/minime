@@ -10,7 +10,6 @@
   import SettingsView from "./components/SettingsView.svelte";
   import IslandView from "./components/IslandView.svelte";
   import {
-    activeServer,
     activeView,
     agentStatus,
     checkForUpdate,
@@ -64,9 +63,7 @@
     ).length;
     const attention = attentionAgents + approvalCards;
     islandAttention = attention;
-    const serverShown =
-      prefs.islandServers[$activeServer] ?? prefs.islandFutureServers;
-    const hasStatus = serverShown && (working > 0 || attention > 0);
+    const hasStatus = working > 0 || attention > 0;
     const mode = !prefs.islandNotch
       ? "off"
       : hasStatus
@@ -76,12 +73,7 @@
           : "off";
     const name = $profileStore.name.trim();
     const firstName = name ? name.split(" ")[0] : "";
-    const serverKey =
-      $activeServer === "local"
-        ? "server.local"
-        : $activeServer === "cloud"
-          ? "server.cloud"
-          : "server.independent";
+
     const payload: IslandPayload = {
       notch: prefs.islandNotch,
       idle: prefs.islandIdle,
@@ -97,7 +89,7 @@
             ? `${attention} ${$t("island.attention")}`
             : `${working} ${$t("island.working")}`
           : `${$t("island.hello")}${firstName ? `, ${firstName}` : ""}`,
-      sub: mode === "status" ? $t(serverKey) : $t("island.idle.sub"),
+      sub: mode === "status" ? $t("server.local") : $t("island.idle.sub"),
       attention: attention > 0,
       logoColor: prefs.logoColor,
     };
