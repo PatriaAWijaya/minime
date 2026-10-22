@@ -251,11 +251,22 @@ export interface Scene {
   duration: number;
   visual: string;
   narration: string;
+  dialogue: string;   // Storyboarder: dialog
+  action: string;     // Storyboarder: aksi
+  notes: string;      // Storyboarder: catatan
+  shotType: string;   // Storyboarder: wide | medium | closeup | extreme
 }
 function loadScenes(): Scene[] {
   try {
     const raw = localStorage.getItem("minime.storyboard");
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      // Migrasi: isi field baru bila belum ada
+      return arr.map((sc: any) => ({
+        dialogue: "", action: "", notes: "", shotType: "medium",
+        ...sc,
+      }));
+    }
   } catch {}
   return [];
 }

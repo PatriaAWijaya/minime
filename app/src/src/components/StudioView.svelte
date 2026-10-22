@@ -37,6 +37,11 @@
   let newVisual = $state("");
   let newNarration = $state("");
   let newDuration = $state(5);
+  let newDialogue = $state("");
+  let newAction = $state("");
+  let newNotes = $state("");
+  let newShotType = $state("medium");
+  let editingScene = $state<number | null>(null);
 
   function addScene() {
     const v = newVisual.trim();
@@ -44,10 +49,17 @@
     const id = Date.now();
     storyboard.update((scenes) => [
       ...scenes,
-      { id, duration: newDuration, visual: v, narration: newNarration.trim() },
+      {
+        id, duration: newDuration, visual: v, narration: newNarration.trim(),
+        dialogue: newDialogue.trim(), action: newAction.trim(),
+        notes: newNotes.trim(), shotType: newShotType,
+      },
     ]);
     newVisual = "";
     newNarration = "";
+    newDialogue = "";
+    newAction = "";
+    newNotes = "";
     newDuration = 5;
   }
 
@@ -409,7 +421,24 @@
     </button>
     {#if openSections["storyboard"]}
     <div class="card-body">
-    <p class="hint">Susun scene untuk video. Urutan bisa diubah dengan tombol ↑ ↓.</p>
+    <p class="hint">Susun shot per scene ala storyboard film. Klik scene untuk edit detail.</p>
+
+    {#if $storyboard.length > 0}
+      <!-- Timeline strip ala Storyboarder -->
+      <div class="timeline">
+        {#each $storyboard as sc, i}
+          <button class="tl-shot" style:flex-grow={sc.duration}
+            class:active={editingScene === sc.id}
+            onclick={() => (editingScene = editingScene === sc.id ? null : sc.id)}
+            title="Scene {i + 1}: {sc.visual}">
+            <span class="tl-num">{i + 1}</span>
+            <span class="tl-dur">{sc.duration}s</span>
+          </button>
+        {/each}
+      </div>
+      <p class="hint">Total durasi: {$storyboard.reduce((a, sc) => a + sc.duration, 0)}s</p>
+    {/if}
+
     {#if $storyboard.length === 0}
       <p class="hint">Belum ada scene. Tambahkan di bawah.</p>
     {:else}
@@ -417,41 +446,97 @@
         {#each $storyboard as sc, i}
           <li class="scene">
             <div class="scene-head">
-              <strong>Scene {i + 1}</strong>
+              <strong>Shot {i + 1}</strong>
+              <span class="shot-type">{sc.shotType}</span>
               <span class="dur">{sc.duration}s</span>
               <span class="spacer"></span>
               <button class="icon-btn" onclick={() => moveScene(sc.id, -1)} aria-label="Naik">↑</button>
               <button class="icon-btn" onclick={() => moveScene(sc.id, 1)} aria-label="Turun">↓</button>
+              <button class="icon-btn" onclick={() => (editingScene = editingScene === sc.id ? null : sc.id)} aria-label="Edit">✎</button>
               <button class="icon-btn danger" onclick={() => removeScene(sc.id)} aria-label="Hapus">×</button>
             </div>
-            <p class="scene-visual">{sc.visual}</p>
+            <p class="scene-visual">🎬 {sc.visual}</p>
+            {#if sc.dialogue}<p class="scene-field"><b>Dialog:</b> "{sc.dialogue}"</p>{/if}
+            {#if sc.action}<p class="scene-field"><b>Aksi:</b> {sc.action}</p>{/if}
             {#if sc.narration}<p class="scene-narr">🎙️ {sc.narration}</p>{/if}
+            {#if editingScene === sc.id}
+              <div class="board-editor">
+                <div class="field">
+                  <label>Dialog</label>
+                  <input type="text" bind:value={sc.dialogue} placeholder="Dialog karakter..." />
+                </div>
+                <div class="field">
+                  <label>Aksi</label>
+                  <input type="text" bind:value={sc.action} placeholder="Apa yang terjadi..." />
+                </div>
+                <div class="field">
+                  <label>Catatan</label>
+                  <input type="text" bind:value={sc.notes} placeholder="Catatan sutradara..." />
+                </div>
+                <div class="row">
+                  <div class="field" style="flex:1">
+                    <label>Shot type</label>
+                    <select bind:value={sc.shotType}>
+                      <option value="wide">Wide</option>
+                      <option value="medium">Medium</option>
+                      <option value="closeup">Close-up</option>
+                      <option value="extreme">Extreme close-up</option>
+                    </select>
+                  </div>
+                  <div class="field" style="flex:1">
+                    <label>Durasi (detik)</label>
+                    <input type="number" bind:value={sc.duration} min="1" max="60" />
+                  </div>
+                </div>
+              </div>
+            {/if}
           </li>
         {/each}
       </ol>
     {/if}
+
     <div class="field">
       <label for="sc-visual">Deskripsi visual</label>
       <input id="sc-visual" type="text" bind:value={newVisual}
         placeholder="Contoh: close-up tangan menyerahkan donasi" />
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label for="sc-shot">Shot type</label>
+        <select id="sc-shot" bind:value={newShotType}>
+          <option value="wide">Wide</option>
+          <option value="medium">Medium</option>
+          <option value="closeup">Close-up</option>
+          <option value="extreme">Extreme close-up</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label for="sc-dur">Durasi (detik)</label>
+        <input id="sc-dur" type="number" bind:value={newDuration} min="1" max="60" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="sc-dialog">Dialog (opsional)</label>
+      <input id="sc-dialog" type="text" bind:value={newDialogue} placeholder="Dialog karakter..." />
+    </div>
+    <div class="field">
+      <label for="sc-action">Aksi (opsional)</label>
+      <input id="sc-action" type="text" bind:value={newAction} placeholder="Apa yang terjadi..." />
     </div>
     <div class="field">
       <label for="sc-narr">Narasi / VO (opsional)</label>
       <input id="sc-narr" type="text" bind:value={newNarration}
         placeholder="Contoh: Setiap rupiahmu berarti..." />
     </div>
-    <div class="row">
-      <div class="field" style="flex:1">
-        <label for="sc-dur">Durasi (detik)</label>
-        <input id="sc-dur" type="number" bind:value={newDuration} min="1" max="60" />
-      </div>
-      <button class="btn-primary sm" onclick={addScene} disabled={!newVisual.trim()}>
-        + Tambah Scene
-      </button>
+    <div class="field">
+      <label for="sc-notes">Catatan (opsional)</label>
+      <input id="sc-notes" type="text" bind:value={newNotes} placeholder="Catatan sutradara..." />
     </div>
-      </div>
-    {/if}
-  </section>
+    <div class="row">
+      <button class="btn-primary sm" onclick={addScene} disabled={!newVisual.trim()}>
+        + Tambah Shot
+      </button>
+    </div>  </section>
 
   <section class="card collapsible">
     <button class="card-toggle" onclick={() => toggleSection("draft") }>
@@ -687,6 +772,19 @@
   .brand-photo { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
   .brand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   input[type="color"] { width: 100%; height: 40px; padding: 4px; cursor: pointer; }
+  .timeline { display: flex; gap: 4px; margin: 12px 0; }
+  .tl-shot {
+    min-width: 48px; padding: 8px 4px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .tl-shot:hover { border-color: #3b82f6; }
+  .tl-shot.active { border-color: #3b82f6; background: rgba(59,130,246,.1); }
+  .tl-num { font-weight: 700; font-size: 14px; }
+  .tl-dur { font-size: 10px; color: var(--dim); font-family: monospace; }
+  .shot-type { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: monospace; }
+  .scene-field { font-size: 13px; margin: 4px 0; color: var(--text); }
+  .board-editor { margin-top: 10px; padding: 12px; border: 1px dashed var(--border); border-radius: 8px; background: rgba(0,0,0,.1); }
   .scene-list { list-style: none; padding: 0; margin: 0 0 16px; }
   .scene { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
   .scene-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
