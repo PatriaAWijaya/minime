@@ -208,8 +208,6 @@ pub fn now_epoch() -> u64 {
         .as_secs()
 }
 
-#[cfg(test)]
-
 /// Write a secret to the macOS keychain via Apple's `security` CLI.
 /// Fallback for ad-hoc-signed binaries where the keyring crate fails closed
 /// (Patria 21 Okt: keyring `set_password` returns Ok but does not persist).
