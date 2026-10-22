@@ -2267,3 +2267,9 @@ Pasangan SHA: lokal 8b58c67 ↔ remote 6e3754d (tree identik).
 - Planner kini hanya berisi Buat Draft + Jadwal Konten (fungsi workflow Media Studio, tetap di tempat).
 - i18n: 781 key × 3 bahasa, 0 duplikat. Test 49/49, clippy 0. Build debug ✓, app restart ✓.
 - Pasangan SHA: lokal bfe04d5 ↔ remote 4a323c2 (tree identik).
+
+## 23 Okt 2026 ~00:15 — Dynamic Island default aktif (perintah Patria)
+- Masalah: island tidak muncul secara default (kemungkinan localStorage menyimpan nilai lama non-aktif).
+- Solusi: migrasi satu-kali (`islandMigrated23Okt`) — saat app dibuka, `islandNotch` dan `islandIdle` di-reset ke `true` bila belum pernah dimigrasi. Setelah itu user bebas mematikannya dari Pengaturan > Dynamic Island.
+- Mode "idle" menampilkan pill "Halo, Patria / Minime siap membantu" di bawah menu bar (posisi notch-style).
+- Pasangan SHA: lokal f81c27c ↔ remote bffdd74 (tree identik).
