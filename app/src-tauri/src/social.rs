@@ -159,3 +159,68 @@ mod tests {
         assert!(j.contains("postiz"));
     }
 }
+
+/// Cari foto stok di Pixabay. Membutuhkan PIXABAY_API_KEY di keychain.
+#[tauri::command]
+pub async fn pixabay_search_images(query: String, per_page: u8) -> Result<serde_json::Value, String> {
+    let api_key = crate::secrets::api_key("minime.pixabay_key")
+        .ok_or_else(|| "Pixabay API key belum diset.".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("Pixabay API key kosong.".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get("https://pixabay.com/api/")
+        .query(&[
+            ("key", api_key.trim()),
+            ("q", query.as_str()),
+            ("image_type", "photo"),
+            ("per_page", &per_page.min(20).to_string()),
+            ("safesearch", "true"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Pixabay API error: {}", e))?;
+    if !resp.status().is_success() {
+        return Err("Pixabay API gagal.".to_string());
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+/// Cari video stok di Pixabay.
+#[tauri::command]
+pub async fn pixabay_search_videos(query: String, per_page: u8) -> Result<serde_json::Value, String> {
+    let api_key = crate::secrets::api_key("minime.pixabay_key")
+        .ok_or_else(|| "Pixabay API key belum diset.".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("Pixabay API key kosong.".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get("https://pixabay.com/api/videos/")
+        .query(&[
+            ("key", api_key.trim()),
+            ("q", query.as_str()),
+            ("per_page", &per_page.min(20).to_string()),
+            ("safesearch", "true"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Pixabay API error: {}", e))?;
+    if !resp.status().is_success() {
+        return Err("Pixabay API gagal.".to_string());
+    }
+    resp.json().await.map_err(|e| e.to_string())
+}
+
+/// Simpan Pixabay API key.
+#[tauri::command]
+pub fn set_pixabay_key(api_key: String) -> Result<(), String> {
+    crate::secrets::set_api_key("minime.pixabay_key", api_key.trim()).map_err(|e| e.to_string())
+}
