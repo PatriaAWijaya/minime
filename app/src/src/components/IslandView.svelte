@@ -5,12 +5,22 @@
     isTauri,
     type IslandPayload,
   } from "../lib/store";
+  import appIcon from "../assets/app-icon.png";
 
-  // The Dynamic Island window: a transparent, always-on-top pill that
-  // mirrors agent status. State arrives from the backend `island-state`
-  // event (pushed by the main window via island_sync); on mount we also
-  // fetch the last payload so a fresh window never starts blank.
-  let state = $state<IslandPayload | null>(null);
+  // The Dynamic Island: a pill that mirrors agent status.
+  // Two usages:
+  // 1. Inline in the main window title bar (payload passed as prop).
+  // 2. Standalone floating window (?view=island): state arrives from the
+  //    backend `island-state` event; on mount we also fetch the last
+  //    payload so a fresh window never starts blank.
+  let { payload = null }: { payload?: IslandPayload | null } = $props();
+
+  let state = $state<IslandPayload | null>(payload);
+
+  // Keep inline state in sync when the parent updates the prop.
+  $effect(() => {
+    if (payload) state = payload;
+  });
 
   async function activate() {
     if (!(await isTauri())) return;
@@ -25,6 +35,8 @@
   }
 
   onMount(async () => {
+    // Inline usage: parent owns the state, no need to listen.
+    if (payload) return;
     if (!(await isTauri())) return;
     const { listen } = await import("@tauri-apps/api/event");
     const unlisten = await listen<IslandPayload>("island-state", (e) => {
@@ -38,7 +50,7 @@
 
 {#if state && state.mode !== "off"}
   <button class="pill" onclick={activate} aria-label="Minime Dynamic Island">
-    <span class="logo-tile" style:background={state.logoColor}>M</span>
+    <img class="logo-tile" src={appIcon} alt="Minime" draggable="false" />
     <span class="texts">
       <span class="title">{state.title}</span>
       <span class="sub">{state.sub}</span>
@@ -76,16 +88,17 @@
     font: inherit;
     text-align: left;
   }
+  .pill.inline {
+    height: auto;
+    min-height: 34px;
+    width: auto;
+  }
   .logo-tile {
     width: 30px;
     height: 30px;
     border-radius: 9px;
-    display: grid;
-    place-items: center;
-    font-weight: 800;
-    font-size: 15px;
-    color: #14100e;
     flex: none;
+    object-fit: cover;
   }
   .texts {
     flex: 1;

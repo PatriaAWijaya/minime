@@ -34,6 +34,8 @@
     new URLSearchParams(window.location.search).get("view") === "island";
 
   let islandAttention = $state(0);
+  /** Island payload for the inline title-bar island (also synced to backend). */
+  let islandPayload = $state<IslandPayload | null>(null);
 
   /** Apply the effective theme to <html> as data-theme="dark"|"light". */
   function applyTheme(t: Theme) {
@@ -93,7 +95,10 @@
       attention: attention > 0,
       logoColor: prefs.logoColor,
     };
-    void syncIsland(payload);
+    islandPayload = payload;
+    // The island now lives in the title bar (inline) — keep the floating
+    // window hidden by syncing mode "off" to the backend.
+    void syncIsland({ ...payload, mode: "off" });
   });
 
   onMount(() => {
@@ -145,7 +150,15 @@
 {#if isIsland}
   <IslandView />
 {:else}
-<div class="layout">
+<div class="app-shell">
+  <header class="titlebar" data-tauri-drag-region>
+    <div class="titlebar-island" style:max-width={islandPayload ? `${Math.round(4.2 * islandPayload.widthPct)}px` : undefined}>
+      {#if islandPayload}
+        <IslandView payload={islandPayload} />
+      {/if}
+    </div>
+  </header>
+  <div class="layout">
   <IconSidebar />
   <main class="content">
     {#if $activeView === "agents"}
@@ -166,14 +179,54 @@
       <SettingsView />
     {/if}
   </main>
+  </div>
 </div>
 {/if}
 
 <style>
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  /* Custom title bar (titleBarStyle: Overlay) — the Dynamic Island lives here. */
+  .titlebar {
+    height: 40px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Leave room for macOS traffic lights on the left */
+    padding-left: 78px;
+    padding-right: 12px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .titlebar-island {
+    max-width: 420px;
+    width: auto;
+  }
+  .titlebar-island :global(.pill) {
+    height: auto;
+    min-height: 30px;
+    padding: 4px 12px 4px 6px;
+  }
+  .titlebar-island :global(.logo-tile) {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+  }
+  .titlebar-island :global(.title) {
+    font-size: 12px;
+  }
+  .titlebar-island :global(.sub) {
+    font-size: 10.5px;
+  }
   .layout {
     display: grid;
     grid-template-columns: 46px minmax(0, 1fr);
-    height: 100%;
+    flex: 1;
+    min-height: 0;
   }
   .content {
     min-height: 0;

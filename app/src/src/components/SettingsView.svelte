@@ -38,6 +38,7 @@
   import ModelPicker from "./ModelPicker.svelte";
   import type { Theme } from "../lib/store";
   import { onMount } from "svelte";
+  import appIcon from "../assets/app-icon.png";
 
   const themes: { id: Theme; labelKey: string }[] = [
     { id: "system", labelKey: "settings.theme.system" },
@@ -786,34 +787,10 @@
       <div class="card">
         {@render switchRow("islandNotch", "island.notch", "island.notch.desc")}
         {@render switchRow("islandIdle", "island.idle", "island.idle.desc")}
-        {@render switchRow("islandExtra", "island.extra", "island.extra.desc")}
         {@render switchRow("islandHaptics", "island.haptics", "island.haptics.desc")}
       </div>
 
-      <h3 class="sec-title">{$t("island.sec.position")}</h3>
-      <p class="lede">{$t("island.position.desc")}</p>
-      <div class="card">
-        <div class="pos-picker">
-          <button
-            class="pos-option"
-            class:active={$settingsPrefs.islandPosition === "top"}
-            onclick={() => setPref("islandPosition", "top")}
-            aria-pressed={$settingsPrefs.islandPosition === "top"}
-          >
-            <span class="pos-screen"><span class="pos-pill top"></span></span>
-            <span class="pos-label">{$t("island.pos.top")}</span>
-          </button>
-          <button
-            class="pos-option"
-            class:active={$settingsPrefs.islandPosition === "bottom"}
-            onclick={() => setPref("islandPosition", "bottom")}
-            aria-pressed={$settingsPrefs.islandPosition === "bottom"}
-          >
-            <span class="pos-screen"><span class="pos-pill bottom"></span></span>
-            <span class="pos-label">{$t("island.pos.bottom")}</span>
-          </button>
-        </div>
-      </div>
+      <!-- Position picker removed: the island now lives in the title bar. -->
 
 
       <div class="sec-head">
@@ -833,19 +810,11 @@
         <div class="island-previews">
           <div class="preview-box">
             <div class="preview-pill">
-              <span class="ptile" style:background={$settingsPrefs.logoColor}>M</span>
+              <img class="ptile-img" src={appIcon} alt="Minime" draggable="false" />
               <span class="pfill"></span>
               <span aria-hidden="true">🙂</span>
             </div>
-            <span class="preview-cap">{$t("island.display.builtin")}</span>
-          </div>
-          <div class="preview-box">
-            <div class="preview-pill">
-              <span class="ptile" style:background={$settingsPrefs.logoColor}>M</span>
-              <span class="pfill"></span>
-              <span aria-hidden="true">🙂</span>
-            </div>
-            <span class="preview-cap">{$t("island.display.external")}</span>
+            <span class="preview-cap">{$t("island.display.titlebar")}</span>
           </div>
         </div>
         <div class="srow col">
@@ -1812,15 +1781,11 @@
   padding: 0 12px 0 6px;
   box-sizing: border-box;
 }
-.preview-pill .ptile {
+.preview-pill .ptile-img {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 800;
-  color: #14100e;
+  object-fit: cover;
   flex: none;
 }
 .preview-pill .pfill { flex: 1; }
