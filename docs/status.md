@@ -2048,3 +2048,12 @@ Test:
 - Konsistensi: semua store terpersist, i18n 3 bahasa ✅
 
 Nol error lolos.
+
+## 22 Okt 2026 ~13:30 — Skill pstack (poteto) untuk Code Builder, Kreatif, Mimi
+
+Perintah Patria: aplikasikan `backnotprop/pstack` (mirror standalone `cursor/plugins/pstack`, MIT) ke skill umum Muse + Minime.
+
+- Repo di-clone ke `~/workspace/pstack-check` sebagai referensi pola.
+- Skill umum Muse: `~/workspace/custom-skills/{swarm,unslop,tdd}/SKILL.md`.
+- Skill Minime: `skills/swarm` (owner `mimi` — orkestrasi fan-out worker paralel), `skills/unslop` (owner `kreatif` — potong ciri tulisan AI), `skills/tdd` (owner `code` — bug fix via failing test dulu).
+- Wiring `skills.rs`: mimi += swarm; kreatif += unslop; code += tdd.

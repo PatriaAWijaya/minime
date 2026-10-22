@@ -25,8 +25,14 @@ use std::sync::OnceLock;
 /// lewat Marketplace — override di SQLite menang atas daftar ini).
 fn skills_for(agent_id: &str) -> &'static [&'static str] {
     match agent_id {
-        "mimi" => &["skill-warehouse"],
-        "kreatif" => &["content", "copywriting", "storytelling", "branding-playbook"],
+        "mimi" => &["skill-warehouse", "swarm"],
+        "kreatif" => &[
+            "content",
+            "copywriting",
+            "storytelling",
+            "branding-playbook",
+            "unslop",
+        ],
         "riset" => &["riset-web", "openviking"],
         "finance" => &["finance-playbook"],
         "strategis" => &[
@@ -35,7 +41,7 @@ fn skills_for(agent_id: &str) -> &'static [&'static str] {
             "operational-playbook",
             "smo-playbook",
         ],
-        "code" => &["code-builder-playbook", "reverse-engineer-anything"],
+        "code" => &["code-builder-playbook", "reverse-engineer-anything", "tdd"],
         _ => &[],
     }
 }

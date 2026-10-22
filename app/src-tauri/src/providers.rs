@@ -983,9 +983,10 @@ pub async fn generate_thumbnail(title: String, output_name: String) -> Result<St
     let out_path = out_dir.join(format!("{}.png", if safe_name.is_empty() { "thumb".to_string() } else { safe_name }));
 
     // Gunakan Python API langsung
+    let esc_title = title.replace('\', "\\").replace('"', '\"');
     let py_code = format!(
-        "from youtube_thumbnail_generator import generate_thumbnail as gen; gen('{}', '{}')",
-        title.replace('\'', "\\'"),
+        "from PIL import Image, ImageDraw; img=Image.new('RGB',(1600,900),(18,18,28)); d=ImageDraw.Draw(img); d.text((80,380), \"{}\", fill=(255,255,255)); d.text((80,480), 'Minime AI Media Studio', fill=(120,120,140)); img.save('{}')",
+        esc_title,
         out_path.to_str().unwrap().replace('\'', "\\'")
     );
     let status = tokio::process::Command::new("python3")
