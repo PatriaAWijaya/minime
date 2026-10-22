@@ -1386,6 +1386,8 @@ export interface SettingsPrefs {
   islandPosition: "top" | "bottom";
   islandWidth: number;
   islandHeight: number;
+  /** Migration flag 23 Okt 2026 (island default aktif). */
+  islandMigrated23Okt?: boolean;
   computerBrowser: boolean;
   computerHidden: boolean;
   computerMirror: boolean;
@@ -1433,10 +1435,19 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   updateMembers: true,
 };
 
-export const settingsPrefs = writable<SettingsPrefs>({
-  ...SETTINGS_DEFAULTS,
-  ...loadRecord<unknown>("minime.settings-prefs"),
-} as SettingsPrefs);
+export const settingsPrefs = writable<SettingsPrefs>(() => {
+  const stored = loadRecord<Partial<SettingsPrefs>>("minime.settings-prefs") ?? {};
+  const migrated = { ...SETTINGS_DEFAULTS, ...stored };
+  // Migrasi 23 Okt 2026 (perintah Patria: default island harus aktif).
+  // Reset satu-kali: bila tersimpan non-aktif, kembalikan ke default aktif.
+  // Setelah ini user bebas mematikannya lagi dari Pengaturan.
+  if (!stored.islandMigrated23Okt) {
+    migrated.islandNotch = true;
+    migrated.islandIdle = true;
+    (migrated as Record<string, unknown>).islandMigrated23Okt = true;
+  }
+  return migrated as SettingsPrefs;
+})();
 settingsPrefs.subscribe((v) => {
   try {
     localStorage.setItem("minime.settings-prefs", JSON.stringify(v));
