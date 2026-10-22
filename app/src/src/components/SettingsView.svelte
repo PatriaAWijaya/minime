@@ -787,10 +787,34 @@
       <div class="card">
         {@render switchRow("islandNotch", "island.notch", "island.notch.desc")}
         {@render switchRow("islandIdle", "island.idle", "island.idle.desc")}
+        {@render switchRow("islandExtra", "island.extra", "island.extra.desc")}
         {@render switchRow("islandHaptics", "island.haptics", "island.haptics.desc")}
       </div>
 
-      <!-- Position picker removed: the island now lives in the title bar. -->
+      <h3 class="sec-title">{$t("island.sec.position")}</h3>
+      <p class="lede">{$t("island.position.desc")}</p>
+      <div class="card">
+        <div class="pos-picker">
+          <button
+            class="pos-option"
+            class:active={$settingsPrefs.islandPosition === "top"}
+            onclick={() => setPref("islandPosition", "top")}
+            aria-pressed={$settingsPrefs.islandPosition === "top"}
+          >
+            <span class="pos-screen"><span class="pos-pill top"></span></span>
+            <span class="pos-label">{$t("island.pos.top")}</span>
+          </button>
+          <button
+            class="pos-option"
+            class:active={$settingsPrefs.islandPosition === "bottom"}
+            onclick={() => setPref("islandPosition", "bottom")}
+            aria-pressed={$settingsPrefs.islandPosition === "bottom"}
+          >
+            <span class="pos-screen"><span class="pos-pill bottom"></span></span>
+            <span class="pos-label">{$t("island.pos.bottom")}</span>
+          </button>
+        </div>
+      </div>
 
 
       <div class="sec-head">
@@ -814,7 +838,15 @@
               <span class="pfill"></span>
               <span aria-hidden="true">🙂</span>
             </div>
-            <span class="preview-cap">{$t("island.display.titlebar")}</span>
+            <span class="preview-cap">{$t("island.display.builtin")}</span>
+          </div>
+          <div class="preview-box">
+            <div class="preview-pill">
+              <img class="ptile-img" src={appIcon} alt="Minime" draggable="false" />
+              <span class="pfill"></span>
+              <span aria-hidden="true">🙂</span>
+            </div>
+            <span class="preview-cap">{$t("island.display.external")}</span>
           </div>
         </div>
         <div class="srow col">

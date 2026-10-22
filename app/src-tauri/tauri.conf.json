@@ -23,8 +23,7 @@
         "minWidth": 1024,
         "resizable": true,
         "title": "Minime",
-        "width": 1280,
-        "titleBarStyle": "Overlay"
+        "width": 1280
       },
       {
         "alwaysOnTop": true,

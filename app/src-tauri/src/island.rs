@@ -38,6 +38,56 @@ pub struct IslandSyncResult {
     pub displays: u32,
 }
 
+/// Height of the macOS menu bar in physical pixels (0 on other platforms).
+/// A window placed at y < menu_bar_height would be hidden behind the menu
+/// bar, so the island sits just below it — visually merged with the bar.
+#[allow(unexpected_cfgs)]
+fn menu_bar_height() -> i32 {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        use objc::{class, msg_send, sel, sel_impl};
+
+        #[repr(C)]
+        #[derive(Clone, Copy)]
+        struct NsPoint {
+            x: f64,
+            y: f64,
+        }
+        #[repr(C)]
+        #[derive(Clone, Copy)]
+        struct NsSize {
+            width: f64,
+            height: f64,
+        }
+        #[repr(C)]
+        #[derive(Clone, Copy)]
+        struct NsRect {
+            origin: NsPoint,
+            size: NsSize,
+        }
+
+        let screen: *mut objc::runtime::Object = msg_send![class!(NSScreen), mainScreen];
+        if screen.is_null() {
+            return 0;
+        }
+        let frame: NsRect = msg_send![screen, frame];
+        let visible: NsRect = msg_send![screen, visibleFrame];
+        // visibleFrame excludes the menu bar (top) and the Dock (bottom/side).
+        // Top gap = full height - visible height - visible origin y (Dock).
+        let scale: f64 = msg_send![screen, backingScaleFactor];
+        let top_gap = (frame.size.height - visible.size.height) - visible.origin.y;
+        if top_gap > 0.0 {
+            return (top_gap * scale).round() as i32;
+        }
+        // Fallback: standard menu bar height.
+        (24.0 * scale).round() as i32
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        0
+    }
+}
+
 fn apply_to_window(window: &WebviewWindow, monitor: &tauri::Monitor, payload: &IslandPayload) {
     let width = (400.0 * payload.width_pct / 100.0).clamp(280.0, 640.0);
     let height = (56.0 * payload.height_pct / 100.0).clamp(40.0, 110.0);
@@ -46,10 +96,13 @@ fn apply_to_window(window: &WebviewWindow, monitor: &tauri::Monitor, payload: &I
         let mpos = monitor.position();
         let msize = monitor.size();
         let x = mpos.x + (msize.width as i32 - outer.width as i32) / 2;
+        // "Top" = tucked right under the desktop top bar (macOS menu bar),
+        // so the pill reads as part of the system chrome (notch-style).
+        let top_bar = menu_bar_height();
         let y = if payload.position == "bottom" {
             mpos.y + msize.height as i32 - outer.height as i32 - 16
         } else {
-            mpos.y + 8
+            mpos.y + top_bar + 6
         };
         let _ = window.set_position(PhysicalPosition::new(x, y));
     }
