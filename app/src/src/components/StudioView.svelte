@@ -843,8 +843,8 @@
   .sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto; }
   .side-card { margin-bottom: 0 !important; }
   .side-card .card-toggle h3 { font-size: 14px; }
-  .side-body { font-size: 13px; max-height: 320px; overflow-y: auto; padding-right: 8px; }
-  .side-body::-webkit-scrollbar { width: 8px; }
+  .side-body { font-size: 13px; max-height: 320px; overflow-y: auto; padding-right: 6px; scrollbar-width: thin; }
+  .side-body::-webkit-scrollbar { width: 4px; }
   .side-body::-webkit-scrollbar-track { background: transparent; }
   .side-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   .side-body::-webkit-scrollbar-thumb:hover { background: #4FA6F0; }
