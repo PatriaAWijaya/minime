@@ -483,7 +483,12 @@ export function getModel(id: string): ModelOption {
   // Legacy migration: old "claude" id was Muse (renamed to "muse" when
   // "Claude" became its own option).
   const resolved = id === "claude" ? "muse" : id;
-  return catalog.find((m) => m.id === resolved) ?? catalog[0];
+  const found = catalog.find((m) => m.id === resolved);
+  if (found) return found;
+  // Dynamic ID (e.g. opencode:xxx-free dari Zen) — buat entri agar bar & list sinkron.
+  const [providerId, ...rest] = resolved.split(":");
+  const label = rest.join(":") || resolved;
+  return { id: resolved, providerId, label, kind: "free" as const };
 }
 
 export function defaultModelFor(agentId: string): string {
