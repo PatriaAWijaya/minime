@@ -1419,8 +1419,8 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   dictationDownloads: [],
   elevenlabsKeySaved: false,
   mobileLinkToken: "",
-  islandNotch: true,
-  islandIdle: true,
+  islandNotch: false,
+  islandIdle: false,
   islandExtra: true,
   islandHaptics: true,
   islandPosition: "top",
@@ -1438,12 +1438,12 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
 export const settingsPrefs = writable<SettingsPrefs>(() => {
   const stored = loadRecord<Partial<SettingsPrefs>>("minime.settings-prefs") ?? {};
   const migrated = { ...SETTINGS_DEFAULTS, ...stored };
-  // Migrasi 23 Okt 2026 (perintah Patria: default island harus aktif).
-  // Reset satu-kali: bila tersimpan non-aktif, kembalikan ke default aktif.
-  // Setelah ini user bebas mematikannya lagi dari Pengaturan.
+  // Migrasi 23 Okt 2026 (perintah Patria: default island NON-AKTIF).
+  // Reset satu-kali ke default non-aktif; user bisa mengaktifkannya
+  // kapan saja dari Pengaturan > Dynamic Island.
   if (!stored.islandMigrated23Okt) {
-    migrated.islandNotch = true;
-    migrated.islandIdle = true;
+    migrated.islandNotch = false;
+    migrated.islandIdle = false;
     (migrated as Record<string, unknown>).islandMigrated23Okt = true;
   }
   return migrated as SettingsPrefs;
