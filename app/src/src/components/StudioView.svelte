@@ -3,6 +3,7 @@
   import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, userInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
+import VideoPipeline from "./VideoPipeline.svelte";
   import VideoEditor from "./VideoEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
@@ -507,6 +508,7 @@
   <button class="tab-btn {activeTab === 'genimage' ? 'active' : ''}" onclick={() => (activeTab = 'genimage')}>Studio Gambar</button>
   <button class="tab-btn {activeTab === 'suara' ? 'active' : ''}" onclick={() => (activeTab = 'suara')}>Studio Suara</button>
   <button class="tab-btn {activeTab === 'timeline' ? 'active' : ''}" onclick={() => (activeTab = 'timeline')}>Studio Video</button>
+  <button class="tab-btn {activeTab === 'videoai' ? 'active' : ''}" onclick={() => (activeTab = 'videoai')}>Video AI</button>
 </nav>      <div class="tab-content">
 {#if activeTab === 'research'}
       <div class="tab-pane">
@@ -779,6 +781,12 @@
       <div class="tab-pane">
       <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
       <TimelineEditor />
+      </div>
+      {/if}
+{#if activeTab === 'videoai'}
+      <div class="tab-pane">
+      <p class="hint">Pipeline video AI 6 tahap: Topik → Naskah → Suara → Footage → Subtitle → Rakit. Ala MoneyPrinterTurbo, dengan opsi rakit kustom via HyperFrames.</p>
+      <VideoPipeline />
       </div>
       {/if}
       </div>

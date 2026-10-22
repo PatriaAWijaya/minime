@@ -1692,6 +1692,409 @@ pub async fn export_timeline(timeline_json: String, output_name: String) -> Resu
 }
 
 #[cfg(test)]
+
+/// Rakit video AI ala MoneyPrinterTurbo: gabung footage + narasi + subtitle.
+/// - videos: list path file video footage (akan di-concat berurutan)
+/// - audio_path: path file audio narasi (opsional)
+/// - subtitle_path: path file SRT subtitle (opsional, akan di-burn-in)
+/// - output_name: nama file output
+/// - aspect: "9:16" (reels/shorts) atau "16:9" (landscape)
+/// Mengembalikan path file MP4 hasil.
+/// Cara kerja: concat footage → scale/crop ke aspek → gabung audio (loop/trim menyesuaikan durasi) → burn subtitle.
+#[tauri::command]
+pub async fn assemble_video_ai(
+    videos: Vec<String>,
+    audio_path: Option<String>,
+    subtitle_path: Option<String>,
+    output_name: String,
+    aspect: String,
+) -> Result<String, String> {
+    if videos.is_empty() {
+        return Err("Tidak ada footage video.".to_string());
+    }
+    let ffmpeg = which_ffmpeg().ok_or_else(|| "FFmpeg tidak ditemukan di sistem.".to_string())?;
+
+    let tmp = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+    let safe_name: String = output_name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
+    let out_path = tmp.join(format!("{}.mp4", if safe_name.is_empty() { "video-ai".to_string() } else { safe_name }));
+
+    let (w, h) = if aspect == "16:9" { (1920, 1080) } else { (1080, 1920) };
+
+    // 1. Concat footage
+    let list_path = tmp.join("ai_concat_list.txt");
+    let mut list_content = String::new();
+    for v in &videos {
+        let escaped = v.replace('\'', "'\\''");
+        list_content.push_str(&format!("file '{}'\n", escaped));
+    }
+    std::fs::write(&list_path, list_content).map_err(|e| e.to_string())?;
+    let concat_path = tmp.join("ai_concat.mp4");
+    let status = tokio::process::Command::new(&ffmpeg)
+        .args([
+            "-y", "-f", "concat", "-safe", "0",
+            "-i", list_path.to_str().unwrap(),
+            "-c", "copy",
+            concat_path.to_str().unwrap(),
+        ])
+        .status()
+        .await
+        .map_err(|e| format!("Gagal concat footage: {}", e))?;
+    if !status.success() {
+        return Err("FFmpeg gagal menggabung footage.".to_string());
+    }
+
+    // 2. Bangun filter video: scale + crop + subtitle
+    let mut vf = format!(
+        "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{},format=yuv420p",
+        w, h, w, h
+    );
+    if let Some(sub) = &subtitle_path {
+        if std::path::Path::new(sub).exists() {
+            let escaped = sub.replace('\', "/").replace(':', "\:").replace('\'', "");
+            vf.push_str(&format!(",subtitles='{}'", escaped));
+        }
+    }
+
+    // 3. Gabung dengan audio (jika ada): -shortest agar durasi ikut audio/video terpendek
+    let mut cmd = tokio::process::Command::new(&ffmpeg);
+    cmd.args(["-y", "-i", concat_path.to_str().unwrap()]);
+    if let Some(aud) = &audio_path {
+        if std::path::Path::new(aud).exists() {
+            cmd.args(["-i", aud]);
+        }
+    }
+    cmd.args(["-vf", &vf]);
+    if audio_path.as_ref().map(|a| std::path::Path::new(a).exists()).unwrap_or(false) {
+        // Map video dari input 0, audio dari input 1, durasi ikut yang terpendek
+        cmd.args(["-map", "0:v", "-map", "1:a", "-shortest"]);
+    }
+    cmd.args([
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        out_path.to_str().unwrap(),
+    ]);
+    let status = cmd.status().await.map_err(|e| format!("Gagal merakit video: {}", e))?;
+    if !status.success() {
+        return Err("FFmpeg gagal merakit video final.".to_string());
+    }
+
+    // Bersihkan file sementara
+    let _ = std::fs::remove_file(&list_path);
+    let _ = std::fs::remove_file(&concat_path);
+
+    out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path output tidak valid.".to_string())
+}
+
+
+/// Text-to-video via AI model (Sora / Wan 2.3 / LTX-Video).
+/// Membutuhkan API key di keychain: minime.sora_key, minime.wan_key, minime.ltx_key.
+/// Mengembalikan path file video hasil generate.
+#[tauri::command]
+pub async fn text_to_video(prompt: String, model: String, aspect: String) -> Result<String, String> {
+    if prompt.trim().is_empty() {
+        return Err("Prompt kosong.".to_string());
+    }
+    let tmp = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+
+    match model.as_str() {
+        "wan" => text_to_video_wan(&prompt, &aspect, &tmp).await,
+        "ltx" => text_to_video_ltx(&prompt, &aspect, &tmp).await,
+        "sora" => Err("Sora sudah tidak tersedia — OpenAI menutup Videos API pada Sep 2026.".to_string()),
+        _ => Err(format!("Model tidak dikenal: {}", model)),
+    }
+}
+
+async fn text_to_video_sora(prompt: &str, aspect: &str, tmp: &std::path::Path) -> Result<String, String> {
+    let api_key = crate::secrets::api_key("minime.sora_key")
+        .ok_or_else(|| "API key Sora belum diset (Tools → Apps).".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("API key Sora belum diset (Tools → Apps).".to_string());
+    }
+    // OpenAI Sora API: POST https://api.openai.com/v1/videos
+    let size = if aspect == "16:9" { "1280x720" } else { "720x1280" };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .post("https://api.openai.com/v1/videos")
+        .bearer_auth(api_key.trim())
+        .json(&serde_json::json!({
+            "model": "sora-2",
+            "prompt": prompt,
+            "size": size,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Gagal memanggil Sora API: {}", e))?;
+    if !resp.status().is_success() {
+        let t = resp.text().await.unwrap_or_default();
+        return Err(format!("Sora API error: {}", t.chars().take(300).collect::<String>()));
+    }
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    // Sora mengembalikan video ID; polling hingga selesai lalu unduh
+    let video_id = j.get("id").and_then(|v| v.as_str()).ok_or_else(|| "Respons Sora tidak valid.".to_string())?;
+    // Polling status (maks 10 menit)
+    let out_path = tmp.join(format!("sora-{}.mp4", video_id));
+    for _ in 0..60 {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let st = client
+            .get(format!("https://api.openai.com/v1/videos/{}", video_id))
+            .bearer_auth(api_key.trim())
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        let sj: serde_json::Value = st.json().await.map_err(|e| e.to_string())?;
+        let status = sj.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        if status == "completed" {
+            // Unduh konten video
+            let dl = client
+                .get(format!("https://api.openai.com/v1/videos/{}/content", video_id))
+                .bearer_auth(api_key.trim())
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            let bytes = dl.bytes().await.map_err(|e| e.to_string())?;
+            std::fs::write(&out_path, &bytes).map_err(|e| e.to_string())?;
+            return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
+        } else if status == "failed" {
+            return Err("Sora gagal generate video.".to_string());
+        }
+    }
+    Err("Sora timeout (10 menit). Coba lagi.".to_string())
+}
+
+async fn text_to_video_wan(prompt: &str, aspect: &str, tmp: &std::path::Path) -> Result<String, String> {
+    // Wan 2.3 via API (Alibaba Model Studio atau fal.ai)
+    let api_key = crate::secrets::api_key("minime.wan_key")
+        .ok_or_else(|| "API key Wan belum diset (Tools → Apps).".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("API key Wan belum diset (Tools → Apps).".to_string());
+    }
+    // Via fal.ai (mendukung Wan): POST https://queue.fal.run/fal-ai/wan-v2-3
+    let size = if aspect == "16:9" { "1280x720" } else { "720x1280" };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .post("https://queue.fal.run/fal-ai/wan/v2.6/text-to-video")
+        .header("Authorization", format!("Key {}", api_key.trim()))
+        .json(&serde_json::json!({
+            "prompt": prompt,
+            "image_size": size,
+            "duration": "5",
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Gagal memanggil Wan API: {}", e))?;
+    if !resp.status().is_success() {
+        let t = resp.text().await.unwrap_or_default();
+        return Err(format!("Wan API error: {}", t.chars().take(300).collect::<String>()));
+    }
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let req_id = j.get("request_id").and_then(|v| v.as_str()).ok_or_else(|| "Respons Wan tidak valid.".to_string())?;
+    // Polling
+    for _ in 0..60 {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let st = client
+            .get(format!("https://queue.fal.run/fal-ai/wan/v2.6/text-to-video/requests/{}/status", req_id))
+            .header("Authorization", format!("Key {}", api_key.trim()))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        let sj: serde_json::Value = st.json().await.map_err(|e| e.to_string())?;
+        let status = sj.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        if status == "COMPLETED" {
+            let res = client
+                .get(format!("https://queue.fal.run/fal-ai/wan/v2.6/text-to-video/requests/{}/response", req_id))
+                .header("Authorization", format!("Key {}", api_key.trim()))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            let rj: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+            let video_url = rj.get("video").and_then(|v| v.get("url")).and_then(|u| u.as_str())
+                .ok_or_else(|| "URL video tidak ditemukan.".to_string())?;
+            // Unduh
+            let dl = client.get(video_url).send().await.map_err(|e| e.to_string())?;
+            let bytes = dl.bytes().await.map_err(|e| e.to_string())?;
+            let out_path = tmp.join(format!("wan-{}.mp4", req_id));
+            std::fs::write(&out_path, &bytes).map_err(|e| e.to_string())?;
+            return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
+        }
+    }
+    Err("Wan timeout (10 menit). Coba lagi.".to_string())
+}
+
+async fn text_to_video_ltx(prompt: &str, aspect: &str, tmp: &std::path::Path) -> Result<String, String> {
+    // LTX-Video via fal.ai: POST https://queue.fal.run/fal-ai/ltx-video
+    let api_key = crate::secrets::api_key("minime.ltx_key")
+        .ok_or_else(|| "API key LTX belum diset (Tools → Apps).".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("API key LTX belum diset (Tools → Apps).".to_string());
+    }
+    let size = if aspect == "16:9" { "1280x720" } else { "720x1280" };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .post("https://queue.fal.run/fal-ai/ltx-video")
+        .header("Authorization", format!("Key {}", api_key.trim()))
+        .json(&serde_json::json!({
+            "prompt": prompt,
+            "image_size": size,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Gagal memanggil LTX API: {}", e))?;
+    if !resp.status().is_success() {
+        let t = resp.text().await.unwrap_or_default();
+        return Err(format!("LTX API error: {}", t.chars().take(300).collect::<String>()));
+    }
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let req_id = j.get("request_id").and_then(|v| v.as_str()).ok_or_else(|| "Respons LTX tidak valid.".to_string())?;
+    for _ in 0..60 {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let st = client
+            .get(format!("https://queue.fal.run/fal-ai/ltx-video/requests/{}/status", req_id))
+            .header("Authorization", format!("Key {}", api_key.trim()))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        let sj: serde_json::Value = st.json().await.map_err(|e| e.to_string())?;
+        let status = sj.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        if status == "COMPLETED" {
+            let res = client
+                .get(format!("https://queue.fal.run/fal-ai/ltx-video/requests/{}/response", req_id))
+                .header("Authorization", format!("Key {}", api_key.trim()))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            let rj: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+            let video_url = rj.get("video").and_then(|v| v.get("url")).and_then(|u| u.as_str())
+                .ok_or_else(|| "URL video tidak ditemukan.".to_string())?;
+            let dl = client.get(video_url).send().await.map_err(|e| e.to_string())?;
+            let bytes = dl.bytes().await.map_err(|e| e.to_string())?;
+            let out_path = tmp.join(format!("ltx-{}.mp4", req_id));
+            std::fs::write(&out_path, &bytes).map_err(|e| e.to_string())?;
+            return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
+        }
+    }
+    Err("LTX timeout (10 menit). Coba lagi.".to_string())
+}
+
+/// Rakit video via HyperFrames: buat komposisi HTML dari footage + audio, render MP4.
+/// Untuk kontrol kreatif penuh (teks animasi, layout kustom).
+#[tauri::command]
+pub async fn hyperframes_assemble(
+    videos: Vec<String>,
+    audio_path: Option<String>,
+    aspect: String,
+    output_name: String,
+) -> Result<String, String> {
+    if videos.is_empty() {
+        return Err("Tidak ada footage.".to_string());
+    }
+    // Cek HyperFrames CLI
+    let hf = which_hyperframes().ok_or_else(|| "HyperFrames belum terinstall. Jalankan: npx hyperframes --help".to_string())?;
+
+    let tmp = std::env::temp_dir().join("minime-hf");
+    std::fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
+    let proj_dir = tmp.join(&output_name);
+    if proj_dir.exists() {
+        std::fs::remove_dir_all(&proj_dir).map_err(|e| e.to_string())?;
+    }
+    std::fs::create_dir_all(&proj_dir).map_err(|e| e.to_string())?;
+
+    let (w, h) = if aspect == "16:9" { (1920, 1080) } else { (1080, 1920) };
+
+    // Salin footage ke folder proyek (HyperFrames butuh aset lokal)
+    let mut local_vids: Vec<String> = Vec::new();
+    for (i, v) in videos.iter().enumerate() {
+        let dest = proj_dir.join(format!("clip{}.mp4", i));
+        // Jika URL http, unduh dulu; jika path lokal, copy
+        if v.starts_with("http") {
+            let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(120))
+                .build()
+                .map_err(|e| e.to_string())?;
+            let bytes = client.get(v).send().await.map_err(|e| e.to_string())?
+                .bytes().await.map_err(|e| e.to_string())?;
+            std::fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
+        } else {
+            std::fs::copy(v, &dest).map_err(|e| format!("Gagal menyalin footage: {}", e))?;
+        }
+        local_vids.push(format!("clip{}.mp4", i));
+    }
+
+    // Salin audio jika ada
+    let audio_file = if let Some(aud) = &audio_path {
+        if std::path::Path::new(aud).exists() {
+            let dest = proj_dir.join("narasi.mp3");
+            std::fs::copy(aud, &dest).map_err(|e| e.to_string())?;
+            Some("narasi.mp3".to_string())
+        } else { None }
+    } else { None };
+
+    // Buat index.html komposisi HyperFrames
+    let clips_html: String = local_vids.iter().enumerate().map(|(i, f)| {
+        format!(r#"<video class="clip" data-duration="5" src="{}" {}></video>"#,
+            f, if i == 0 { r#"data-audio="narasi.mp3""# } else { "" })
+    }).collect::<Vec<_>>().join("
+    ");
+
+    let html = format!(r#"<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  body {{ margin: 0; background: #000; }}
+  .clip {{ width: 100%; height: 100%; object-fit: cover; }}
+</style>
+</head>
+<body data-width="{w}" data-height="{h}" data-duration="{dur}">
+    {clips}
+    {audio_tag}
+</body>
+</html>"#,
+        w = w, h = h,
+        dur = local_vids.len() * 5,
+        clips = clips_html,
+        audio_tag = audio_file.map(|f| format!(r#"<audio src="{}" data-duration="{}"></audio>"#, f, local_vids.len() * 5)).unwrap_or_default(),
+    );
+    std::fs::write(proj_dir.join("index.html"), html).map_err(|e| e.to_string())?;
+    std::fs::write(proj_dir.join("hyperframes.json"), r#"{"quality": "draft"}"#).map_err(|e| e.to_string())?;
+
+    // Render via HyperFrames CLI
+    let out_path = tmp.join(format!("{}.mp4", output_name));
+    let status = tokio::process::Command::new(&hf)
+        .args(["render", "--quality", "draft", "--output", out_path.to_str().unwrap()])
+        .current_dir(&proj_dir)
+        .status()
+        .await
+        .map_err(|e| format!("Gagal menjalankan HyperFrames: {}", e))?;
+    if !status.success() {
+        return Err("HyperFrames gagal merender.".to_string());
+    }
+    out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string())
+}
+
+fn which_hyperframes() -> Option<String> {
+    for p in ["/opt/homebrew/bin/hyperframes", "/usr/local/bin/hyperframes"] {
+        if std::path::Path::new(p).exists() {
+            return Some(p.to_string());
+        }
+    }
+    // Cek via npx
+    if std::process::Command::new("npx").arg("hyperframes").arg("--version").output().map(|o| o.status.success()).unwrap_or(false) {
+        return Some("npx".to_string());
+    }
+    None
+}
+
 mod tests {
     use super::*;
 

@@ -292,10 +292,77 @@ pub async fn pixabay_search_videos(query: String, per_page: u8) -> Result<serde_
     resp.json().await.map_err(|e| e.to_string())
 }
 
+/// Cari video stok di Pexels (gratis, 200 req/jam).
+/// Membutuhkan PEXELS_API_KEY di keychain (minime.pexels_key).
+#[tauri::command]
+pub async fn pexels_search_videos(query: String, per_page: u8) -> Result<String, String> {
+    let api_key = crate::secrets::api_key("minime.pexels_key")
+        .ok_or_else(|| "API key Pexels belum diset (Tools → Apps).".to_string())?;
+    if api_key.trim().is_empty() {
+        return Err("API key Pexels belum diset (Tools → Apps).".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get("https://api.pexels.com/videos/search")
+        .header("Authorization", api_key.trim())
+        .query(&[
+            ("query", query.trim()),
+            ("per_page", &per_page.min(20).to_string()),
+            ("orientation", "portrait"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Gagal mencari di Pexels: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("Pexels API error: HTTP {}", resp.status()));
+    }
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    // Sederhanakan: kembalikan daftar {url, preview}
+    let videos = j.get("videos").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let mut out = Vec::new();
+    for v in videos {
+        let files = v.get("video_files").and_then(|f| f.as_array()).cloned().unwrap_or_default();
+        // Pilih file HD terkecil yang layak
+        let best = files.iter()
+            .filter(|f| f.get("width").and_then(|w| w.as_u64()).unwrap_or(0) >= 720)
+            .min_by_key(|f| f.get("width").and_then(|w| w.as_u64()).unwrap_or(u64::MAX));
+        if let Some(b) = best {
+            let url = b.get("link").and_then(|l| l.as_str()).unwrap_or("").to_string();
+            let preview = v.get("image").and_then(|i| i.as_str()).unwrap_or("").to_string();
+            if !url.is_empty() {
+                out.push(serde_json::json!({"url": url, "preview": preview}));
+            }
+        }
+    }
+    Ok(serde_json::to_string(&serde_json::json!({"videos": out})).unwrap())
+}
+
+/// Simpan API key Pexels.
+#[tauri::command]
+pub fn set_pexels_key(api_key: String) -> Result<(), String> {
+    crate::secrets::set_api_key("minime.pexels_key", api_key.trim()).map_err(|e| e.to_string())
+}
+
+
 /// Simpan Pixabay API key.
 #[tauri::command]
 pub fn set_pixabay_key(api_key: String) -> Result<(), String> {
     crate::secrets::set_api_key("minime.pixabay_key", api_key.trim()).map_err(|e| e.to_string())
+}
+
+/// Simpan API key untuk text-to-video (Sora / Wan 2.3 / LTX-Video).
+#[tauri::command]
+pub fn set_video_ai_key(model: String, api_key: String) -> Result<(), String> {
+    let key_name = match model.as_str() {
+        "sora" => "minime.sora_key",
+        "wan" => "minime.wan_key",
+        "ltx" => "minime.ltx_key",
+        _ => return Err(format!("Model tidak dikenal: {}", model)),
+    };
+    crate::secrets::set_api_key(key_name, api_key.trim()).map_err(|e| e.to_string())
 }
 
 /// Unduh gambar dari URL dan kembalikan sebagai data URL (base64).
