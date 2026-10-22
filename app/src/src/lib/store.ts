@@ -1435,19 +1435,24 @@ const SETTINGS_DEFAULTS: SettingsPrefs = {
   updateMembers: true,
 };
 
-export const settingsPrefs = writable<SettingsPrefs>(() => {
-  const stored = loadRecord<Partial<SettingsPrefs>>("minime.settings-prefs") ?? {};
-  const migrated = { ...SETTINGS_DEFAULTS, ...stored };
+function loadSettingsPrefs(): SettingsPrefs {
+  const stored = loadRecord<Partial<SettingsPrefs>>("minime.settings-prefs");
+  const merged: SettingsPrefs = {
+    ...SETTINGS_DEFAULTS,
+    ...stored,
+  } as SettingsPrefs;
   // Migrasi 23 Okt 2026 (perintah Patria: default island NON-AKTIF).
   // Reset satu-kali ke default non-aktif; user bisa mengaktifkannya
   // kapan saja dari Pengaturan > Dynamic Island.
   if (!stored.islandMigrated23Okt) {
-    migrated.islandNotch = false;
-    migrated.islandIdle = false;
-    (migrated as Record<string, unknown>).islandMigrated23Okt = true;
+    merged.islandNotch = false;
+    merged.islandIdle = false;
+    merged.islandMigrated23Okt = true;
   }
-  return migrated as SettingsPrefs;
-})();
+  return merged;
+}
+
+export const settingsPrefs = writable<SettingsPrefs>(loadSettingsPrefs());
 settingsPrefs.subscribe((v) => {
   try {
     localStorage.setItem("minime.settings-prefs", JSON.stringify(v));
