@@ -135,6 +135,64 @@
   let editingVideo = $state(false);
   let draftApproved = $state(false);
 
+  let postizUrl = $state("");
+  let postizKey = $state("");
+  let metaPageId = $state("");
+  let metaToken = $state("");
+  let socialSaved = $state("");
+  let savingSocial = $state(false);
+  let draftContent = $state("");
+  let draftPlatform = $state("postiz");
+  let creatingDraft = $state(false);
+  let draftResult = $state("");
+
+  async function savePostiz() {
+    if (!postizUrl.trim() || !postizKey.trim()) return;
+    savingSocial = true;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_postiz_config", { apiUrl: postizUrl.trim(), apiKey: postizKey.trim() });
+      socialSaved = "Postiz tersimpan.";
+      postizUrl = ""; postizKey = "";
+    } catch (e) { socialSaved = String(e); }
+    finally { savingSocial = false; }
+  }
+
+  async function saveMeta() {
+    if (!metaPageId.trim() || !metaToken.trim()) return;
+    savingSocial = true;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("set_meta_token", { pageId: metaPageId.trim(), token: metaToken.trim() });
+      socialSaved = "Meta tersimpan.";
+      metaPageId = ""; metaToken = "";
+    } catch (e) { socialSaved = String(e); }
+    finally { savingSocial = false; }
+  }
+
+  async function createDraft() {
+    const c = draftContent.trim();
+    if (!c || creatingDraft) return;
+    creatingDraft = true;
+    draftResult = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      if (draftPlatform === "postiz") {
+        const r = await invoke("create_postiz_draft", {
+          content: c, platforms: ["instagram"], scheduledAt: null, mediaUrls: [],
+        });
+        draftResult = "Draft Postiz dibuat: " + r.draft_id;
+      } else {
+        const r = await invoke("create_meta_draft", {
+          pageId: "", message: c, imageUrl: null,
+        });
+        draftResult = "Draft Meta dibuat: " + r.draft_id;
+      }
+      draftContent = "";
+    } catch (e) { draftResult = String(e); }
+    finally { creatingDraft = false; }
+  }
+
   // Collapsible sections
   let openSections = $state<Record<string, boolean>>({ pipeline: true });
   function toggleSection(id: string) {
@@ -352,6 +410,59 @@
     </button>
     {#if error}<p class="err">{error}</p>{/if}
       </div>
+    {/if}
+  </section>
+
+  <section class="card collapsible">
+    <button class="card-toggle" onclick={() => toggleSection("social") }>
+      <h3>Integrasi Postiz / Meta</h3>
+      <span class="chevron">{openSections["social"] ? "\u25be" : "\u25b8"}</span>
+    </button>
+    {#if openSections["social"]}
+    <div class="card-body">
+    <p class="hint">Hanya membuat <strong>draft</strong> — tidak ada auto-posting.</p>
+    <h4>Postiz</h4>
+    <div class="field">
+      <label for="pz-url">API URL</label>
+      <input id="pz-url" type="text" bind:value={postizUrl} placeholder="https://postiz.example.com" />
+    </div>
+    <div class="field">
+      <label for="pz-key">API Key</label>
+      <input id="pz-key" type="password" bind:value={postizKey} placeholder="API key Postiz" />
+    </div>
+    <button class="btn-primary sm" onclick={savePostiz} disabled={!postizUrl.trim() || !postizKey.trim() || savingSocial}>
+      Simpan Postiz
+    </button>
+    <h4 style="margin-top:16px">Meta Business Suite</h4>
+    <div class="field">
+      <label for="mt-page">Page ID</label>
+      <input id="mt-page" type="text" bind:value={metaPageId} placeholder="Facebook Page ID" />
+    </div>
+    <div class="field">
+      <label for="mt-token">Page Access Token</label>
+      <input id="mt-token" type="password" bind:value={metaToken} placeholder="Token" />
+    </div>
+    <button class="btn-primary sm" onclick={saveMeta} disabled={!metaPageId.trim() || !metaToken.trim() || savingSocial}>
+      Simpan Meta
+    </button>
+    {#if socialSaved}<p class="ok">{socialSaved}</p>{/if}
+    <h4 style="margin-top:16px">Buat Draft</h4>
+    <div class="field">
+      <label for="dc-content">Konten</label>
+      <textarea id="dc-content" bind:value={draftContent} rows="3" placeholder="Tulis konten..."></textarea>
+    </div>
+    <div class="field">
+      <label for="dc-platform">Platform</label>
+      <select id="dc-platform" bind:value={draftPlatform}>
+        <option value="postiz">Postiz</option>
+        <option value="meta">Meta</option>
+      </select>
+    </div>
+    <button class="btn-primary sm" onclick={createDraft} disabled={!draftContent.trim() || creatingDraft}>
+      {creatingDraft ? "Membuat..." : "Buat Draft"}
+    </button>
+    {#if draftResult}<p class="ok">{draftResult}</p>{/if}
+    </div>
     {/if}
   </section>
 

@@ -816,3 +816,60 @@ pub async fn generate_image(prompt: String, size: String) -> Result<String, Stri
 pub fn set_dalle_key(api_key: String) -> Result<(), String> {
     secrets::set_api_key("minime.dalle", api_key.trim()).map_err(|e| e.to_string())
 }
+
+/// Render video slideshow dari daftar image URL/path via FFmpeg.
+/// images: list path file lokal. duration_per: detik per gambar.
+/// Return: path file MP4 hasil.
+#[tauri::command]
+pub async fn render_slideshow(images: Vec<String>, duration_per: f64, output_name: String) -> Result<String, String> {
+    if images.is_empty() {
+        return Err("Tidak ada gambar untuk dirender.".to_string());
+    }
+    let ffmpeg = which_ffmpeg().ok_or_else(|| "FFmpeg tidak ditemukan di sistem.".to_string())?;
+
+    let out_dir = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let safe_name: String = output_name.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_').collect();
+    let out_path = out_dir.join(format!("{}.mp4", if safe_name.is_empty() { "video".to_string() } else { safe_name }));
+
+    // Buat file list untuk concat
+    let list_path = out_dir.join("ffmpeg_list.txt");
+    let mut list_content = String::new();
+    for img in &images {
+        let escaped = img.replace('\'', "'\\''");
+        list_content.push_str(&format!("file '{}'\nduration {}\n", escaped, duration_per));
+    }
+    // FFmpeg concat butuh file terakhir diulang (tanpa duration)
+    if let Some(last) = images.last() {
+        let escaped = last.replace('\'', "'\\''");
+        list_content.push_str(&format!("file '{}'\n", escaped));
+    }
+    std::fs::write(&list_path, list_content).map_err(|e| e.to_string())?;
+
+    let status = tokio::process::Command::new(&ffmpeg)
+        .args([
+            "-y", "-f", "concat", "-safe", "0",
+            "-i", list_path.to_str().unwrap(),
+            "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=yuv420p",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-movflags", "+faststart",
+            out_path.to_str().unwrap(),
+        ])
+        .status()
+        .await
+        .map_err(|e| format!("Gagal menjalankan FFmpeg: {}", e))?;
+
+    if !status.success() {
+        return Err("FFmpeg gagal merender video.".to_string());
+    }
+    out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path output tidak valid.".to_string())
+}
+
+fn which_ffmpeg() -> Option<String> {
+    for p in ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"] {
+        if std::path::Path::new(p).exists() {
+            return Some(p.to_string());
+        }
+    }
+    None
+}

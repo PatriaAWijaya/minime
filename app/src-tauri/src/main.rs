@@ -11,6 +11,7 @@ mod runtime;
 mod secrets;
 mod skills;
 mod tools;
+mod social;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
 use serde::Serialize;
@@ -486,6 +487,11 @@ fn main() {
             providers::discover_models,
             providers::generate_image,
             providers::set_dalle_key,
+            providers::render_slideshow,
+            social::create_postiz_draft,
+            social::create_meta_draft,
+            social::set_postiz_config,
+            social::set_meta_token,
             agent_chat,
             chat_history,
             usage_summary,
