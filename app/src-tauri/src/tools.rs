@@ -270,11 +270,20 @@ mod tests {
     #[test]
     fn registry_has_5_tools_with_draft_only_social() {
         let tools = known_tools();
-        assert_eq!(tools.len(), 5);
+        assert_eq!(tools.len(), 10);
         let meta = tools.iter().find(|(id, ..)| id == "meta").unwrap();
         assert!(meta.4, "meta must be draft_only");
         let postiz = tools.iter().find(|(id, ..)| id == "postiz").unwrap();
         assert!(postiz.4, "postiz must be draft_only");
+        // Media Studio tools: no duplicates of meta/postiz
+        for id in ["pixabay", "ffmpeg", "whisper", "arbotts", "sdimage"] {
+            assert!(tools.iter().any(|(tid, ..)| tid == id), "{id} missing");
+        }
+        assert_eq!(
+            tools.iter().filter(|(id, ..)| id == "meta" || id == "postiz").count(),
+            2,
+            "meta/postiz must appear exactly once"
+        );
     }
 
     #[test]
