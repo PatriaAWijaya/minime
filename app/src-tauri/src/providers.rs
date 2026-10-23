@@ -951,7 +951,7 @@ pub async fn meta_generate_image(
             let path = std::env::temp_dir().join(format!("meta_img_{}.png", chrono::Utc::now().timestamp_millis()));
             std::fs::write(&path, &bytes).map_err(|e| format!("simpan gambar gagal: {e}"))?;
             // Catat biaya
-            if let Ok(db) = db::Db::open_default() {
+            if let Ok(db) = crate::db::Db::open_default() {
                 let _ = db.record_usage("studio", "muse", "muse:muse-image-1.0", 0, 0);
             }
             Ok(path.to_string_lossy().to_string())
