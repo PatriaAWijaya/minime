@@ -95,13 +95,13 @@ fn default_allowlists() -> HashMap<String, Vec<String>> {
         "kreatif".into(),
         vec!["pireel".into(), "meta".into(), "postiz".into()],
     );
-    m.insert("riset".into(), vec!["browser".into()]);
-    m.insert("finance".into(), Vec::new());
+    m.insert("riset".into(), vec!["browser".into(), "ruangapi".into()]);
+    m.insert("finance".into(), vec!["ruangapi".into()]);
     m.insert(
         "strategis".into(),
-        vec!["meta".into(), "postiz".into()],
+        vec!["meta".into(), "postiz".into(), "ruangapi".into()],
     );
-    m.insert("code".into(), Vec::new());
+    m.insert("code".into(), vec!["github".into(), "ruangapi".into()]);
     m
 }
 
@@ -117,6 +117,8 @@ fn known_tools() -> Vec<(String, String, String, bool, bool)> {
         ("pireel".into(), "Pireel".into(), "video".into(), true, false),
         ("drive".into(), "Google Drive".into(), "storage".into(), true, false),
         ("browser".into(), "Browser".into(), "web".into(), false, false),
+        ("github".into(), "GitHub".into(), "dev".into(), true, false),
+        ("ruangapi".into(), "RuangAPI".into(), "api".into(), true, false),
         ("pixabay".into(), "Pixabay".into(), "media".into(), true, false),
         ("pexels".into(), "Pexels".into(), "media".into(), true, false),
         ("wan".into(), "Wan 3.0 (fal.ai)".into(), "media".into(), true, false),
@@ -312,13 +314,17 @@ mod tests {
         // Mimi (orchestrator) may use everything.
         assert!(can_use(&m, "mimi", "pireel"));
         assert!(can_use(&m, "mimi", "drive"));
-        // Finance: no tools (ruangapi belum ada).
-        assert!(!can_use(&m, "finance", "ruangapi"));
+        // Finance: ruangapi only.
+        assert!(can_use(&m, "finance", "ruangapi"));
         assert!(!can_use(&m, "finance", "pireel"));
         assert!(!can_use(&m, "finance", "meta"));
-        // Code: no tools (github belum ada), pireel no.
-        assert!(!can_use(&m, "code", "github"));
+        // Code: github + ruangapi, pireel no.
+        assert!(can_use(&m, "code", "github"));
+        assert!(can_use(&m, "code", "ruangapi"));
         assert!(!can_use(&m, "code", "pireel"));
+        // Riset: browser + ruangapi.
+        assert!(can_use(&m, "riset", "browser"));
+        assert!(can_use(&m, "riset", "ruangapi"));
         // Unknown agent: denied everything.
         assert!(!can_use(&m, "hantu", "browser"));
     }

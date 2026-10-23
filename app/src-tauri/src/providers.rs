@@ -844,26 +844,38 @@ impl Router {
 
     /// Kirim chat lewat rantai provider; fallback otomatis bila gagal.
     /// Mengembalikan ChatResult dari provider yang berhasil melayani.
+    /// Bila seluruh tier yang diminta gagal, otomatis coba tier lainnya
+    /// (gratis ↔ berbayar) sebelum menyerah.
     pub async fn chat(
         &self,
         model_id: &str,
         tier: ModelTier,
         messages: Vec<ChatMessage>,
     ) -> Result<ChatResult, String> {
+        // Coba tier yang diminta dulu, lalu tier sebaliknya sebagai fallback.
+        let tiers = match tier {
+            ModelTier::Gratis => [ModelTier::Gratis, ModelTier::Berbayar],
+            ModelTier::Berbayar => [ModelTier::Berbayar, ModelTier::Gratis],
+        };
         let mut last_err = String::new();
-        for link in self.chain_for(model_id, tier) {
-            eprintln!("[router] coba provider: {}", link.id());
-            match link.chat(model_id, &messages).await {
-                Ok(res) => return Ok(res),
-                Err(ProviderError::NoKey(_)) | Err(ProviderError::NotReachable(_)) => {
-                    last_err = format!("{} dilewati (belum terkonfigurasi)", link.id());
-                    eprintln!("[router] {last_err}");
-                    continue;
-                }
-                Err(e) => {
-                    last_err = e.to_string();
-                    eprintln!("[router] {} gagal: {last_err}", link.id());
-                    continue;
+        for t in tiers {
+            if t != tier {
+                eprintln!("[router] tier {tier:?} gagal total, coba fallback ke tier {t:?}");
+            }
+            for link in self.chain_for(model_id, t) {
+                eprintln!("[router] coba provider: {}", link.id());
+                match link.chat(model_id, &messages).await {
+                    Ok(res) => return Ok(res),
+                    Err(ProviderError::NoKey(_)) | Err(ProviderError::NotReachable(_)) => {
+                        last_err = format!("{} dilewati (belum terkonfigurasi)", link.id());
+                        eprintln!("[router] {last_err}");
+                        continue;
+                    }
+                    Err(e) => {
+                        last_err = e.to_string();
+                        eprintln!("[router] {} gagal: {last_err}", link.id());
+                        continue;
+                    }
                 }
             }
         }
