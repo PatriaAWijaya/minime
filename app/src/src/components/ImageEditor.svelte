@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../lib/i18n";
   // ImageEditor — clean-room image editor inspired by Doory's UX (idea only, no code copied).
   // Layers: background image + movable elements (text / shapes / QR).
   // All edits happen locally on canvas; nothing is uploaded anywhere.
