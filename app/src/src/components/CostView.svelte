@@ -23,7 +23,7 @@
           id: 1000 + i,
           agentId: r.agent_id,
           tokens: r.input_tokens + r.output_tokens,
-          costUsd: 0,
+          costUsd: r.cost_usd ?? 0,
           dateKey: r.provider_id,
           daysAgo: 0,
           modelLabel: r.model_id,

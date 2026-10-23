@@ -27,6 +27,52 @@ pub struct UsageRow {
     pub calls: i64,
     pub input_tokens: i64,
     pub output_tokens: i64,
+    pub cost_usd: f64,
+}
+
+/// Tarif per 1 juta token (input, output) dalam USD.
+/// Model image/transcribe dihitung per pemanggilan (lihat cost_for_call).
+pub fn model_pricing(model_id: &str) -> Option<(f64, f64)> {
+    match model_id {
+        // Meta (api.meta.ai)
+        id if id.contains("muse-spark-1.3") => Some((1.25, 4.25)),
+        id if id.contains("muse-wonder-1.0") => Some((4.0, 20.0)),
+        // Muse
+        id if id.contains("claude-opus") => Some((15.0, 75.0)),
+        id if id.contains("claude-sonnet") => Some((3.0, 15.0)),
+        id if id.contains("claude-haiku") => Some((0.8, 4.0)),
+        // Gemini
+        id if id.contains("gemini-3") => Some((2.0, 8.0)),
+        id if id.contains("gemini-2.5-pro") => Some((1.25, 10.0)),
+        id if id.contains("gemini-2.5-flash") => Some((0.3, 2.5)),
+        id if id.contains("gemini-2.0-flash") => Some((0.1, 0.4)),
+        // DeepSeek
+        id if id.contains("deepseek-chat") => Some((0.27, 1.1)),
+        id if id.contains("deepseek-reasoner") => Some((0.55, 2.19)),
+        _ => None,
+    }
+}
+
+/// Biaya per pemanggilan untuk model non-token (image, transcribe).
+pub fn model_call_pricing(model_id: &str) -> Option<f64> {
+    match model_id {
+        id if id.contains("muse-image-1.0") => Some(0.01),
+        id if id.contains("muse-voice-transcribe-1.0") => Some(0.003), // $0,18/jam ≈ $0,003/menit
+        id if id.contains("sam-3.1") => Some(0.005),
+        _ => None,
+    }
+}
+
+/// Hitung estimasi biaya USD dari UsageRow.
+pub fn usage_cost(row: &UsageRow) -> f64 {
+    if let Some((inp, out)) = model_pricing(&row.model_id) {
+        (row.input_tokens as f64 / 1_000_000.0) * inp
+            + (row.output_tokens as f64 / 1_000_000.0) * out
+    } else if let Some(per_call) = model_call_pricing(&row.model_id) {
+        row.calls as f64 * per_call
+    } else {
+        0.0
+    }
 }
 
 pub struct Db {
@@ -181,14 +227,17 @@ impl Db {
             .map_err(|e| format!("ringkasan usage gagal: {e}"))?;
         let rows = stmt
             .query_map([], |row| {
-                Ok(UsageRow {
+                let r = UsageRow {
                     agent_id: row.get(0)?,
                     provider_id: row.get(1)?,
                     model_id: row.get(2)?,
                     calls: row.get(3)?,
                     input_tokens: row.get(4)?,
                     output_tokens: row.get(5)?,
-                })
+                    cost_usd: 0.0,
+                };
+                let cost = usage_cost(&r);
+                Ok(UsageRow { cost_usd: cost, ..r })
             })
             .map_err(|e| format!("ringkasan usage gagal: {e}"))?;
         rows
