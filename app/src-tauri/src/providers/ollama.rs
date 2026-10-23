@@ -138,7 +138,3 @@ impl Default for OllamaProvider {
 
 // ---------------------------------------------------------------------------
 // Klien OpenAI-compatible generik (Muse, Gemini, DeepSeek, RouterKu)
-// ---------------------------------------------------------------------------
-
-/// Satu klien untuk semua provider HTTP yang bicara skema
-/// `POST {base_url}/chat/completions` ala OpenAI.

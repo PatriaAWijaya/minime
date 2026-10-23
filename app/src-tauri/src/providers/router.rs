@@ -181,7 +181,3 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
         .unwrap_or_default();
     Ok(models)
 }
-
-/// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
-/// Menyimpan hasil ke file temp dan mengembalikan path.
-#[tauri::command]

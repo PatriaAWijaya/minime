@@ -240,6 +240,3 @@ pub(crate) fn yovoice_bin() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     format!("{}/.minime/yovoice/yovoice", home)
 }
-
-/// Check yovoice status. Returns JSON string from `yovoice status --json`.
-#[tauri::command]

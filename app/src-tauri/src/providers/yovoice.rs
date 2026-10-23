@@ -8,6 +8,7 @@ fn http_client() -> reqwest::Client {
         .unwrap_or_else(|_| reqwest::Client::new())
 }
 
+#[tauri::command]
 pub fn yovoice_status() -> Result<String, String> {
     let bin = yovoice_bin();
     if !std::path::Path::new(&bin).exists() {
@@ -201,7 +202,3 @@ pub async fn yovoice_tts(
     }
     Ok(out_path.to_string_lossy().to_string())
 }
-
-/// Audio mastering: loudness normalization (EBU R128) + denoise via FFmpeg.
-/// Returns mastered audio file path.
-#[tauri::command]

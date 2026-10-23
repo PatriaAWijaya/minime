@@ -8,6 +8,7 @@ fn http_client() -> reqwest::Client {
         .unwrap_or_else(|_| reqwest::Client::new())
 }
 
+#[tauri::command]
 pub async fn meta_generate_image(
     router: tauri::State<'_, Router>,
     prompt: String,
@@ -58,7 +59,3 @@ pub async fn meta_segment(
         .await
         .map_err(|e| format!("segmentasi gagal: {e}"))
 }
-
-/// Generate image via local stable-diffusion.cpp (AI Media Studio).
-/// sd-server runs on localhost:8080 (auto-started if needed).
-#[tauri::command]

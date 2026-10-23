@@ -8,6 +8,7 @@ fn http_client() -> reqwest::Client {
         .unwrap_or_else(|_| reqwest::Client::new())
 }
 
+#[tauri::command]
 pub async fn generate_image(prompt: String, size: String) -> Result<String, String> {
     let home = std::env::var("HOME").map_err(|_| "HOME tidak ditemukan.".to_string())?;
     let sd_dir = format!("{}/.minime/sd", home);
@@ -855,4 +856,3 @@ fn which_hyperframes() -> Option<String> {
     }
     None
 }
-
