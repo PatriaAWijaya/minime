@@ -84,6 +84,27 @@
   }
 
   let tracks = $state<Track[]>(loadState());
+  // Undo history (maks 20) — snapshot tracks
+  let vHist = $state<string[]>([]);
+  let vHIdx = $state(-1);
+  let canVUndo = $state(false);
+  function snapTracks(): string { return JSON.stringify(tracks); }
+  function pushVHist() {
+    vHist = vHist.slice(0, vHIdx + 1);
+    vHist.push(snapTracks());
+    if (vHist.length > 20) vHist.shift();
+    vHIdx = vHist.length - 1;
+    canVUndo = vHIdx > 0;
+  }
+  function undoTracks() {
+    if (vHIdx <= 0) return;
+    vHIdx--;
+    tracks = JSON.parse(vHist[vHIdx]);
+    canVUndo = vHIdx > 0;
+    persist();
+  }
+  function initVHist() { vHist = [snapTracks()]; vHIdx = 0; canVUndo = false; }
+  $effect(() => { if (vHIdx === -1) initVHist(); });
 
   function persist() {
     try {
@@ -232,7 +253,7 @@
     return `Track ${n + 1}`;
   }
 
-  function addTrack() { tracks.push({ id: uid(), name: nextTrackName(), clips: [] }); persist(); }
+  function addTrack() { tracks.push({ id: uid(), name: nextTrackName(), clips: [] }); pushVHist(); persist(); }
 
   function removeTrack(trackId: number) {
     if (tracks.length <= 1) return;
@@ -254,7 +275,7 @@
     const t = tracks.find((x) => x.id === trackId);
     if (!t) return;
     t.clips = t.clips.filter((c) => c.id !== clipId);
-    persist();
+    pushVHist(); persist();
   }
 
   function moveClip(trackId: number, clipId: number, dir: -1 | 1) {
@@ -264,7 +285,7 @@
     const j = i + dir;
     if (i < 0 || j < 0 || j >= t.clips.length) return;
     [t.clips[i], t.clips[j]] = [t.clips[j], t.clips[i]];
-    persist();
+    pushVHist(); persist();
   }
 
   function moveClipTrack(trackId: number, clipId: number, dir: -1 | 1) {
@@ -276,7 +297,7 @@
     if (ci < 0) return;
     const [c] = tracks[ti].clips.splice(ci, 1);
     tracks[tj].clips.push(c);
-    persist();
+    pushVHist(); persist();
   }
 
   // ---------------------------------------------------------------------------
@@ -733,6 +754,7 @@
     <div>
       <h3>Editor Suara</h3>
       <p class="hint">Susun segmen voiceover di timeline multi-track, generate suaranya, lalu gabungkan jadi satu file WAV.</p>
+      <button class="btn-ghost sm" onclick={undoTracks} disabled={!canVUndo} title="Urungkan perubahan terakhir">↩ Urungkan</button>
     </div>
     <div class="engine" data-engine={engine}>
       <span class="dot" aria-hidden="true"></span>

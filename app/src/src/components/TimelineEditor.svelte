@@ -32,6 +32,27 @@
     { id: "t1", kind: "text", name: "T1" },
   ]);
   let clips = $state<TClip[]>([]);
+  // Undo history (maks 20) — snapshot clips
+  let tHist = $state<string[]>([]);
+  let tHIdx = $state(-1);
+  let canTUndo = $state(false);
+  function snapClips(): string { return JSON.stringify(clips); }
+  function pushTHist() {
+    tHist = tHist.slice(0, tHIdx + 1);
+    tHist.push(snapClips());
+    if (tHist.length > 20) tHist.shift();
+    tHIdx = tHist.length - 1;
+    canTUndo = tHIdx > 0;
+  }
+  function undoClips() {
+    if (tHIdx <= 0) return;
+    tHIdx--;
+    clips = JSON.parse(tHist[tHIdx]);
+    selectedId = null;
+    canTUndo = tHIdx > 0;
+    save();
+  }
+  $effect(() => { if (tHIdx === -1) { tHist = [snapClips()]; tHIdx = 0; } });
   let selectedId = $state<string | null>(null);
   let playhead = $state(0);          // detik
   let playing = $state(false);
@@ -97,14 +118,14 @@
       });
       addPath = "";
     }
-    save();
+    pushTHist(); save();
   }
 
   function deleteSelected() {
     if (!selectedId) return;
     clips = clips.filter((c) => c.id !== selectedId);
     selectedId = null;
-    save();
+    pushTHist(); save();
   }
 
   function splitAtPlayhead() {
@@ -121,12 +142,12 @@
     };
     c.duration = rel;
     clips.push(right);
-    save();
+    pushTHist(); save();
   }
 
   function moveClip(c: TClip, deltaSec: number) {
     c.start = Math.max(0, c.start + deltaSec);
-    save();
+    pushTHist(); save();
   }
 
   function trimClip(c: TClip, edge: "left" | "right", deltaSec: number) {
@@ -137,7 +158,7 @@
     } else {
       c.duration = Math.max(0.2, c.duration + deltaSec);
     }
-    save();
+    pushTHist(); save();
   }
 
   // --- drag ---
@@ -167,7 +188,7 @@
   }
 
   function onTimelinePointerUp() {
-    if (dragState) { dragState = null; save(); }
+    if (dragState) { dragState = null; pushTHist(); save(); }
   }
 
   // --- playhead ---
@@ -266,6 +287,7 @@
     <span class="sep"></span>
     <button class="btn-ghost sm" onclick={splitAtPlayhead} disabled={!selected} title="Pisah di playhead">✂ Pisah</button>
     <button class="btn-ghost sm" onclick={deleteSelected} disabled={!selected} title="Hapus klip">🗑 Hapus</button>
+    <button class="btn-ghost sm" onclick={undoClips} disabled={!canTUndo} title="Urungkan perubahan terakhir">↩ Urungkan</button>
     <span class="spacer"></span>
     <button class="btn-primary sm" onclick={doExport} disabled={clips.length === 0 || exporting}>
       {exporting ? "Mengekspor..." : "⬇ Export MP4"}

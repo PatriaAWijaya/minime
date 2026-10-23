@@ -12,6 +12,30 @@
   let generating = $state(false);
   let imageUrl = $state<string | null>(null);
   let error = $state("");
+  // Undo history untuk gambar (maks 20)
+  let imgHistory = $state<string[]>([]);
+  let imgHIdx = $state(-1);
+  let canImgUndo = $state(false);
+  function pushImgHist(url: string | null) {
+    if (!url) return;
+    imgHistory = imgHistory.slice(0, imgHIdx + 1);
+    imgHistory.push(url);
+    if (imgHistory.length > 20) imgHistory.shift();
+    imgHIdx = imgHistory.length - 1;
+    canImgUndo = imgHIdx > 0;
+  }
+  function undoImage() {
+    if (imgHIdx <= 0) return;
+    imgHIdx--;
+    imageUrl = imgHistory[imgHIdx];
+    canImgUndo = imgHIdx > 0;
+  }
+  function deleteImage() {
+    imageUrl = null;
+    imgHistory = [];
+    imgHIdx = -1;
+    canImgUndo = false;
+  }
 
   // Pixabay stock search
   type PxHit = { id: number; preview: string; full: string; tags: string };
@@ -98,6 +122,7 @@
       const { invoke } = await import("@tauri-apps/api/core");
       const url = await invoke<string>("generate_image", { prompt: p, size });
       imageUrl = url;
+      pushImgHist(url);
     } catch (e) {
       error = String(e);
     } finally {
@@ -997,6 +1022,8 @@
         <button class="btn-ghost sm" onclick={downloadImage}>Unduh</button>
         <button class="btn-ghost sm" onclick={() => (editingImage = imageUrl)}>Edit</button>
         <a href={imageUrl} target="_blank" rel="noopener" class="btn-ghost sm link">Buka penuh</a>
+        <button class="btn-ghost sm" onclick={undoImage} disabled={!canImgUndo} title="Urungkan perubahan gambar">↩ Urungkan</button>
+        <button class="btn-ghost sm danger" onclick={deleteImage} title="Hapus gambar">Hapus</button>
       </div>
       </div>
   </section>
@@ -1009,7 +1036,7 @@
   <ImageEditor
     src={editingImage}
     onClose={() => (editingImage = null)}
-    onSave={(url) => { imageUrl = url; editingImage = null; }}
+    onSave={(url) => { imageUrl = url; pushImgHist(url); editingImage = null; }}
   />
 {/if}
 
@@ -1086,6 +1113,8 @@
   .btn-ghost.xs { padding: 4px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.55); color: #fff; cursor: pointer; }
   .btn-ghost.xs:hover { background: #4FA6F0; border-color: #4FA6F0; }
   .btn-ghost.xs:disabled { opacity: 0.5; cursor: default; }
+  .btn-ghost.sm.danger { color: #f87171; border-color: rgba(239,68,68,.4); }
+  .btn-ghost.sm.danger:hover { background: rgba(239,68,68,.12); }
   .sep { border: none; border-top: 1px solid var(--border); margin: 18px 0 14px; }
   .sub-h { margin: 0 0 6px; font-size: 14px; }
 

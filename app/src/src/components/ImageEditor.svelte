@@ -185,7 +185,7 @@
     if (!base) return;
     history = history.slice(0, hIdx + 1);
     history.push({ base: cloneCanvas(base), els: serEls() });
-    if (history.length > 25) history.shift();
+    if (history.length > 20) history.shift();
     hIdx = history.length - 1;
     syncHistFlags();
   }
