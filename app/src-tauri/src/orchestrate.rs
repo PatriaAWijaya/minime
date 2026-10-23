@@ -537,13 +537,13 @@ pub async fn orchestrate(
         // --- Agregat ---
         eprintln!("[orchestrate:{run_id}] [3/4] agregasi (putaran {})...", round);
         let aggregated =
-            aggregate_results(router, db, &run_id, mimi_model_id, user_request, &subtask_results).await;
+            aggregate_results(router, db, &run_id.clone(), mimi_model_id, user_request, &subtask_results).await;
         eprintln!("[orchestrate:{run_id}] [3/4] OK");
 
         // --- QC ---
         eprintln!("[orchestrate:{run_id}] [4/4] QC (putaran {})...", round);
         let (qc_score, qc_passed, qc_notes, revise_agents) =
-            run_qc(router, db, &run_id, mimi_model_id, user_request, &aggregated).await;
+            run_qc(router, db, &run_id.clone(), mimi_model_id, user_request, &aggregated).await;
         eprintln!(
             "[orchestrate:{run_id}] [4/4] putaran {}: skor={:?} lolos={}",
             round, qc_score, qc_passed
@@ -634,13 +634,14 @@ pub async fn orchestrate(
                     .find(|r| &r.agent_id == aid)
                     .cloned();
                 let notes_clone = notes.clone();
+                let run_id_clone = run_id.clone();
                 async move {
                     match prev {
                         Some(p) => {
                             let sys = revision_system_prompt(
                                 &p.agent_id, &p.task, &p.result, &notes_clone,
                             );
-                            dispatch_one(router, db, &run_id, &p.agent_id, &p.task, Some(sys), None).await
+                            dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None).await
                         }
                         None => SubTaskResult {
                             agent_id: aid.clone(),

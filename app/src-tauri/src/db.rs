@@ -157,6 +157,7 @@ impl Db {
                 model_id TEXT NOT NULL,
                 qc_score INTEGER
             );",
+            [],
         )
         .map_err(|e| format!("migrasi db gagal: {e}"))?;
         Ok(())
