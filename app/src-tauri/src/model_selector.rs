@@ -22,27 +22,28 @@ pub struct ModelDecision {
     pub tier: String, // "berbayar" (keduanya Meta)
 }
 
-/// Kata kunci penanda kompleksitas (Indonesia + Inggris).
+/// Kata kunci penanda kompleksitas — bentuk ROOT agar tahan imbuhan Indonesia
+/// (me-, di-, -kan, -i). Contoh: "optim" cocok untuk optimasi/optimalkan/mengoptimalkan.
 const COMPLEX_KEYWORDS: &[&str] = &[
     // Analisis mendalam
-    "analisis mendalam", "analisa mendalam", "deep analysis", "komprehensif",
-    "comprehensive", "strategi", "strategy", "arsitektur", "architecture",
+    "analis", "deep analysis", "komprehensif", "comprehensive",
+    "strateg", "strategy", "arsitektur", "architecture",
     // Reasoning kompleks
-    "bandingkan", "compare", "evaluasi", "evaluate", "refactor",
-    "debug", "troubleshoot", "orkestrasi", "orchestrat",
+    "banding", "compare", "evaluasi", "evaluate", "refactor",
+    "debug", "troubleshoot", "orkestra", "orchestrat",
     "research", "riset mendalam", "multi-langkah", "multi-step",
     // Kreatif kompleks
-    "kampanye", "campaign", "brand strategy", "strategi brand",
+    "kampanye", "campaign", "brand strateg",
     "business plan", "rencana bisnis",
     // Kode kompleks
     "implementasi", "implementation", "sistem", "system design",
-    "optimasi", "optimalkan", "optim", "optimization", "algoritma", "algorithm",
+    "optim", "optimization", "algoritma", "algorithm",
 ];
 
 const SIMPLE_KEYWORDS: &[&str] = &[
-    "terjemahkan", "translate", "ringkas", "summarize", "simpel",
+    "terjemah", "translate", "ringkas", "summar", "simpel",
     "simple", "cepat", "quick", "apa itu", "what is",
-    "betulkan", "fix typo", "format", "jawab singkat", "brief answer",
+    "betulkan", "typo", "format", "jawab singkat", "brief answer",
     "daftar", "list", "sebutkan",
 ];
 

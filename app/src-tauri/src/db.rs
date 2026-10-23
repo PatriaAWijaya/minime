@@ -146,6 +146,62 @@ impl Db {
             );",
         )
         .map_err(|e| format!("migrasi db gagal: {e}"))?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS model_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                agent_id TEXT NOT NULL,
+                prompt_hash TEXT NOT NULL,
+                prompt_len INTEGER NOT NULL,
+                complexity_score INTEGER NOT NULL,
+                model_id TEXT NOT NULL,
+                qc_score INTEGER
+            );",
+        )
+        .map_err(|e| format!("migrasi db gagal: {e}"))?;
+        Ok(())
+    }
+
+    /// Catat keputusan pemilihan model (untuk audit & learning).
+    pub fn log_model_decision(
+        &self,
+        agent_id: &str,
+        prompt: &str,
+        complexity_score: i32,
+        model_id: &str,
+    ) -> Result<(), String> {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        prompt.hash(&mut h);
+        let prompt_hash = format!("{:x}", h.finish());
+
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        conn.execute(
+            "INSERT INTO model_decisions (agent_id, prompt_hash, prompt_len, complexity_score, model_id)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![
+                agent_id,
+                prompt_hash,
+                prompt.chars().count() as i64,
+                complexity_score as i64,
+                model_id,
+            ],
+        )
+        .map_err(|e| format!("log model decision gagal: {e}"))?;
+        Ok(())
+    }
+
+    /// Update skor QC untuk keputusan terakhir agen ini (untuk korelasi).
+    pub fn update_decision_qc(&self, agent_id: &str, model_id: &str, qc_score: i32) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        conn.execute(
+            "UPDATE model_decisions SET qc_score = ?1
+             WHERE agent_id = ?2 AND model_id = ?3 AND qc_score IS NULL
+             ORDER BY id DESC LIMIT 1",
+            rusqlite::params![qc_score as i64, agent_id, model_id],
+        )
+        .map_err(|e| format!("update qc gagal: {e}"))?;
         Ok(())
     }
 

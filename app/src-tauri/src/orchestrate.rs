@@ -52,6 +52,9 @@ pub struct OrchestrateResult {
     /// Riwayat tiap putaran: skor QC dan aksi.
     #[serde(default)]
     pub revision_history: Vec<String>,
+    /// Estimasi biaya orkestrasi dalam USD.
+    #[serde(default)]
+    pub estimated_cost_usd: f64,
 }
 
 /// System prompt untuk parsing intent → JSON.
@@ -174,9 +177,13 @@ async fn chat_internal(
 
 /// Dispatch satu subtugas ke agen (untuk initial maupun revisi).
 /// `system_override`: system prompt kustom (untuk revisi). `None` = default.
+/// Timeout per subtugas dalam detik. Satu agen hang tidak boleh membunuh orkestrasi.
+const SUBTASK_TIMEOUT_SECS: u64 = 120;
+
 async fn dispatch_one(
     router: &Router,
     db: &crate::db::Db,
+    run_id: &str,
     agent_id: &str,
     task: &str,
     system_override: Option<String>,
@@ -200,8 +207,15 @@ async fn dispatch_one(
             // skor >= 60 → Wonder, < 60 → Spark
             let decision = crate::model_selector::select_model(task, agent_id);
             eprintln!(
-                "[orchestrate] subtugas {} → {} (skor {})",
+                "[orchestrate:{run_id}] subtugas {} → {} (skor {})",
                 agent_id, decision.model_id, decision.complexity_score
+            );
+            // Catat untuk audit & future learning (heuristik ke-4)
+            let _ = db.log_model_decision(
+                agent_id,
+                task,
+                decision.complexity_score,
+                &decision.model_id,
             );
             (decision.model_id, ModelTier::Berbayar)
         }
@@ -214,7 +228,22 @@ async fn dispatch_one(
         )
     });
 
-    let res = chat_internal(router, db, agent_id, &model_id, tier, &system, task).await;
+    // Circuit breaker: timeout per subtugas agar satu agen hang tidak menggagalkan semua
+    let res = match tokio::time::timeout(
+        std::time::Duration::from_secs(SUBTASK_TIMEOUT_SECS),
+        chat_internal(router, db, agent_id, &model_id, tier, &system, task),
+    )
+    .await
+    {
+        Ok(r) => r,
+        Err(_) => {
+            eprintln!(
+                "[orchestrate:{run_id}] TIMEOUT {} setelah {}s",
+                agent_id, SUBTASK_TIMEOUT_SECS
+            );
+            Err(format!("Timeout setelah {} detik", SUBTASK_TIMEOUT_SECS))
+        }
+    };
     match res {
         Ok(r) => SubTaskResult {
             agent_id: agent_id.to_string(),
@@ -237,6 +266,7 @@ async fn dispatch_one(
 async fn aggregate_results(
     router: &Router,
     db: &crate::db::Db,
+    run_id: &str,
     mimi_model_id: &str,
     user_request: &str,
     subtask_results: &[SubTaskResult],
@@ -289,6 +319,7 @@ struct QcOut {
 async fn run_qc(
     router: &Router,
     db: &crate::db::Db,
+    run_id: &str,
     mimi_model_id: &str,
     user_request: &str,
     aggregated: &str,
@@ -319,6 +350,35 @@ async fn run_qc(
 /// Jumlah maksimal putaran revisi QC.
 const MAX_REVISIONS: u32 = 3;
 
+/// Estimasi biaya maksimal per orkestrasi (USD). Peringatan jika terlampaui.
+const COST_WARNING_USD: f64 = 1.0;
+/// Batas keras biaya per orkestrasi — tolak jika estimasi melebihi ini.
+const COST_HARD_CAP_USD: f64 = 5.0;
+
+/// Estimasi biaya orkestrasi berdasarkan jumlah subtugas dan model.
+/// Asumsi konservatif: 2000 token input + 1000 token output per call.
+fn estimate_cost(num_subtasks: usize, use_wonder: bool) -> f64 {
+    // Calls: 1 parse + N dispatch + 1 agregat + 1 QC (+ revisi)
+    // Parse/agregat/QC selalu pakai model Mimi (Spark default)
+    let spark_in = 1.25 / 1_000_000.0;
+    let spark_out = 4.25 / 1_000_000.0;
+    let wonder_in = 4.0 / 1_000_000.0;
+    let wonder_out = 20.0 / 1_000_000.0;
+
+    let fixed_calls = 3.0; // parse + agregat + QC
+    let fixed_cost = fixed_calls * (2000.0 * spark_in + 1000.0 * spark_out);
+
+    let (sub_in, sub_out) = if use_wonder {
+        (wonder_in, wonder_out)
+    } else {
+        (spark_in, spark_out)
+    };
+    let subtask_cost = num_subtasks as f64 * (2000.0 * sub_in + 1000.0 * sub_out);
+
+    // Tambah buffer 50% untuk revisi potensial
+    (fixed_cost + subtask_cost) * 1.5
+}
+
 /// Ekstrak JSON dari teks (toleran terhadap markdown code block).
 fn extract_json(text: &str) -> String {
     let t = text.trim();
@@ -338,10 +398,19 @@ pub async fn orchestrate(
     user_request: &str,
     mimi_model_id: &str,
 ) -> OrchestrateResult {
-    eprintln!("[orchestrate] mulai: {}", &user_request.chars().take(80).collect::<String>());
+    // Correlation ID untuk tracing satu run orkestrasi
+    let run_id = format!("{:08x}", {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        std::time::SystemTime::now().hash(&mut h);
+        user_request.hash(&mut h);
+        h.finish() & 0xFFFFFFFF
+    });
+    eprintln!("[orchestrate:{}] mulai: {}", run_id, &user_request.chars().take(80).collect::<String>());
 
     // ===== [1] Parse intent → subtugas =====
-    eprintln!("[orchestrate] [1/4] parsing intent...");
+    eprintln!("[orchestrate:{run_id}] [1/4] parsing intent...");
     let parse_res = chat_internal(
         router,
         db,
@@ -359,7 +428,7 @@ pub async fn orchestrate(
             match serde_json::from_str::<TaskPlan>(&json_str) {
                 Ok(p) if !p.subtasks.is_empty() => p,
                 _ => {
-                    eprintln!("[orchestrate] parse gagal, fallback ke single task");
+                    eprintln!("[orchestrate:{run_id}] parse gagal, fallback ke single task");
                     // Fallback: satu tugas untuk Mimi sendiri
                     TaskPlan {
                         subtasks: vec![SubTask {
@@ -381,6 +450,7 @@ pub async fn orchestrate(
                 error: Some("Gagal mem-parse permintaan".to_string()),
                 revisions: 0,
                 revision_history: vec![],
+                estimated_cost_usd: 0.0,
             };
         }
     };
@@ -394,7 +464,7 @@ pub async fn orchestrate(
             .map(|mut st| {
                 if !VALID_AGENTS.contains(&st.agent_id.as_str()) {
                     eprintln!(
-                        "[orchestrate] agent_id '{}' tidak dikenal, fallback ke mimi",
+                        "[orchestrate:{run_id}] agent_id '{}' tidak dikenal, fallback ke mimi",
                         st.agent_id
                     );
                     st.agent_id = "mimi".to_string();
@@ -404,15 +474,50 @@ pub async fn orchestrate(
             .collect(),
     };
 
-    eprintln!("[orchestrate] [1/4] OK: {} subtugas", plan.subtasks.len());
+    eprintln!("[orchestrate:{run_id}] [1/4] OK: {} subtugas", plan.subtasks.len());
+
+    // ===== Cost guard =====
+    // Estimasi: apakah ada subtugas yang kemungkinan pakai Wonder?
+    let likely_wonder = plan.subtasks.iter().any(|st| {
+        crate::model_selector::complexity_score(&st.task, &st.agent_id).0 >= 60
+    });
+    let est_cost = estimate_cost(plan.subtasks.len(), likely_wonder);
+    eprintln!("[orchestrate:{run_id}] Estimasi biaya: ${:.4}", est_cost);
+    if est_cost > COST_HARD_CAP_USD {
+        eprintln!(
+            "[orchestrate:{run_id}] DITOLAK: estimasi ${:.2} melebihi batas ${:.2}",
+            est_cost, COST_HARD_CAP_USD
+        );
+        return OrchestrateResult {
+            aggregated: String::new(),
+            subtask_results: vec![],
+            qc_score: None,
+            qc_passed: false,
+            qc_notes: None,
+            error: Some(format!(
+                "Estimasi biaya ${:.2} melebihi batas ${:.2}. Sederhanakan permintaan.",
+                est_cost, COST_HARD_CAP_USD
+            )),
+            revisions: 0,
+            revision_history: vec![],
+            estimated_cost_usd: est_cost,
+        };
+    }
+    if est_cost > COST_WARNING_USD {
+        eprintln!(
+            "[orchestrate:{run_id}] PERINGATAN: estimasi ${:.2} di atas ambang ${:.2}",
+            est_cost, COST_WARNING_USD
+        );
+    }
 
     // ===== [2] Dispatch paralel (initial) =====
-    eprintln!("[orchestrate] [2/4] dispatch paralel...");
+    eprintln!("[orchestrate:{run_id}] [2/4] dispatch paralel...");
     let mut subtask_results: Vec<SubTaskResult> =
         futures::future::join_all(plan.subtasks.iter().map(|st| {
             dispatch_one(
                 router,
                 db,
+                &run_id,
                 &st.agent_id,
                 &st.task,
                 None,
@@ -420,7 +525,7 @@ pub async fn orchestrate(
             )
         }))
         .await;
-    eprintln!("[orchestrate] [2/4] OK: {} hasil", subtask_results.len());
+    eprintln!("[orchestrate:{run_id}] [2/4] OK: {} hasil", subtask_results.len());
 
     // ===== [3+4] Agregat → QC → Revisi (loop maks 3x) =====
     let mut revision_count: u32 = 0;
@@ -430,17 +535,17 @@ pub async fn orchestrate(
         let round = revision_count + 1;
 
         // --- Agregat ---
-        eprintln!("[orchestrate] [3/4] agregasi (putaran {})...", round);
+        eprintln!("[orchestrate:{run_id}] [3/4] agregasi (putaran {})...", round);
         let aggregated =
-            aggregate_results(router, db, mimi_model_id, user_request, &subtask_results).await;
-        eprintln!("[orchestrate] [3/4] OK");
+            aggregate_results(router, db, &run_id, mimi_model_id, user_request, &subtask_results).await;
+        eprintln!("[orchestrate:{run_id}] [3/4] OK");
 
         // --- QC ---
-        eprintln!("[orchestrate] [4/4] QC (putaran {})...", round);
+        eprintln!("[orchestrate:{run_id}] [4/4] QC (putaran {})...", round);
         let (qc_score, qc_passed, qc_notes, revise_agents) =
-            run_qc(router, db, mimi_model_id, user_request, &aggregated).await;
+            run_qc(router, db, &run_id, mimi_model_id, user_request, &aggregated).await;
         eprintln!(
-            "[orchestrate] [4/4] putaran {}: skor={:?} lolos={}",
+            "[orchestrate:{run_id}] [4/4] putaran {}: skor={:?} lolos={}",
             round, qc_score, qc_passed
         );
 
@@ -456,7 +561,7 @@ pub async fn orchestrate(
         if qc_passed || revision_count >= MAX_REVISIONS {
             if !qc_passed {
                 eprintln!(
-                    "[orchestrate] QC gagal setelah {} revisi, kembalikan hasil terbaik",
+                    "[orchestrate:{run_id}] QC gagal setelah {} revisi, kembalikan hasil terbaik",
                     revision_count
                 );
                 revision_history.push(format!(
@@ -473,6 +578,7 @@ pub async fn orchestrate(
                 error: None,
                 revisions: revision_count,
                 revision_history,
+                estimated_cost_usd: est_cost,
             };
         }
 
@@ -480,7 +586,7 @@ pub async fn orchestrate(
         revision_count += 1;
         let notes = qc_notes.clone().unwrap_or_default();
         eprintln!(
-            "[orchestrate] QC gagal, revisi {}/{}: {}",
+            "[orchestrate:{run_id}] QC gagal, revisi {}/{}: {}",
             revision_count, MAX_REVISIONS, notes.chars().take(100).collect::<String>()
         );
 
@@ -503,7 +609,7 @@ pub async fn orchestrate(
         };
 
         if agents_to_revise.is_empty() {
-            eprintln!("[orchestrate] Tidak ada agen valid untuk revisi, berhenti");
+            eprintln!("[orchestrate:{run_id}] Tidak ada agen valid untuk revisi, berhenti");
             revision_history.push("Tidak ada agen valid untuk revisi".to_string());
             return OrchestrateResult {
                 aggregated,
@@ -514,10 +620,11 @@ pub async fn orchestrate(
                 error: None,
                 revisions: revision_count,
                 revision_history,
+                estimated_cost_usd: est_cost,
             };
         }
 
-        eprintln!("[orchestrate] Revisi untuk agen: {:?}", agents_to_revise);
+        eprintln!("[orchestrate:{run_id}] Revisi untuk agen: {:?}", agents_to_revise);
 
         // Dispatch revisi paralel ke agen terpilih
         let revised: Vec<SubTaskResult> =
@@ -533,7 +640,7 @@ pub async fn orchestrate(
                             let sys = revision_system_prompt(
                                 &p.agent_id, &p.task, &p.result, &notes_clone,
                             );
-                            dispatch_one(router, db, &p.agent_id, &p.task, Some(sys), None).await
+                            dispatch_one(router, db, &run_id, &p.agent_id, &p.task, Some(sys), None).await
                         }
                         None => SubTaskResult {
                             agent_id: aid.clone(),
