@@ -68,3 +68,13 @@ export function loadList<T>(key: string, seed: () => T[]): T[] {
   }
   return seed();
 }
+
+export function persistList<T>(key: string, store: Writable<T[]>) {
+  store.subscribe((v) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(v));
+    } catch {
+      /* ignore */
+    }
+  });
+}

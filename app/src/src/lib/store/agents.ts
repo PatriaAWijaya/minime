@@ -1,5 +1,5 @@
 import { writable, get, type Writable } from "svelte/store";
-import { loadRecord, persistRecord, loadList } from "./_helpers";
+import { loadRecord, persistRecord, loadList, persistList } from "./_helpers";
 import type {
   Agent, AgentFile, AgentStatus, CostRow, FlowEdge, FlowNode, FlowProject,
   KanbanCard, KanbanCol, LibraryItem, Message, ProviderInfo, ScheduledItem,
