@@ -141,8 +141,3 @@ pub enum ModelTier {
     Gratis,
     Berbayar,
 }
-
-/// Router: pilih provider sesuai tier + model, dengan fallback berantai.
-/// Urutan default (keputusan Patria):
-/// - Gratis: Ollama → OpenCode
-/// - Berbayar: Muse → Gemini → DeepSeek (→ RouterKu bila terkonfigurasi)

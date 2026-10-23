@@ -389,8 +389,3 @@ impl OpenAiCompatProvider {
 
 // ---------------------------------------------------------------------------
 // OpenCode (gratis, via CLI)
-// ---------------------------------------------------------------------------
-
-/// Free tier via CLI `opencode` yang terpasang (pola yang sama dipakai
-/// OpenBot: tanpa akun untuk tier gratis). Perintah:
-/// `opencode run -m <model> <prompt>`.
