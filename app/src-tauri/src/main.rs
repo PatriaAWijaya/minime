@@ -141,6 +141,44 @@ async fn orchestrate_task(
     Ok(orchestrate::orchestrate(&db, &router, &user_request, &model_id).await)
 }
 
+/// Transkripsi audio dari base64 (untuk STT tombol mic).
+/// Menyimpan ke temp file lalu memanggil meta_transcribe.
+#[tauri::command]
+async fn transcribe_audio_b64(
+    router: tauri::State<'_, Router>,
+    audio_b64: String,
+    ext: String,
+) -> Result<String, String> {
+    use std::io::Write;
+    let bytes = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        &audio_b64,
+    )
+    .map_err(|e| format!("base64 invalid: {e}"))?;
+    let ext = if ext.chars().all(|c| c.is_alphanumeric()) && ext.len() <= 5 {
+        ext
+    } else {
+        "webm".to_string()
+    };
+    let path = std::env::temp_dir().join(format!("minime_stt_{}.{}", 
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0),
+        ext));
+    std::fs::File::create(&path)
+        .and_then(|mut f| f.write_all(&bytes))
+        .map_err(|e| format!("gagal simpan audio: {e}"))?;
+    let path_str = path.to_string_lossy().to_string();
+    let result = router
+        .muse()
+        .transcribe(&path_str)
+        .await
+        .map_err(|e| format!("transkripsi gagal: {e}"));
+    let _ = std::fs::remove_file(&path);
+    result
+}
+
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
 #[tauri::command]
 fn chat_history(
@@ -502,6 +540,7 @@ fn main() {
             get_app_info,
             provider_probe,
             orchestrate_task,
+            transcribe_audio_b64,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,

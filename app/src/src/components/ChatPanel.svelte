@@ -110,10 +110,13 @@
     closeMenus();
   }
 
-  // Mock voice input (Phase 1): local recording state per panel.
+  // STT nyata via meta_transcribe (24 Okt 2026): MediaRecorder → base64 → transcribe_audio_b64.
   let recording = $state(false);
   let recSeconds = $state(0);
   let recTimer: ReturnType<typeof setInterval> | null = null;
+  let mediaRecorder: MediaRecorder | null = null;
+  let audioChunks: Blob[] = [];
+  let transcribing = $state(false);
 
   const agent = $derived(agentProp ?? getAgent($activeAgentId));
   const messages = $derived($messagesByAgent[$activeAgentId] ?? []);
@@ -145,21 +148,68 @@
     if (recTimer) clearInterval(recTimer);
   });
 
-  function startRecording() {
+  async function startRecording() {
     if (recording || status === "working") return;
-    recording = true;
-    recSeconds = 0;
-    recTimer = setInterval(() => { recSeconds += 1; }, 1000);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.start();
+      recording = true;
+      recSeconds = 0;
+      recTimer = setInterval(() => { recSeconds += 1; }, 1000);
+    } catch (e) {
+      console.error("[STT] mic gagal:", e);
+    }
   }
 
-  function stopRecording() {
+  async function stopRecording() {
     if (recTimer) clearInterval(recTimer);
     recTimer = null;
     if (!recording) return;
     recording = false;
-    const transcript = $t("chat.mockTranscript");
-    draft = draft.trim() ? `${draft.trim()} ${transcript}` : transcript;
-    queueMicrotask(() => inputEl?.focus());
+    const rec = mediaRecorder;
+    mediaRecorder = null;
+    if (!rec) return;
+    
+    transcribing = true;
+    try {
+      const blob = await new Promise<Blob>((resolve) => {
+        rec.onstop = () => resolve(new Blob(audioChunks, { type: rec.mimeType }));
+        rec.stop();
+        rec.stream.getTracks().forEach((t) => t.stop());
+      });
+      
+      // Blob → base64
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      const ext = (rec.mimeType.split("/")[1] || "webm").split(";")[0];
+      const { invoke } = await import("@tauri-apps/api/core");
+      const transcript = await invoke<string>("transcribe_audio_b64", {
+        audioB64: b64,
+        ext,
+      });
+      
+      if (transcript && transcript.trim()) {
+        draft = draft.trim() ? `${draft.trim()} ${transcript.trim()}` : transcript.trim();
+      }
+    } catch (e) {
+      console.error("[STT] transkripsi gagal:", e);
+    } finally {
+      transcribing = false;
+      queueMicrotask(() => inputEl?.focus());
+    }
   }
 
   // Stops the timer without injecting a transcript (used when sending mid-record).
@@ -397,6 +447,11 @@
       <button class="btn-ghost btn-stop" onclick={stopRecording} aria-label={$t("chat.stop")}>
         {$t("chat.stop")}
       </button>
+    {:else if transcribing}
+      <div class="rec-indicator" role="status" aria-live="polite">
+        <span class="rec-dot"></span>
+        <span class="rec-time">{$t("chat.transcribing")}</span>
+      </div>
     {:else}
       <button
         class="btn-mic"
