@@ -526,11 +526,12 @@ pub async fn orchestrate(
                     .iter()
                     .find(|r| &r.agent_id == aid)
                     .cloned();
+                let notes_clone = notes.clone();
                 async move {
                     match prev {
                         Some(p) => {
                             let sys = revision_system_prompt(
-                                &p.agent_id, &p.task, &p.result, &notes,
+                                &p.agent_id, &p.task, &p.result, &notes_clone,
                             );
                             dispatch_one(router, db, &p.agent_id, &p.task, Some(sys), None).await
                         }
