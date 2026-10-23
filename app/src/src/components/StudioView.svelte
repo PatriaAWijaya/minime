@@ -505,7 +505,7 @@
       <div class="photo-row">
         {#if $brandKit.photo}
           <img src={$brandKit.photo} alt="Brand" class="brand-photo" />
-          <button class="btn-ghost sm" onclick={() => ($brandKit.photo = "")}>Hapus</button>
+          <button class="btn-ghost sm" onclick={() => ($brandKit.photo = "")}>{$t("common.delete")}</button>
         {:else}
           <input id="brand-photo" type="file" accept="image/*"
             onchange={(e) => {
@@ -1022,8 +1022,8 @@
         <button class="btn-ghost sm" onclick={downloadImage}>Unduh</button>
         <button class="btn-ghost sm" onclick={() => (editingImage = imageUrl)}>Edit</button>
         <a href={imageUrl} target="_blank" rel="noopener" class="btn-ghost sm link">Buka penuh</a>
-        <button class="btn-ghost sm" onclick={undoImage} disabled={!canImgUndo} title="Urungkan perubahan gambar">↩ Urungkan</button>
-        <button class="btn-ghost sm danger" onclick={deleteImage} title="Hapus gambar">Hapus</button>
+        <button class="btn-ghost sm" onclick={undoImage} disabled={!canImgUndo} title={$t("common.undo.image")}>{$t("common.undo")}</button>
+        <button class="btn-ghost sm danger" onclick={deleteImage} title={$t("common.delete.image")}>{$t("common.delete")}</button>
       </div>
       </div>
   </section>

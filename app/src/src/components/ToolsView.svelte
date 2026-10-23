@@ -437,12 +437,12 @@
                 </button>
               {/if}
               {#if $agentEnabled[a.id] || a.id === "mimi"}
-                <button class="mkt-add active" disabled title="Agen sudah aktif">
-                  ✓ Aktif
+                <button class="mkt-add active" disabled title={$t("common.active")}>
+                  {$t("common.active")}
                 </button>
               {:else}
                 <button class="mkt-add" onclick={() => activateAgent(a.id)}>
-                  Aktifkan
+                  {$t("common.activate")}
                 </button>
               {/if}
             </div>

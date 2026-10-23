@@ -921,8 +921,8 @@
     <header>
       <h3>Edit Gambar</h3>
       <div class="hist">
-        <button class="icon-btn" onclick={undo} disabled={!canUndo} title="Urungkan">↩</button>
-        <button class="icon-btn" onclick={redo} disabled={!canRedo} title="Ulangi">↪</button>
+        <button class="icon-btn" onclick={undo} disabled={!canUndo} title={$t("common.undo.title")}>↩</button>
+        <button class="icon-btn" onclick={redo} disabled={!canRedo} title={$t("common.redo.title")}>↪</button>
         <button class="icon-btn" onclick={resetAll} title="Kembalikan ke awal">⟲</button>
         <button class="icon-btn" onclick={onClose} aria-label="Tutup">×</button>
       </div>
@@ -1091,14 +1091,14 @@
                   <button class="mini" title={e.locked ? "Buka kunci" : "Kunci"} onclick={(ev) => { ev.stopPropagation(); updSelCommit({ locked: !e.locked }); }}>{e.locked ? "🔒" : "🔓"}</button>
                   <button class="mini" title="Naik" disabled={idx === els.length - 1} onclick={(ev) => { ev.stopPropagation(); moveLayer(e.id, 1); }}>▲</button>
                   <button class="mini" title="Turun" disabled={idx === 0} onclick={(ev) => { ev.stopPropagation(); moveLayer(e.id, -1); }}>▼</button>
-                  <button class="mini danger" title="Hapus" onclick={(ev) => { ev.stopPropagation(); selId = e.id; delSel(); }}>×</button>
+                  <button class="mini danger" title={$t("common.delete.title")} onclick={(ev) => { ev.stopPropagation(); selId = e.id; delSel(); }}>×</button>
                 </div>
               {/each}
             </div>
             {#if sel()}
               <div class="row">
                 <button class="btn-ghost sm" onclick={dupSel}>Duplikat</button>
-                <button class="btn-ghost sm" onclick={delSel}>Hapus</button>
+                <button class="btn-ghost sm" onclick={delSel}>{$t("common.delete")}</button>
               </div>
             {/if}
           {/if}
@@ -1205,7 +1205,7 @@
           {/if}
           <div class="row">
             <button class="btn-ghost sm" onclick={dupSel}>Duplikat</button>
-            <button class="btn-ghost sm" onclick={delSel}>Hapus</button>
+            <button class="btn-ghost sm" onclick={delSel}>{$t("common.delete")}</button>
           </div>
         {/if}
       </aside>

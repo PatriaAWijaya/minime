@@ -754,7 +754,7 @@
     <div>
       <h3>Editor Suara</h3>
       <p class="hint">Susun segmen voiceover di timeline multi-track, generate suaranya, lalu gabungkan jadi satu file WAV.</p>
-      <button class="btn-ghost sm" onclick={undoTracks} disabled={!canVUndo} title="Urungkan perubahan terakhir">↩ Urungkan</button>
+      <button class="btn-ghost sm" onclick={undoTracks} disabled={!canVUndo} title={$t("common.undo.last")}>{$t("common.undo")}</button>
     </div>
     <div class="engine" data-engine={engine}>
       <span class="dot" aria-hidden="true"></span>
@@ -845,7 +845,7 @@
               <button title="Pindah ke bawah" aria-label="Pindah ke bawah" onclick={() => moveClip(track.id, clip.id, 1)} disabled={ci === track.clips.length - 1}>↓</button>
               <button title="Pindah ke track atas" aria-label="Pindah ke track atas" onclick={() => moveClipTrack(track.id, clip.id, -1)} disabled={ti === 0}>⇠</button>
               <button title="Pindah ke track bawah" aria-label="Pindah ke track bawah" onclick={() => moveClipTrack(track.id, clip.id, 1)} disabled={ti === tracks.length - 1}>⇢</button>
-              <button class="danger" title="Hapus clip" aria-label="Hapus clip" onclick={() => removeClip(track.id, clip.id)}>×</button>
+              <button class="danger" title={$t("common.delete.clip")} aria-label={$t("common.delete.clip")} onclick={() => removeClip(track.id, clip.id)}>×</button>
             </div>
           </div>
 

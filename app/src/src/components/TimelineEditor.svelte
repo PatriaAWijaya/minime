@@ -286,8 +286,8 @@
     <button class="btn-primary sm" onclick={addClip}>+ Klip</button>
     <span class="sep"></span>
     <button class="btn-ghost sm" onclick={splitAtPlayhead} disabled={!selected} title="Pisah di playhead">✂ Pisah</button>
-    <button class="btn-ghost sm" onclick={deleteSelected} disabled={!selected} title="Hapus klip">🗑 Hapus</button>
-    <button class="btn-ghost sm" onclick={undoClips} disabled={!canTUndo} title="Urungkan perubahan terakhir">↩ Urungkan</button>
+    <button class="btn-ghost sm" onclick={deleteSelected} disabled={!selected} title={$t("common.delete.clip")}>🗑 {$t("common.delete")}</button>
+    <button class="btn-ghost sm" onclick={undoClips} disabled={!canTUndo} title={$t("common.undo.last")}>{$t("common.undo")}</button>
     <span class="spacer"></span>
     <button class="btn-primary sm" onclick={doExport} disabled={clips.length === 0 || exporting}>
       {exporting ? "Mengekspor..." : "⬇ Export MP4"}
