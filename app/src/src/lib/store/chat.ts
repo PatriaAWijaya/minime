@@ -1,0 +1,200 @@
+import { writable, get, derived, type Writable, type Readable } from "svelte/store";
+import { loadRecord, persistRecord, loadString, loadBool, loadJSON } from "./_helpers";
+import type {
+  Agent, AgentFile, AgentStatus, CostRow, FlowEdge, FlowNode, FlowProject,
+  KanbanCard, KanbanCol, LibraryItem, Message, ProviderInfo, ScheduledItem,
+  ToolInfo, LibraryType,
+} from "../types";
+import { invoke } from "@tauri-apps/api/core";
+import { agentNames, agentTitles, agentGender, agentAge, agentPosition, agentHobbies } from "./agents";
+
+export const messagesByAgent = writable<Record<string, Message[]>>({});
+
+let msgSeq = 1;
+
+export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"], replyTo?: string) {
+  const msg: Message = {
+    id: msgSeq++,
+    role,
+    text,
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
+    ...(replyTo ? { replyTo } : {}),
+  };
+  messagesByAgent.update((m) => ({
+    ...m,
+    [agentId]: [...(m[agentId] ?? []), msg],
+  }));
+}
+
+/** Remove a chat message (per-bubble delete). */
+export function deleteMessage(agentId: string, msgId: number): void {
+  messagesByAgent.update((m) => ({
+    ...m,
+    [agentId]: (m[agentId] ?? []).filter((msg) => msg.id !== msgId),
+  }));
+}
+
+/** Toggle an emoji reaction on a chat message. */
+export function setMessageReaction(agentId: string, msgId: number, emoji: string): void {
+  messagesByAgent.update((m) => ({
+    ...m,
+    [agentId]: (m[agentId] ?? []).map((msg) =>
+      msg.id === msgId
+        ? { ...msg, reaction: msg.reaction === emoji ? undefined : emoji }
+        : msg,
+    ),
+  }));
+}
+
+/** Incremented to focus the chat composer (e.g. from "+ Tugas Baru"). */
+export const newTaskSignal = writable(0);
+
+/** Small helper: load/persist a per-agent record in localStorage. */
+export function buildSystemPrompt(agentId: string, roleLabel: string): string {
+  const name = (get(agentNames)[agentId] ?? "").trim();
+  const title = (get(agentTitles)[agentId] ?? "").trim();
+  const instructions = (get(agentInstructions)[agentId] ?? "").trim();
+  const gender = get(agentGender)[agentId];
+  const age = get(agentAge)[agentId];
+  const position = get(agentPosition)[agentId];
+  const hobbies = (get(agentHobbies)[agentId] ?? "").trim();
+
+  const lines: string[] = [];
+  lines.push(
+    `Kamu adalah ${name || agentId}, asisten AI di aplikasi Minime.`,
+    `Peranmu: ${title || roleLabel}.`,
+  );
+  if (agentId === "mimi") {
+    lines.push(
+      "Kamu adalah CIO (Chief Intelligent Officer) dan orkestrator tim: " +
+        "koordinasikan 5 agen senior (Kreatif, Riset, Finance, Bisnis Strategis, Code Builder), " +
+        "pecah permintaan kompleks menjadi tugas yang jelas, dan rangkum hasilnya untuk pengguna.",
+    );
+  }
+  if (gender || age || position || hobbies) {
+    const parts: string[] = [];
+    if (gender) parts.push(gender === "male" ? "laki-laki" : "perempuan");
+    if (age) parts.push(`${age} tahun`);
+    if (position) parts.push(position);
+    if (hobbies) parts.push(`hobi: ${hobbies}`);
+    lines.push(`Kepribadian: ${parts.join(", ")}.`);
+  }
+  lines.push(
+    "Jawab dalam Bahasa Indonesia yang ringkas dan jelas, kecuali pengguna memakai bahasa lain.",
+    "Jangan mengarang fakta; bila tidak tahu, katakan terus terang.",
+  );
+  if (instructions) {
+    lines.push(`Instruksi khusus dari pengguna:\n${instructions}`);
+  }
+  return lines.join("\n");
+}
+
+/* ---------- Chat history + usage nyata (Tahap 2) ---------- */
+
+export interface RealStoredMessage {
+  id: number;
+  agent_id: string;
+  role: string;
+  text: string;
+  served_by: string | null;
+  created_at: string;
+}
+
+export interface RealUsageRow {
+  agent_id: string;
+  provider_id: string;
+  model_id: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+/** Race janji melawan timeout — menjamin tidak ada hang diam-diam. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) =>
+      setTimeout(() => rej(`${label}: timeout setelah ${Math.round(ms / 1000)} detik`), ms),
+    ),
+  ]);
+}
+
+/** Kirim chat lewat model router (dengan fallback otomatis).
+    - Return null → bukan di Tauri (browser/preview), pakai mock.
+    - Throw string → di Tauri tapi router gagal / timeout (pesan Indonesia). */
+export async function sendChatViaRouter(
+  agentId: string,
+  modelId: string,
+  tier: "gratis" | "berbayar",
+  systemPrompt: string,
+  messages: ChatWireMessage[],
+): Promise<ChatWireResult | null> {
+  const tauri = await withTimeout(isTauri(), 10000, "deteksi backend");
+  if (!tauri) return null;
+  // Pastikan daftar provider/model nyata sudah dimuat (untuk model dinamis).
+  if (get(realProviders) === null) {
+    await refreshProviders();
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await withTimeout(
+    invoke<ChatWireResult>("agent_chat", {
+      agentId,
+      modelId,
+      tier,
+      systemPrompt,
+      messages,
+    }),
+    180000,
+    "model router",
+  );
+}
+
+const historyLoadedFor = new Set<string>();
+
+/** Muat riwayat chat agen dari SQLite (sekali per agen per sesi). */
+export async function loadChatHistory(agentId: string): Promise<void> {
+  if (historyLoadedFor.has(agentId)) return;
+  historyLoadedFor.add(agentId);
+  let rows: RealStoredMessage[] | null = null;
+  try {
+    rows = await tauriInvoke<RealStoredMessage[]>("chat_history", {
+      agentId,
+      limit: 100,
+    });
+  } catch {
+    return;
+  }
+  if (!rows || rows.length === 0) return;
+  messagesByAgent.update((m) => {
+    if ((m[agentId] ?? []).length > 0) return m; // sudah ada pesan sesi ini
+    return {
+      ...m,
+      [agentId]: rows.map((r) => {
+        let time = r.created_at;
+        const d = new Date(r.created_at);
+        if (!isNaN(d.getTime())) {
+          time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        }
+        return {
+          id: r.id,
+          role: r.role === "assistant" ? "agent" : "user",
+          text: r.text,
+          time,
+        };
+      }),
+    };
+  });
+}
+
+/** Ringkasan usage nyata untuk tab Cost; null = belum dimuat / browser. */
+export const realUsage = writable<RealUsageRow[] | null>(null);
+
+export async function refreshUsage(): Promise<void> {
+  try {
+    const rows = await tauriInvoke<RealUsageRow[]>("usage_summary");
+    if (rows) realUsage.set(rows);
+  } catch {
+    /* abaikan */
+  }
+}
