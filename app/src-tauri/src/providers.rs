@@ -1407,6 +1407,12 @@ pub async fn fetch_provider_models(provider_id: String) -> Result<Vec<String>, S
                 .map(|m| m.into_iter().map(|x| x.label).collect())
                 .map_err(|e| e.to_string())
         }
+        "opencode" => {
+            Ok(OpenCodeProvider::free_models()
+                .into_iter()
+                .map(|m| m.label)
+                .collect())
+        }
         _ => Err(format!("Provider tidak dikenal: {}", provider_id)),
     }
 }
