@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn registry_has_5_tools_with_draft_only_social() {
         let tools = known_tools();
-        assert_eq!(tools.len(), 13);
+        assert_eq!(tools.len(), 15);
         let meta = tools.iter().find(|(id, ..)| id == "meta").unwrap();
         assert!(meta.4, "meta must be draft_only");
         let postiz = tools.iter().find(|(id, ..)| id == "postiz").unwrap();
@@ -303,8 +303,8 @@ mod tests {
         assert_eq!(m.get("mimi").unwrap(), &vec!["*".to_string()]);
         assert!(m.get("kreatif").unwrap().contains(&"pireel".to_string()));
         assert!(!m.get("kreatif").unwrap().contains(&"canva".to_string()));
-        assert!(m.get("finance").unwrap().is_empty());
-        assert!(m.get("code").unwrap().is_empty());
+        assert!(m.get("finance").unwrap().contains(&"ruangapi".to_string()));
+        assert!(m.get("code").unwrap().contains(&"github".to_string()));
         assert!(m.get("riset").unwrap().contains(&"browser".to_string()));
     }
 
