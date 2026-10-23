@@ -17,6 +17,9 @@
     saveAgentSkills,
     createSkillFile,
     activeView,
+    activateAgent,
+    isAgentEnabled,
+    agentEnabled,
     pireelStatus,
     pireelOAuth,
     pireelOAuthError,
@@ -105,10 +108,6 @@
           : agentName(a).localeCompare(agentName(b)),
       ),
   );
-  function openAgent() {
-    activeView.set("agents");
-  }
-
   /* ---------------- Apps tab ---------------- */
   /** Tools dengan status otomatis dari kondisi aktual (tanpa toggle manual). */
   const AUTO_STATUS_TOOLS = ["pixabay", "pexels", "wan", "ltx", "postiz", "meta", "ffmpeg", "whisper", "arbotts", "sdimage"];
@@ -437,9 +436,15 @@
                   </svg>
                 </button>
               {/if}
-              <button class="mkt-add" onclick={openAgent}>
-                {$t("mkt.open")}
-              </button>
+              {#if $agentEnabled[a.id] || a.id === "mimi"}
+                <button class="mkt-add active" disabled title="Agen sudah aktif">
+                  ✓ Aktif
+                </button>
+              {:else}
+                <button class="mkt-add" onclick={() => activateAgent(a.id)}>
+                  Aktifkan
+                </button>
+              {/if}
             </div>
             <p class="mkt-desc">{agentRole(a)}</p>
             <footer class="mkt-foot">
@@ -1067,6 +1072,10 @@
   .sh-squircle { border-radius: 12px; }
   .sh-blob { border-radius: 58% 42% 55% 45% / 48% 52% 48% 52%; }
   .sh-hex { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%); }
+  .mkt-add.active {
+    background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.4);
+    color: #4ade80; cursor: default;
+  }
   .mkt-add {
     flex: none;
     border: 1px solid var(--border);
