@@ -9,6 +9,17 @@
 //! Semua provider HTTP OpenAI-compatible (Muse, Gemini, DeepSeek, RouterKu)
 //! memakai satu klien generik. Kredensial dibaca dari [`crate::secrets`]
 //! (OS keychain) — tidak pernah di-hardcode.
+//!
+//! CATATAN ARSITEKTUR (24 Okt 2026): File ini SENGAJA monolit (2354 baris).
+//! Upaya split ke submodule GAGAL karena `#[tauri::command]` macro tidak
+//! kompatibel dengan re-export lintas modul — generated helper
+//! (`__tauri_command_name_*`, `__cmd__*`) tidak ditemukan oleh
+//! `generate_handler!` bila fungsi di-import (bukan defined in-place).
+//! Solusi: section marker yang jelas di bawah, bukan pemaksaan split.
+
+// ============================================================================
+// SECTION 0: Shared types (ModelInfo, ProviderStatus, ProviderError, ChatMessage, ChatResult)
+// ============================================================================
 
 use serde::{Deserialize, Serialize};
 
@@ -101,9 +112,9 @@ fn http_client() -> reqwest::Client {
         .unwrap_or_else(|_| reqwest::Client::new())
 }
 
-// ---------------------------------------------------------------------------
-// Ollama (gratis, lokal)
-// ---------------------------------------------------------------------------
+// ============================================================================
+// SECTION 1: OllamaProvider — lokal gratis (http://localhost:11434)
+// ============================================================================
 
 pub struct OllamaProvider {
     base_url: String,
@@ -233,12 +244,12 @@ impl Default for OllamaProvider {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Klien OpenAI-compatible generik (Muse, Gemini, DeepSeek, RouterKu)
-// ---------------------------------------------------------------------------
 
 /// Satu klien untuk semua provider HTTP yang bicara skema
 /// `POST {base_url}/chat/completions` ala OpenAI.
+// ============================================================================
+// SECTION 2: OpenAiCompatProvider — Muse, Gemini, DeepSeek, RouterKu
+// ============================================================================
 pub struct OpenAiCompatProvider {
     id: &'static str,
     label: &'static str,
@@ -618,9 +629,9 @@ impl OpenAiCompatProvider {
     }
 }
 
-// ---------------------------------------------------------------------------
-// OpenCode (gratis, via CLI)
-// ---------------------------------------------------------------------------
+// ============================================================================
+// SECTION 3: OpenCodeProvider — gratis via CLI `opencode`
+// ============================================================================
 
 /// Free tier via CLI `opencode` yang terpasang (pola yang sama dipakai
 /// OpenBot: tanpa akun untuk tier gratis). Perintah:
@@ -748,9 +759,9 @@ impl Default for OpenCodeProvider {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Router
-// ---------------------------------------------------------------------------
+// ============================================================================
+// SECTION 4: Router — chain fallback antar provider + cross-tier (24 Okt 2026)
+// ============================================================================
 
 /// Tier model yang dipilih user di UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -952,6 +963,9 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
 /// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
 /// Menyimpan hasil ke file temp dan mengembalikan path.
 #[tauri::command]
+// ============================================================================
+// SECTION 5: Meta endpoints — image, transcribe, SAM segment (23 Okt 2026)
+// ============================================================================
 pub async fn meta_generate_image(
     router: tauri::State<'_, Router>,
     prompt: String,
@@ -1006,6 +1020,9 @@ pub async fn meta_segment(
 /// Generate image via local stable-diffusion.cpp (AI Media Studio).
 /// sd-server runs on localhost:8080 (auto-started if needed).
 #[tauri::command]
+// ============================================================================
+// SECTION 6: Media functions — slideshow, subtitle, thumbnail, voiceover, video AI
+// ============================================================================
 pub async fn generate_image(prompt: String, size: String) -> Result<String, String> {
     let home = std::env::var("HOME").map_err(|_| "HOME tidak ditemukan.".to_string())?;
     let sd_dir = format!("{}/.minime/sd", home);
@@ -1290,9 +1307,9 @@ pub(crate) fn which_arbotts() -> Option<String> {
     None
 }
 
-// ---------------------------------------------------------------------------
-// Provider catalog (Xiryn-style): metadata for settings UI
-// ---------------------------------------------------------------------------
+// ============================================================================
+// SECTION 7: Provider catalog — metadata untuk Settings UI
+// ============================================================================
 
 #[derive(serde::Serialize, Clone)]
 pub struct ProviderCatalogEntry {
@@ -1530,6 +1547,9 @@ pub(crate) fn yovoice_bin() -> String {
 
 /// Check yovoice status. Returns JSON string from `yovoice status --json`.
 #[tauri::command]
+// ============================================================================
+// SECTION 8: Yovoice — TTS fallback lokal
+// ============================================================================
 pub fn yovoice_status() -> Result<String, String> {
     let bin = yovoice_bin();
     if !std::path::Path::new(&bin).exists() {
