@@ -16,6 +16,11 @@
 //! (`__tauri_command_name_*`, `__cmd__*`) tidak ditemukan oleh
 //! `generate_handler!` bila fungsi di-import (bukan defined in-place).
 //! Solusi: section marker yang jelas di bawah, bukan pemaksaan split.
+//!
+//! ATURAN DISIPLIN MONOLIT:
+//! - Fungsi baru WAJIB masuk section yang tepat (lihat daftar di bawah)
+//! - Jangan tambah section baru tanpa diskusi — 9 section sudah mencakup semua domain
+//! - Setiap section max ~400 baris; bila melebihi, refaktor internal dulu
 
 // ============================================================================
 // SECTION 0: Shared types (ModelInfo, ProviderStatus, ProviderError, ChatMessage, ChatResult)

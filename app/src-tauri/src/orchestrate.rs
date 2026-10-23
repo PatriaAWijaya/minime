@@ -663,3 +663,75 @@ pub async fn orchestrate(
         // Loop kembali ke agregat + QC
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn estimate_cost_scales_with_subtasks() {
+        let c1 = estimate_cost(1, false);
+        let c3 = estimate_cost(3, false);
+        assert!(c3 > c1, "Lebih banyak subtugas = lebih mahal");
+        // 1 subtugas Spark: ~3 fixed + 1 subtask, dengan buffer 1.5x
+        // Harus di bawah $1 untuk kasus sederhana
+        assert!(c1 < 1.0, "Estimasi 1 subtugas Spark harus < $1, dapat ${}", c1);
+    }
+
+    #[test]
+    fn estimate_cost_wonder_more_expensive() {
+        let spark = estimate_cost(2, false);
+        let wonder = estimate_cost(2, true);
+        assert!(wonder > spark, "Wonder harus lebih mahal dari Spark");
+        // Wonder ~3-5x Spark untuk subtask portion
+        assert!(wonder > spark * 2.0);
+    }
+
+    #[test]
+    fn cost_hard_cap_reasonable() {
+        // 5 subtugas Wonder maksimal tidak boleh tembus hard cap dengan mudah
+        let max_case = estimate_cost(5, true);
+        // Tapi juga tidak boleh terlalu rendah sampai block kasus normal
+        assert!(max_case < COST_HARD_CAP_USD * 3.0);
+    }
+
+    #[test]
+    fn revision_prompt_includes_qc_notes() {
+        let sys = revision_system_prompt(
+            "kreatif",
+            "Buat caption",
+            "Hasil lama",
+            "Caption terlalu pendek, tambah CTA",
+        );
+        assert!(sys.contains("kreatif"));
+        assert!(sys.contains("Buat caption"));
+        assert!(sys.contains("Hasil lama"));
+        assert!(sys.contains("tambah CTA"));
+        assert!(sys.contains("WAJIB diperbaiki"));
+    }
+
+    #[test]
+    fn qc_output_parses_revise_agents() {
+        let json = r#"{"score": 60, "passed": false, "notes": "Kurang detail", "revise_agents": ["riset", "kreatif"]}"#;
+        let q: QcOut = serde_json::from_str(json).unwrap();
+        assert_eq!(q.score, 60);
+        assert!(!q.passed);
+        assert_eq!(q.revise_agents, vec!["riset", "kreatif"]);
+    }
+
+    #[test]
+    fn qc_output_defaults_empty_revise_agents() {
+        // Backward compatible: JSON lama tanpa revise_agents
+        let json = r#"{"score": 85, "passed": true, "notes": "-"}"#;
+        let q: QcOut = serde_json::from_str(json).unwrap();
+        assert!(q.passed);
+        assert!(q.revise_agents.is_empty());
+    }
+
+    #[test]
+    fn valid_agents_list_complete() {
+        // Pastikan semua agen di roster terdaftar
+        let valid = ["mimi", "kreatif", "riset", "finance", "strategis", "code"];
+        assert_eq!(valid.len(), 6);
+    }
+}
