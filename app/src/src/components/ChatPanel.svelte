@@ -26,6 +26,7 @@
     sendChatViaRouter,
   } from "../lib/store";
   import { t } from "../lib/i18n";
+  import MetaStatus from "./MetaStatus.svelte";
 
   let {
     agent: agentProp = null,
@@ -263,6 +264,7 @@
       <div class="role">{agentDisplayRole(agent, $agentTitles, $t)} · {agent.model}</div>
     </div>
     <span class="status"><span class="dot {status}"></span>{$t(`status.${status}`)}</span>
+    <MetaStatus capability="Chat" compact={true} />
   </header>
   {/if}
 

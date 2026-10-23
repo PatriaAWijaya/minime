@@ -5,6 +5,7 @@
   import ImageEditor from "./ImageEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
+  import MetaStatus from "./MetaStatus.svelte";
 
   let prompt = $state("");
   let size = $state("square");
@@ -815,6 +816,7 @@
       {/if}
 {#if activeTab === 'genimage'}
       <div class="tab-pane">
+      <div class="studio-meta-row"><MetaStatus capability="Image Generation" /></div>
       <div class="field">
       <label for="studio-prompt">Prompt</label>
       <textarea id="studio-prompt" bind:value={prompt} rows="3"
@@ -1165,4 +1167,9 @@
   .radio input[type="radio"] { accent-color: #4FA6F0; width: 16px; height: 16px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .studio-meta-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+  }
 </style>

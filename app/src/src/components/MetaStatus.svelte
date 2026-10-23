@@ -1,25 +1,33 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { t } from "../lib/i18n";
 
-  /** Props: capability = label kapabilitas yang butuh Meta (mis. "Image", "Transkripsi") */
-  let { capability = "" }: { capability?: string } = $props();
+  /** Props: capability = label kapabilitas yang butuh Meta (mis. "Image", "Chat") */
+  let { capability = "", compact = false }: { capability?: string; compact?: boolean } = $props();
 
   let connected = $state<boolean | null>(null);
+  let activeModel = $state<string>("");
 
   async function check() {
     try {
-      const catalog: Array<{ id: string; key_set: boolean }> = await invoke("provider_catalog");
+      const catalog: Array<{ id: string; key_set: boolean; suggested: string[] }> =
+        await invoke("provider_catalog");
       const muse = catalog.find((p) => p.id === "muse");
       connected = !!muse?.key_set;
+      // Model default per kapabilitas
+      if (capability.toLowerCase().includes("image")) activeModel = "muse-image-1.0";
+      else if (capability.toLowerCase().includes("transkrip") || capability.toLowerCase().includes("caption"))
+        activeModel = "muse-voice-transcribe-1.0";
+      else if (capability.toLowerCase().includes("segment")) activeModel = "sam-3.1";
+      else activeModel = "muse-spark-1.3";
     } catch {
       connected = false;
     }
   }
 
   function goToSettings() {
-    // Navigasi ke Pengaturan → Penyedia Model (tab Meta)
-    window.dispatchEvent(new CustomEvent("minime:nav", { detail: { view: "settings", tab: "providers", provider: "muse" } }));
+    window.dispatchEvent(
+      new CustomEvent("minime:nav", { detail: { view: "settings", tab: "providers", provider: "muse" } })
+    );
   }
 
   $effect(() => {
@@ -27,46 +35,56 @@
   });
 </script>
 
-<div class="meta-status" role="status">
+<div class="meta-status" class:compact role="status">
   {#if connected === null}
     <span class="dot pending"></span>
-    <span>Memeriksa...</span>
+    {#if !compact}<span class="lbl">Memeriksa Meta...</span>{/if}
   {:else if connected}
     <span class="dot ok"></span>
-    <span>Meta terhubung{capability ? ` — ${capability} siap` : ""}</span>
+    {#if !compact}<span class="lbl">Meta: {activeModel}</span>{/if}
   {:else}
     <span class="dot bad"></span>
-    <span>Meta belum terhubung{capability ? ` — ${capability} butuh API key` : ""}</span>
-    <button class="btn-link" onclick={goToSettings}>Hubungkan</button>
+    {#if !compact}
+      <span class="lbl">Meta belum terhubung</span>
+      <button class="btn-link" onclick={goToSettings}>Hubungkan</button>
+    {/if}
   {/if}
 </div>
 
 <style>
   .meta-status {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--bg-subtle, #f5f5f5);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+  }
+  .meta-status.compact {
+    padding: 4px 8px;
   }
   .dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .dot.ok { background: #22c55e; }
-  .dot.bad { background: #ef4444; }
+  .dot.ok { background: #22c55e; box-shadow: 0 0 6px #22c55e66; }
+  .dot.bad { background: #ef4444; box-shadow: 0 0 6px #ef444466; }
   .dot.pending { background: #f59e0b; }
+  .lbl { white-space: nowrap; }
   .btn-link {
     background: none;
     border: none;
-    color: var(--accent, #4FA6F0);
+    color: #4FA6F0;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     padding: 0;
     text-decoration: underline;
   }
+  .btn-link:hover { color: #7ab8f5; }
 </style>
