@@ -5,6 +5,7 @@ mod db;
 mod drive;
 mod island;
 mod logger;
+mod orchestrate;
 mod oauth_local;
 mod pireel;
 mod providers;
@@ -124,6 +125,20 @@ async fn agent_chat(
         res.output_tokens.unwrap_or(0) as i64,
     );
     Ok(res)
+}
+
+/// Orkestrasi tugas multi-agen via Mimi (CIO).
+/// Alur: parse intent → dispatch paralel → agregat → QC → return.
+/// `mimi_model_id`: model untuk Mimi (default: muse:muse-spark-1.3).
+#[tauri::command]
+async fn orchestrate_task(
+    db: State<'_, db::Db>,
+    user_request: String,
+    mimi_model_id: Option<String>,
+) -> Result<orchestrate::OrchestrateResult, String> {
+    let model_id = mimi_model_id.unwrap_or_else(|| "muse:muse-spark-1.3".to_string());
+    let router = Router::new(routerku_base_url());
+    Ok(orchestrate::orchestrate(&db, &router, &user_request, &model_id).await)
 }
 
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
@@ -486,6 +501,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
+            orchestrate_task,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,
