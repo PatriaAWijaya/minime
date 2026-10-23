@@ -255,10 +255,28 @@ impl OpenAiCompatProvider {
             label: "Muse",
             base_url: "https://api.meta.ai/v1".to_string(),
             key_account: "muse",
-            models: vec![ModelInfo {
-                id: "muse:muse-spark-1.3".to_string(),
-                label: "Muse Spark 1.3".to_string(),
-            }],
+            models: vec![
+                ModelInfo {
+                    id: "muse:muse-spark-1.3".to_string(),
+                    label: "Muse Spark 1.3".to_string(),
+                },
+                ModelInfo {
+                    id: "muse:muse-wonder-1.0".to_string(),
+                    label: "Muse Wonder 1.0 (power mode)".to_string(),
+                },
+                ModelInfo {
+                    id: "muse:muse-image-1.0".to_string(),
+                    label: "Muse Image 1.0".to_string(),
+                },
+                ModelInfo {
+                    id: "muse:muse-voice-transcribe-1.0".to_string(),
+                    label: "Muse Voice Transcribe 1.0".to_string(),
+                },
+                ModelInfo {
+                    id: "muse:sam-3.1".to_string(),
+                    label: "SAM 3.1".to_string(),
+                },
+            ],
             client: http_client(),
         }
     }
@@ -1098,7 +1116,13 @@ pub fn provider_catalog() -> Vec<ProviderCatalogEntry> {
             requires_key: true, requires_base_url: false,
             key_env: Some("MUSE_API_KEY".into()), base_url_env: None,
             default_base_url: Some("https://api.meta.ai/v1".into()),
-            suggested: vec!["muse-spark-1.3".into()],
+            suggested: vec![
+                "muse-spark-1.3".into(),
+                "muse-wonder-1.0".into(),
+                "muse-image-1.0".into(),
+                "muse-voice-transcribe-1.0".into(),
+                "sam-3.1".into(),
+            ],
             keys_url: None,
             key_set: key_set("muse"),
             base_url_set: false,
