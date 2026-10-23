@@ -5,7 +5,6 @@
   import ImageEditor from "./ImageEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
-  import MetaStatus from "./MetaStatus.svelte";
 
   let prompt = $state("");
   let size = $state("square");
@@ -879,9 +878,6 @@
       {/if}
 {#if activeTab === 'timeline'}
       <div class="tab-pane">
-        <MetaStatus capability="Video AI (Transkripsi & Segmentasi)" />
-        <MetaStatus capability="Image Generation" />
-      <p class="hint">Editor video multi-track ala CapCut: tambah klip video/audio/teks, drag untuk pindah, tarik tepi untuk trim, ✂ untuk pisah, lalu export MP4.</p>
       <TimelineEditor />
 
       <hr class="sep" />
