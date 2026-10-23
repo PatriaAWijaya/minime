@@ -146,8 +146,8 @@
   .chev { color: var(--dim); font-size: 11px; }
   .pop {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
-    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.4); overflow: hidden;
+    background: #1a1a1e; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.6); overflow: hidden;
   }
   .search {
     width: 100%; padding: 10px 12px; border: none; border-bottom: 1px solid var(--border);
