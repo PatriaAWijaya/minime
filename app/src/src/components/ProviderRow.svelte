@@ -43,6 +43,7 @@
       }
       key = "";
       baseUrl = "";
+      testResult = { ok: true, msg: "Tersimpan." };
       onChanged();
     } catch (e) {
       testResult = { ok: false, msg: String(e) };
