@@ -140,7 +140,7 @@
     background: var(--bg); color: var(--text); cursor: pointer; font-size: 13px; text-align: left;
   }
   .trigger:hover { border-color: #3b82f6; }
-  .spec { font-family: monospace; font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spec { font-family: var(--font-mono); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spec .prov { color: var(--dim); }
   .placeholder { color: var(--dim); flex: 1; }
   .chev { color: var(--dim); font-size: 11px; }
@@ -167,7 +167,7 @@
     color: var(--text); font-size: 13px; text-align: left;
   }
   .item:hover { background: var(--hover); }
-  .mono { font-family: monospace; font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mono { font-family: var(--font-mono); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .check { color: #22c55e; font-weight: 700; }
   .use { color: var(--dim); font-size: 11px; }
   .empty { padding: 16px 12px; color: var(--dim); font-size: 13px; margin: 0; }

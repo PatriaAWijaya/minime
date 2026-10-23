@@ -145,11 +145,11 @@
   .prov-name { font-weight: 600; }
   .tag {
     font-size: 10px; padding: 2px 8px; border-radius: 999px;
-    border: 1px solid var(--border); color: var(--dim); font-family: monospace;
+    border: 1px solid var(--border); color: var(--dim); font-family: var(--font-mono);
   }
   .spacer { flex: 1; }
   .src-badge {
-    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-family: monospace;
+    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono);
     border: 1px solid rgba(34,197,94,.4); color: #22c55e;
   }
   .src-badge.dim { border-color: var(--border); color: var(--dim); }
@@ -157,10 +157,10 @@
   .prov-body { padding: 0 14px 14px; border-top: 1px solid var(--border); background: rgba(0,0,0,.15); }
   .field { margin: 12px 0; }
   .field label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
-  .field .env { font-family: monospace; font-weight: 400; text-transform: none; }
+  .field .env { font-family: var(--font-mono); font-weight: 400; text-transform: none; }
   .field input {
     width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
-    background: var(--bg); color: var(--text); font-size: 13px; font-family: monospace;
+    background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-mono);
   }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .btn-primary.sm { background: #3b82f6; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
@@ -170,6 +170,6 @@
     background: transparent; color: var(--text); cursor: pointer; font-size: 13px; text-decoration: none;
   }
   .btn-ghost.sm:disabled { opacity: .5; }
-  .ok { color: #22c55e; font-size: 12px; font-family: monospace; margin: 8px 0 0; }
-  .err { color: #ef4444; font-size: 12px; font-family: monospace; margin: 8px 0 0; }
+  .ok { color: #22c55e; font-size: 12px; font-family: var(--font-mono); margin: 8px 0 0; }
+  .err { color: #ef4444; font-size: 12px; font-family: var(--font-mono); margin: 8px 0 0; }
 </style>

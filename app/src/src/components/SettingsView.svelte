@@ -1527,7 +1527,7 @@
   }
   .check-row:hover { background: var(--hover); }
   .check-row .mono {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 13px;
   }
   .hint { font-size: 12px; color: var(--dim); margin-top: 4px; }

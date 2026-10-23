@@ -1112,17 +1112,17 @@
   .tl-shot:hover { border-color: #3b82f6; }
   .tl-shot.active { border-color: #3b82f6; background: rgba(59,130,246,.1); }
   .tl-num { font-weight: 700; font-size: 14px; }
-  .tl-dur { font-size: 10px; color: var(--dim); font-family: monospace; }
-  .shot-type { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: monospace; }
+  .tl-dur { font-size: 10px; color: var(--dim); font-family: var(--font-mono); }
+  .shot-type { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: var(--font-mono); }
   .scene-field { font-size: 13px; margin: 4px 0; color: var(--text); }
   .board-editor { margin-top: 10px; padding: 12px; border: 1px dashed var(--border); border-radius: 8px; background: rgba(0,0,0,.1); }
   .script-item { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
   .script-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .script-content { font-size: 13px; color: var(--dim); margin: 0; white-space: pre-wrap; }
-  .tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: monospace; }
-  .status-draft { font-size: 10px; color: var(--dim); font-family: monospace; }
-  .status-in_production { font-size: 10px; color: #f59e0b; font-family: monospace; }
-  .status-done { font-size: 10px; color: #22c55e; font-family: monospace; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.15); color: #3b82f6; font-family: var(--font-mono); }
+  .status-draft { font-size: 10px; color: var(--dim); font-family: var(--font-mono); }
+  .status-in_production { font-size: 10px; color: #f59e0b; font-family: var(--font-mono); }
+  .status-done { font-size: 10px; color: #22c55e; font-family: var(--font-mono); }
   textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; }
   .scene-list { list-style: none; padding: 0; margin: 0 0 16px; }
   .scene { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
@@ -1156,7 +1156,7 @@
   .px-card button { margin: 6px; }
   .picked { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
   .picked li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
-  .mono { font-family: ui-monospace, monospace; font-size: 11px; }
+  .mono { font-family: var(--font-mono); font-size: 11px; }
   .mini { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text); }
   .mini.danger { color: #ef4444; }
   .err { color: #ef4444; font-size: 13px; }

@@ -2338,7 +2338,7 @@
     padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
   }
   .xiryn-model-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-  .xiryn-model-name { font-family: monospace; font-size: 13px; font-weight: 600; }
+  .xiryn-model-name { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
   .xiryn-model-desc { font-size: 11px; color: var(--dim); }
   .badge-ok { font-size: 11px; color: #4FA6F0; font-weight: 600; }
   .btn-used {
