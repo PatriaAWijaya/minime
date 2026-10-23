@@ -13,12 +13,14 @@
         await invoke("provider_catalog");
       const muse = catalog.find((p) => p.id === "muse");
       connected = !!muse?.key_set;
-      // Model default per kapabilitas
-      if (capability.toLowerCase().includes("image")) activeModel = "muse-image-1.0";
-      else if (capability.toLowerCase().includes("transkrip") || capability.toLowerCase().includes("caption"))
-        activeModel = "muse-voice-transcribe-1.0";
-      else if (capability.toLowerCase().includes("segment")) activeModel = "sam-3.1";
-      else activeModel = "muse-spark-1.3";
+      // Model default per kapabilitas (nama + versi jelas)
+      const c = capability.toLowerCase();
+      if (c.includes("image")) activeModel = "Muse Image 1.0";
+      else if (c.includes("transkrip") || c.includes("caption"))
+        activeModel = "Muse Voice Transcribe 1.0";
+      else if (c.includes("segment")) activeModel = "SAM 3.1";
+      else if (c.includes("power")) activeModel = "Muse Wonder 1.0";
+      else activeModel = "Muse Spark 1.3";
     } catch {
       connected = false;
     }
@@ -35,13 +37,13 @@
   });
 </script>
 
-<div class="meta-status" class:compact role="status">
+<div class="meta-status" class:compact role="status" title={connected ? `Meta: ${activeModel}` : "Meta belum terhubung"}>
   {#if connected === null}
     <span class="dot pending"></span>
     {#if !compact}<span class="lbl">Memeriksa Meta...</span>{/if}
   {:else if connected}
     <span class="dot ok"></span>
-    {#if !compact}<span class="lbl">Meta: {activeModel}</span>{/if}
+    {#if !compact}<span class="lbl" title="Model Meta aktif">{activeModel}</span>{/if}
   {:else}
     <span class="dot bad"></span>
     {#if !compact}
