@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
+  import { createUndo } from "../lib/undo";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
   // ---------------------------------------------------------------------------
@@ -33,27 +34,23 @@
     { id: "t1", kind: "text", name: "T1" },
   ]);
   let clips = $state<TClip[]>([]);
-  // Undo history (maks 20) — snapshot clips
-  let tHist = $state<string[]>([]);
-  let tHIdx = $state(-1);
+  // Undo history (maks 20) — via lib/undo.ts, snapshot clips
+  const tUndo = createUndo<string>(20);
   let canTUndo = $state(false);
   function snapClips(): string { return JSON.stringify(clips); }
   function pushTHist() {
-    tHist = tHist.slice(0, tHIdx + 1);
-    tHist.push(snapClips());
-    if (tHist.length > 20) tHist.shift();
-    tHIdx = tHist.length - 1;
-    canTUndo = tHIdx > 0;
+    tUndo.push(snapClips());
+    canTUndo = tUndo.canUndo;
   }
   function undoClips() {
-    if (tHIdx <= 0) return;
-    tHIdx--;
-    clips = JSON.parse(tHist[tHIdx]);
+    const prev = tUndo.undo();
+    if (!prev) return;
+    clips = JSON.parse(prev);
     selectedId = null;
-    canTUndo = tHIdx > 0;
+    canTUndo = tUndo.canUndo;
     save();
   }
-  $effect(() => { if (tHIdx === -1) { tHist = [snapClips()]; tHIdx = 0; } });
+  $effect(() => { if (tUndo.size === 0) { tUndo.push(snapClips()); } });
   let selectedId = $state<string | null>(null);
   let playhead = $state(0);          // detik
   let playing = $state(false);

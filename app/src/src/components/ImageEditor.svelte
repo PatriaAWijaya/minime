@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
+  import { createUndo } from "../lib/undo";
   // ImageEditor — clean-room image editor inspired by Doory's UX (idea only, no code copied).
   // Layers: background image + movable elements (text / shapes / QR).
   // All edits happen locally on canvas; nothing is uploaded anywhere.
@@ -167,10 +168,13 @@
   // ---------------------------------------------------------------- history
   // History snapshots: base canvas + serialized elements.
   interface Snap { base: HTMLCanvasElement; els: string }
-  let history: Snap[] = [];
-  let hIdx = -1;
+  const undoStack = createUndo<Snap>(20);
   let canUndo = $state(false);
   let canRedo = $state(false);
+  function syncHistFlags() {
+    canUndo = undoStack.canUndo;
+    canRedo = undoStack.canRedo;
+  }
 
   function cloneCanvas(c: HTMLCanvasElement): HTMLCanvasElement {
     const t = document.createElement("canvas");
@@ -184,15 +188,8 @@
   }
   function pushHist() {
     if (!base) return;
-    history = history.slice(0, hIdx + 1);
-    history.push({ base: cloneCanvas(base), els: serEls() });
-    if (history.length > 20) history.shift();
-    hIdx = history.length - 1;
+    undoStack.push({ base: cloneCanvas(base), els: serEls() });
     syncHistFlags();
-  }
-  function syncHistFlags() {
-    canUndo = hIdx > 0;
-    canRedo = hIdx < history.length - 1;
   }
   function applySnap(s: Snap) {
     base = cloneCanvas(s.base);
@@ -205,15 +202,15 @@
     render();
   }
   function undo() {
-    if (hIdx <= 0) return;
-    hIdx--;
-    applySnap(history[hIdx]);
+    const snap = undoStack.undo();
+    if (!snap) return;
+    applySnap(snap);
     syncHistFlags();
   }
   function redo() {
-    if (hIdx >= history.length - 1) return;
-    hIdx++;
-    applySnap(history[hIdx]);
+    const snap = undoStack.redo();
+    if (!snap) return;
+    applySnap(snap);
     syncHistFlags();
   }
   function setBase(c: HTMLCanvasElement) {
@@ -227,9 +224,9 @@
     cropRect = null;
   }
   function resetAll() {
-    if (history.length === 0) return;
-    hIdx = 0;
-    applySnap(history[0]);
+    const snap = undoStack.reset();
+    if (!snap) return;
+    applySnap(snap);
     syncHistFlags();
   }
   function commitEls() {

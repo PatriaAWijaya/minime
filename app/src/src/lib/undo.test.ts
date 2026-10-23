@@ -93,4 +93,16 @@ describe("createUndo", () => {
     const prev = u.undo();
     expect(JSON.parse(prev!).tracks).toBe(1);
   });
+
+  it("reset() jumps back to the first snapshot", () => {
+    const u = createUndo<string>(20);
+    expect(u.reset()).toBeUndefined();
+    u.push("a");
+    u.push("b");
+    u.push("c");
+    expect(u.reset()).toBe("a");
+    expect(u.canUndo).toBe(false);
+    expect(u.canRedo).toBe(true);
+    expect(u.redo()).toBe("b");
+  });
 });

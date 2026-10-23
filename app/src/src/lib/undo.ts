@@ -31,6 +31,8 @@ export interface UndoStack<T> {
   clear(): void;
   /** Peek at the current (tip) snapshot without moving. */
   peek(): T | undefined;
+  /** Jump back to the first snapshot. Returns it, or undefined if empty. */
+  reset(): T | undefined;
 }
 
 export function createUndo<T>(maxDepth = 20): UndoStack<T> {
@@ -72,6 +74,11 @@ export function createUndo<T>(maxDepth = 20): UndoStack<T> {
     },
     peek(): T | undefined {
       return idx >= 0 ? history[idx] : undefined;
+    },
+    reset(): T | undefined {
+      if (history.length === 0) return undefined;
+      idx = 0;
+      return history[0];
     },
   };
 }

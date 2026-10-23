@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
+  import { createUndo } from "../lib/undo";
   import { brandKit, brandFonts, addBrandFont, removeBrandFont, storyboard, scheduleQueue, userInputs, prodScripts } from "../lib/store";
   import type { Scene } from "../lib/store";
   import ImageEditor from "./ImageEditor.svelte";
@@ -12,28 +13,23 @@
   let generating = $state(false);
   let imageUrl = $state<string | null>(null);
   let error = $state("");
-  // Undo history untuk gambar (maks 20)
-  let imgHistory = $state<string[]>([]);
-  let imgHIdx = $state(-1);
+  // Undo history untuk gambar (maks 20) — via lib/undo.ts
+  const imgUndo = createUndo<string>(20);
   let canImgUndo = $state(false);
   function pushImgHist(url: string | null) {
     if (!url) return;
-    imgHistory = imgHistory.slice(0, imgHIdx + 1);
-    imgHistory.push(url);
-    if (imgHistory.length > 20) imgHistory.shift();
-    imgHIdx = imgHistory.length - 1;
-    canImgUndo = imgHIdx > 0;
+    imgUndo.push(url);
+    canImgUndo = imgUndo.canUndo;
   }
   function undoImage() {
-    if (imgHIdx <= 0) return;
-    imgHIdx--;
-    imageUrl = imgHistory[imgHIdx];
-    canImgUndo = imgHIdx > 0;
+    const prev = imgUndo.undo();
+    if (!prev) return;
+    imageUrl = prev;
+    canImgUndo = imgUndo.canUndo;
   }
   function deleteImage() {
     imageUrl = null;
-    imgHistory = [];
-    imgHIdx = -1;
+    imgUndo.clear();
     canImgUndo = false;
   }
 

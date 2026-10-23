@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "../lib/i18n";
+  import { createUndo } from "../lib/undo";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
   // ---------------------------------------------------------------------------
@@ -85,27 +86,22 @@
   }
 
   let tracks = $state<Track[]>(loadState());
-  // Undo history (maks 20) — snapshot tracks
-  let vHist = $state<string[]>([]);
-  let vHIdx = $state(-1);
+  // Undo history (maks 20) — via lib/undo.ts, snapshot tracks
+  const vUndo = createUndo<string>(20);
   let canVUndo = $state(false);
   function snapTracks(): string { return JSON.stringify(tracks); }
   function pushVHist() {
-    vHist = vHist.slice(0, vHIdx + 1);
-    vHist.push(snapTracks());
-    if (vHist.length > 20) vHist.shift();
-    vHIdx = vHist.length - 1;
-    canVUndo = vHIdx > 0;
+    vUndo.push(snapTracks());
+    canVUndo = vUndo.canUndo;
   }
   function undoTracks() {
-    if (vHIdx <= 0) return;
-    vHIdx--;
-    tracks = JSON.parse(vHist[vHIdx]);
-    canVUndo = vHIdx > 0;
+    const prev = vUndo.undo();
+    if (!prev) return;
+    tracks = JSON.parse(prev);
+    canVUndo = vUndo.canUndo;
     persist();
   }
-  function initVHist() { vHist = [snapTracks()]; vHIdx = 0; canVUndo = false; }
-  $effect(() => { if (vHIdx === -1) initVHist(); });
+  $effect(() => { if (vUndo.size === 0) { vUndo.push(snapTracks()); } });
 
   function persist() {
     try {
