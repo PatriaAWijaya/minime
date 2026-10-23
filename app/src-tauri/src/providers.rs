@@ -1111,11 +1111,11 @@ pub async fn render_slideshow(images: Vec<String>, duration_per: f64, output_nam
     let status = tokio::process::Command::new(&ffmpeg)
         .args([
             "-y", "-f", "concat", "-safe", "0",
-            "-i", list_path.to_str().unwrap(),
+            "-i", list_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
             "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=yuv420p",
             "-c:v", "libx264", "-preset", "fast", "-crf", "23",
             "-movflags", "+faststart",
-            out_path.to_str().unwrap(),
+            out_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
         ])
         .status()
         .await
@@ -1159,7 +1159,7 @@ pub async fn generate_subtitle(video_path: String, model: String) -> Result<Stri
 
     // auto_subtitle <video> -o <out_dir> --model <model>
     let status = tokio::process::Command::new(&auto_sub)
-        .args([video_path.as_str(), "-o", out_dir.to_str().unwrap(), "--model", model.as_str()])
+        .args([video_path.as_str(), "-o", out_dir.to_str().ok_or("Path tidak valid (non-UTF8)")?, "--model", model.as_str()])
         .env("PATH", format!("/opt/homebrew/bin:/usr/local/bin:{}", std::env::var("PATH").unwrap_or_default()))
         .status()
         .await
@@ -1209,7 +1209,7 @@ pub async fn generate_thumbnail(title: String, output_name: String) -> Result<St
 
     // Gunakan Python API langsung
     let esc_title: String = title.chars().filter(|c| *c != '"' && *c != '\'').collect();
-    let out_s = out_path.to_str().unwrap().replace('\'', "");
+    let out_s = out_path.to_str().ok_or("Path tidak valid (non-UTF8)")?.replace('\'', "");
     let py_code = format!(
         "from PIL import Image, ImageDraw; img=Image.new('RGB',(1600,900),(18,18,28)); d=ImageDraw.Draw(img); d.text((80,380), \"{}\", fill=(255,255,255)); d.text((80,480), 'Minime', fill=(120,120,140)); img.save('{}')",
         esc_title, out_s
@@ -1250,7 +1250,7 @@ pub async fn generate_voiceover(text: String, persona: String, output_name: Stri
     let status = tokio::process::Command::new(&arbotts)
         .args([
             text.trim(),
-            "-o", out_path.to_str().unwrap(),
+            "-o", out_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
             "-l", "id",
             "-sp", valid_persona.as_str(),
         ])
@@ -1972,9 +1972,9 @@ pub async fn assemble_video_ai(
     let status = tokio::process::Command::new(&ffmpeg)
         .args([
             "-y", "-f", "concat", "-safe", "0",
-            "-i", list_path.to_str().unwrap(),
+            "-i", list_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
             "-c", "copy",
-            concat_path.to_str().unwrap(),
+            concat_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
         ])
         .status()
         .await
@@ -1997,7 +1997,7 @@ pub async fn assemble_video_ai(
 
     // 3. Gabung dengan audio (jika ada): -shortest agar durasi ikut audio/video terpendek
     let mut cmd = tokio::process::Command::new(&ffmpeg);
-    cmd.args(["-y", "-i", concat_path.to_str().unwrap()]);
+    cmd.args(["-y", "-i", concat_path.to_str().ok_or("Path tidak valid (non-UTF8)")?]);
     if let Some(aud) = &audio_path {
         if std::path::Path::new(aud).exists() {
             cmd.args(["-i", aud]);
@@ -2012,7 +2012,7 @@ pub async fn assemble_video_ai(
         "-c:v", "libx264", "-preset", "fast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
-        out_path.to_str().unwrap(),
+        out_path.to_str().ok_or("Path tidak valid (non-UTF8)")?,
     ]);
     let status = cmd.status().await.map_err(|e| format!("Gagal merakit video: {}", e))?;
     if !status.success() {
@@ -2250,7 +2250,7 @@ pub async fn hyperframes_assemble(
     // Render via HyperFrames CLI
     let out_path = tmp.join(format!("{}.mp4", output_name));
     let status = tokio::process::Command::new(&hf)
-        .args(["render", "--quality", "draft", "--output", out_path.to_str().unwrap()])
+        .args(["render", "--quality", "draft", "--output", out_path.to_str().ok_or("Path tidak valid (non-UTF8)")?])
         .current_dir(&proj_dir)
         .status()
         .await
