@@ -468,6 +468,154 @@ impl OpenAiCompatProvider {
             error: None,
         })
     }
+    /// Generate gambar via muse-image-1.0 (OpenAI-compatible /v1/images/generations).
+    /// Mengembalikan bytes PNG/JPEG dari API.
+    pub async fn image(
+        &self,
+        prompt: &str,
+        size: &str,
+    ) -> Result<Vec<u8>, ProviderError> {
+        let key = self.key()?;
+        let url = format!("{}/images/generations", self.base_url.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": "muse-image-1.0",
+            "prompt": prompt,
+            "size": size,
+        });
+        let resp = self
+            .client
+            .post(&url)
+            .bearer_auth(&key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        if !resp.status().is_success() {
+            return Err(ProviderError::Failed(format!(
+                "{} image HTTP {}",
+                self.id,
+                resp.status()
+            )));
+        }
+        #[derive(Deserialize)]
+        struct ImageResp {
+            data: Vec<ImageData>,
+        }
+        #[derive(Deserialize)]
+        struct ImageData {
+            #[serde(default)]
+            url: Option<String>,
+            #[serde(default)]
+            b64_json: Option<String>,
+        }
+        let out: ImageResp = resp
+            .json()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        let item = out.data.into_iter().next().ok_or_else(|| {
+            ProviderError::Failed(format!("{}: respons image kosong", self.id))
+        })?;
+        if let Some(b64) = item.b64_json {
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD
+                .decode(&b64)
+                .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))
+        } else if let Some(url) = item.url {
+            let bytes = self
+                .client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?
+                .bytes()
+                .await
+                .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+            Ok(bytes.to_vec())
+        } else {
+            Err(ProviderError::Failed(format!(
+                "{}: respons image tanpa url/b64_json",
+                self.id
+            )))
+        }
+    }
+
+    /// Transkripsi audio via muse-voice-transcribe-1.0.
+    /// Mengembalikan teks hasil transkripsi.
+    pub async fn transcribe(
+        &self,
+        audio_path: &str,
+    ) -> Result<String, ProviderError> {
+        let key = self.key()?;
+        let url = format!("{}/audio/transcriptions", self.base_url.trim_end_matches('/'));
+        let file_bytes = std::fs::read(audio_path)
+            .map_err(|e| ProviderError::Failed(format!("baca audio gagal: {e}")))?;
+        let file_name = std::path::Path::new(audio_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("audio.wav")
+            .to_string();
+        let part = reqwest::multipart::Part::bytes(file_bytes).file_name(file_name);
+        let form = reqwest::multipart::Form::new()
+            .text("model", "muse-voice-transcribe-1.0")
+            .part("file", part);
+        let resp = self
+            .client
+            .post(&url)
+            .bearer_auth(&key)
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        if !resp.status().is_success() {
+            return Err(ProviderError::Failed(format!(
+                "{} transcribe HTTP {}",
+                self.id,
+                resp.status()
+            )));
+        }
+        #[derive(Deserialize)]
+        struct TranscribeResp {
+            text: String,
+        }
+        let out: TranscribeResp = resp
+            .json()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        Ok(out.text)
+    }
+
+    /// Segmentasi via sam-3.1: kirim gambar + prompt teks, terima mask/box JSON.
+    pub async fn segment(
+        &self,
+        image_b64: &str,
+        prompt: &str,
+    ) -> Result<serde_json::Value, ProviderError> {
+        let key = self.key()?;
+        let url = format!("{}/segmentations", self.base_url.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": "sam-3.1",
+            "image": image_b64,
+            "prompt": prompt,
+        });
+        let resp = self
+            .client
+            .post(&url)
+            .bearer_auth(&key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        if !resp.status().is_success() {
+            return Err(ProviderError::Failed(format!(
+                "{} segment HTTP {}",
+                self.id,
+                resp.status()
+            )));
+        }
+        resp.json()
+            .await
+            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -637,6 +785,10 @@ impl Router {
     }
 
     /// Status semua provider (untuk layar Penyedia Model).
+    pub fn muse(&self) -> &OpenAiCompatProvider {
+        &self.muse
+    }
+
     pub async fn statuses(&self) -> Vec<ProviderStatus> {
         // Sekuensial agar sederhana; tiap probe cepat (timeout reqwest).
         let mut out = Vec::with_capacity(6);
@@ -783,6 +935,60 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
         })
         .unwrap_or_default();
     Ok(models)
+}
+
+/// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
+/// Menyimpan hasil ke file temp dan mengembalikan path.
+#[tauri::command]
+pub async fn meta_generate_image(
+    router: tauri::State<'_, Router>,
+    prompt: String,
+    size: String,
+) -> Result<String, String> {
+    // Coba Meta dulu
+    match router.muse().image(&prompt, &size).await {
+        Ok(bytes) => {
+            let path = std::env::temp_dir().join(format!("meta_img_{}.png", chrono::Utc::now().timestamp_millis()));
+            std::fs::write(&path, &bytes).map_err(|e| format!("simpan gambar gagal: {e}"))?;
+            // Catat biaya
+            if let Ok(db) = db::Db::open_default() {
+                let _ = db.record_usage("studio", "muse", "muse:muse-image-1.0", 0, 0);
+            }
+            Ok(path.to_string_lossy().to_string())
+        }
+        Err(e) => {
+            // Fallback ke SD.cpp lokal
+            eprintln!("Meta image gagal ({}), fallback ke SD.cpp lokal", e);
+            generate_image(prompt, size).await
+        }
+    }
+}
+
+/// Transkripsi audio via Meta muse-voice-transcribe-1.0.
+#[tauri::command]
+pub async fn meta_transcribe(
+    router: tauri::State<'_, Router>,
+    audio_path: String,
+) -> Result<String, String> {
+    router
+        .muse()
+        .transcribe(&audio_path)
+        .await
+        .map_err(|e| format!("transkripsi gagal: {e}"))
+}
+
+/// Segmentasi gambar/video-frame via Meta sam-3.1.
+#[tauri::command]
+pub async fn meta_segment(
+    router: tauri::State<'_, Router>,
+    image_b64: String,
+    prompt: String,
+) -> Result<serde_json::Value, String> {
+    router
+        .muse()
+        .segment(&image_b64, &prompt)
+        .await
+        .map_err(|e| format!("segmentasi gagal: {e}"))
 }
 
 /// Generate image via local stable-diffusion.cpp (AI Media Studio).
