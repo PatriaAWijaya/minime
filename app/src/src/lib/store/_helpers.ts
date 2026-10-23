@@ -54,3 +54,17 @@ export function persistString(key: string, store: Writable<string>) {
     }
   });
 }
+
+export function loadList<T>(key: string, seed: () => T[]): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Defensive: corrupt data may be {} instead of [].
+      if (Array.isArray(parsed)) return parsed as T[];
+    }
+  } catch {
+    /* fall through to seed */
+  }
+  return seed();
+}
