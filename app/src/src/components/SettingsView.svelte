@@ -1,5 +1,6 @@
 <script lang="ts">
   import { lang, t, type Lang } from "../lib/i18n";
+  import DiagnosticsView from "./DiagnosticsView.svelte";
   import {
     PROVIDERS,
     addCustomProvider,
@@ -63,7 +64,7 @@
   /* ---------- Settings categories (two-column layout) ---------- */
   type CatId =
     | "general" | "notifications" | "voice" | "island" | "computer"
-    | "profile" | "billing" | "mobile" | "updates" | "providers";
+    | "profile" | "billing" | "mobile" | "updates" | "providers" | "diagnostics";
 
   const CATEGORIES: { id: CatId; labelKey: string; icon: string }[] = [
     { id: "general", labelKey: "set.cat.general", icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' },
@@ -90,11 +91,28 @@
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       providerCatalog = await invoke("provider_catalog");
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      const { logger } = await import("../lib/logger");
+      logger.error("SettingsView.loadCatalog", e);
+    }
   }
   $effect(() => { if (category === "providers") loadCatalog(); });
 
   let category = $state<CatId>("general");
+  // Hidden diagnostics: unlocked by 5 clicks on the version label
+  let diagUnlocked = $state(false);
+  let versionClicks = $state(0);
+  let versionClickTimer: ReturnType<typeof setTimeout> | null = null;
+  function onVersionClick() {
+    versionClicks++;
+    if (versionClickTimer) clearTimeout(versionClickTimer);
+    versionClickTimer = setTimeout(() => (versionClicks = 0), 2000);
+    if (versionClicks >= 5) {
+      versionClicks = 0;
+      diagUnlocked = true;
+      category = "diagnostics";
+    }
+  }
   let catQuery = $state("");
   const visibleCats = $derived(
     CATEGORIES.filter(
@@ -504,6 +522,12 @@
           <span>{$t(c.labelKey)}</span>
         </button>
       {/each}
+      {#if diagUnlocked}
+        <button class="set-nav-item" class:active={category === "diagnostics"} onclick={() => (category = "diagnostics")}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.1-2.1 2.7-2.5z"/></svg>
+          <span>Diagnostik</span>
+        </button>
+      {/if}
     </nav>
   </aside>
 
@@ -1219,7 +1243,7 @@
         </div>
         <div class="srow">
           <div class="srow-meta">
-            <span class="srow-label">
+            <span class="srow-label" onclick={onVersionClick} style="cursor:pointer;user-select:none" title="Klik 5x untuk diagnostik">
               {$t("upd.version")} {$updateInfo?.current ?? APP_VERSION}
             </span>
             <span class="srow-desc">
@@ -1407,6 +1431,10 @@
         </div>
       </div>
     </div>
+    {:else if category === "diagnostics"}
+      {#if diagUnlocked}
+        <DiagnosticsView />
+      {/if}
   {/if}
     {/if}
   </div>

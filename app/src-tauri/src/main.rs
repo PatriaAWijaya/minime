@@ -4,6 +4,7 @@
 mod db;
 mod drive;
 mod island;
+mod logger;
 mod oauth_local;
 mod pireel;
 mod providers;
@@ -543,6 +544,9 @@ fn main() {
             island::island_sync,
             island::island_get_state,
             island::island_haptic,
+            logger::app_log,
+            logger::read_logs,
+            logger::prune_logs,
             system_permissions,
             open_privacy_settings,
             device_info,
