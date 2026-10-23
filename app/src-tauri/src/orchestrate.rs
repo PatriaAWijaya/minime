@@ -46,6 +46,12 @@ pub struct OrchestrateResult {
     pub qc_passed: bool,
     pub qc_notes: Option<String>,
     pub error: Option<String>,
+    /// Jumlah putaran revisi yang dilakukan (0 = lolos langsung).
+    #[serde(default)]
+    pub revisions: u32,
+    /// Riwayat tiap putaran: skor QC dan aksi.
+    #[serde(default)]
+    pub revision_history: Vec<String>,
 }
 
 /// System prompt untuk parsing intent → JSON.
@@ -95,9 +101,43 @@ DIMENSI PENILAIAN (total 100):
 3. Quality bar (25): standar profesional?
 4. Kesiapan produksi (20): bisa langsung dipakai?
 
-Output HARUS JSON: {"score": <0-100>, "passed": <true jika >=75>, "notes": "<catatan perbaikan atau '-'"}
+Output HARUS JSON dengan format:
+{
+  "score": <0-100>,
+  "passed": <true jika >=75>,
+  "notes": "<catatan perbaikan spesifik atau '-' jika lolos>",
+  "revise_agents": ["<agent_id yang perlu revisi>"]
+}
 
-Jujur dan ketat. Skor <75 berarti TOLAK dengan alasan spesifik."#.to_string()
+Aturan revise_agents:
+- Isi dengan agent_id yang hasilnya bermasalah dan perlu diperbaiki
+- agent_id valid: kreatif, riset, finance, strategis, code, mimi
+- Kosongkan [] jika lolos (passed=true) atau tidak jelas siapa yang salah
+- Maksimal 3 agent
+
+Jujur dan ketat. Skor <75 berarti TOLAK dengan alasan spesifik dan tunjuk siapa yang harus revisi."#.to_string()
+}
+
+/// System prompt untuk revisi berdasarkan catatan QC.
+fn revision_system_prompt(agent_id: &str, task: &str, previous: &str, qc_notes: &str) -> String {
+    format!(
+        r#"Kamu adalah agen {agent_id}. Hasil kerjamu DITOLAK oleh QC dan HARUS direvisi.
+
+Tugas aslimu:
+{task}
+
+Hasil kerjamu sebelumnya:
+{previous}
+
+Catatan QC (WAJIB diperbaiki):
+{qc_notes}
+
+Aturan revisi:
+- Perbaiki SEMUA poin dalam catatan QC, jangan abaikan satupun
+- Pertahankan bagian yang sudah benar
+- Output harus lebih baik dari sebelumnya, bukan sekadar parafrase
+- Jangan menjelaskan proses revisimu, langsung berikan hasil revisi"#,
+    )
 }
 
 /// Panggil router untuk satu chat (internal, tanpa Tauri State).
@@ -132,6 +172,153 @@ async fn chat_internal(
     router.chat(model_id, tier, wire).await
 }
 
+/// Dispatch satu subtugas ke agen (untuk initial maupun revisi).
+/// `system_override`: system prompt kustom (untuk revisi). `None` = default.
+async fn dispatch_one(
+    router: &Router,
+    db: &crate::db::Db,
+    agent_id: &str,
+    task: &str,
+    system_override: Option<String>,
+    model_override: Option<String>,
+) -> SubTaskResult {
+    let (model_id, tier) = match model_override {
+        Some(m) => {
+            let t = if m.starts_with("muse:")
+                || m.starts_with("openai:")
+                || m.starts_with("gemini:")
+                || m.starts_with("deepseek:")
+            {
+                ModelTier::Berbayar
+            } else {
+                ModelTier::Gratis
+            };
+            (m, t)
+        }
+        None => {
+            // Model selection cerdas per subtugas:
+            // skor >= 60 → Wonder, < 60 → Spark
+            let decision = crate::model_selector::select_model(task, agent_id);
+            eprintln!(
+                "[orchestrate] subtugas {} → {} (skor {})",
+                agent_id, decision.model_id, decision.complexity_score
+            );
+            (decision.model_id, ModelTier::Berbayar)
+        }
+    };
+
+    let system = system_override.unwrap_or_else(|| {
+        format!(
+            "Kamu adalah agen {}. Kerjakan tugas berikut dengan standar profesional:\n\n{}",
+            agent_id, task
+        )
+    });
+
+    let res = chat_internal(router, db, agent_id, &model_id, tier, &system, task).await;
+    match res {
+        Ok(r) => SubTaskResult {
+            agent_id: agent_id.to_string(),
+            task: task.to_string(),
+            result: r.text.clone(),
+            served_by: r.served_by.clone(),
+            error: r.error.clone(),
+        },
+        Err(e) => SubTaskResult {
+            agent_id: agent_id.to_string(),
+            task: task.to_string(),
+            result: String::new(),
+            served_by: String::new(),
+            error: Some(e),
+        },
+    }
+}
+
+/// Agregat hasil subtugas menjadi laporan kohesif.
+async fn aggregate_results(
+    router: &Router,
+    db: &crate::db::Db,
+    mimi_model_id: &str,
+    user_request: &str,
+    subtask_results: &[SubTaskResult],
+) -> String {
+    let combined = subtask_results
+        .iter()
+        .map(|r| {
+            format!(
+                "### Hasil dari {} ({})\n{}\n",
+                r.agent_id,
+                r.task,
+                if r.error.is_some() {
+                    format!("[GAGAL: {}]", r.error.as_ref().unwrap())
+                } else {
+                    r.result.clone()
+                }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let agg_res = chat_internal(
+        router,
+        db,
+        "mimi",
+        mimi_model_id,
+        ModelTier::Berbayar,
+        &aggregate_system_prompt(),
+        &format!("Permintaan asli: {}\n\n{}", user_request, combined),
+    )
+    .await;
+
+    match agg_res {
+        Ok(r) if r.error.is_none() => r.text,
+        _ => combined, // Fallback: gabungan mentah
+    }
+}
+
+/// Struktur output QC.
+#[derive(Deserialize)]
+struct QcOut {
+    score: i32,
+    passed: bool,
+    notes: String,
+    #[serde(default)]
+    revise_agents: Vec<String>,
+}
+
+/// Jalankan QC terhadap output agregat.
+async fn run_qc(
+    router: &Router,
+    db: &crate::db::Db,
+    mimi_model_id: &str,
+    user_request: &str,
+    aggregated: &str,
+) -> (Option<i32>, bool, Option<String>, Vec<String>) {
+    let qc_res = chat_internal(
+        router,
+        db,
+        "mimi",
+        mimi_model_id,
+        ModelTier::Berbayar,
+        &qc_system_prompt(),
+        &format!("Brief: {}\n\nOutput:\n{}", user_request, aggregated),
+    )
+    .await;
+
+    match qc_res {
+        Ok(r) if r.error.is_none() => {
+            let json_str = extract_json(&r.text);
+            match serde_json::from_str::<QcOut>(&json_str) {
+                Ok(q) => (Some(q.score), q.passed, Some(q.notes), q.revise_agents),
+                _ => (None, true, Some("QC parse gagal, lolos manual".to_string()), vec![]),
+            }
+        }
+        _ => (None, true, Some("QC dilewati (provider gagal)".to_string()), vec![]),
+    }
+}
+
+/// Jumlah maksimal putaran revisi QC.
+const MAX_REVISIONS: u32 = 3;
+
 /// Ekstrak JSON dari teks (toleran terhadap markdown code block).
 fn extract_json(text: &str) -> String {
     let t = text.trim();
@@ -144,7 +331,7 @@ fn extract_json(text: &str) -> String {
     t.to_string()
 }
 
-/// Orkestrasi tugas: parse → dispatch paralel → agregat → QC.
+/// Orkestrasi tugas: parse → dispatch paralel → agregat → QC (+ revisi maks 3x).
 pub async fn orchestrate(
     db: &crate::db::Db,
     router: &Router,
@@ -192,156 +379,179 @@ pub async fn orchestrate(
                 qc_passed: false,
                 qc_notes: None,
                 error: Some("Gagal mem-parse permintaan".to_string()),
+                revisions: 0,
+                revision_history: vec![],
             };
         }
     };
 
+    // Validasi agent_id terhadap allowlist (fallback ke mimi bila tidak dikenal)
+    const VALID_AGENTS: &[&str] = &["mimi", "kreatif", "riset", "finance", "strategis", "code"];
+    let plan = TaskPlan {
+        subtasks: plan
+            .subtasks
+            .into_iter()
+            .map(|mut st| {
+                if !VALID_AGENTS.contains(&st.agent_id.as_str()) {
+                    eprintln!(
+                        "[orchestrate] agent_id '{}' tidak dikenal, fallback ke mimi",
+                        st.agent_id
+                    );
+                    st.agent_id = "mimi".to_string();
+                }
+                st
+            })
+            .collect(),
+    };
+
     eprintln!("[orchestrate] [1/4] OK: {} subtugas", plan.subtasks.len());
 
-    // ===== [2] Dispatch paralel =====
+    // ===== [2] Dispatch paralel (initial) =====
     eprintln!("[orchestrate] [2/4] dispatch paralel...");
-    // Model selection cerdas per subtugas (24 Okt 2026):
-    // - Skor >= 60 → Wonder (power mode)
-    // - Skor < 60 → Spark (cepat & murah)
-    let default_model = |agent_id: &str, task: &str| -> (String, ModelTier) {
-        let decision = crate::model_selector::select_model(task, agent_id);
-        eprintln!(
-            "[orchestrate] subtugas {} → {} (skor {})",
-            agent_id, decision.model_id, decision.complexity_score
-        );
-        (decision.model_id, ModelTier::Berbayar)
-    };
-
-    let futures: Vec<_> = plan
-        .subtasks
-        .iter()
-        .map(|st| {
-            let (model_id, tier) = st
-                .model_id
-                .clone()
-                .map(|m| {
-                    let t = if m.starts_with("muse:")
-                        || m.starts_with("openai:")
-                        || m.starts_with("gemini:")
-                        || m.starts_with("deepseek:") {
-                        ModelTier::Berbayar
-                    } else {
-                        ModelTier::Gratis
-                    };
-                    (m, t)
-                })
-                .unwrap_or_else(|| default_model(&st.agent_id, &st.task));
-            let agent_id = st.agent_id.clone();
-            let task = st.task.clone();
-            let system = format!(
-                "Kamu adalah agen {}. Kerjakan tugas berikut dengan standar profesional:\n\n{}",
-                agent_id, task
-            );
-            async move {
-                let res = chat_internal(
-                    router, db, &agent_id, &model_id, tier, &system, &task,
-                )
-                .await;
-                match res {
-                    Ok(r) => SubTaskResult {
-                        agent_id: agent_id.clone(),
-                        task: task.clone(),
-                        result: r.text.clone(),
-                        served_by: r.served_by.clone(),
-                        error: r.error.clone(),
-                    },
-                    Err(e) => SubTaskResult {
-                        agent_id: agent_id.clone(),
-                        task: task.clone(),
-                        result: String::new(),
-                        served_by: String::new(),
-                        error: Some(e),
-                    },
-                }
-            }
-        })
-        .collect();
-
-    let subtask_results: Vec<SubTaskResult> = futures::future::join_all(futures).await;
+    let mut subtask_results: Vec<SubTaskResult> =
+        futures::future::join_all(plan.subtasks.iter().map(|st| {
+            dispatch_one(
+                router,
+                db,
+                &st.agent_id,
+                &st.task,
+                None,
+                st.model_id.clone(),
+            )
+        }))
+        .await;
     eprintln!("[orchestrate] [2/4] OK: {} hasil", subtask_results.len());
 
-    // ===== [3] Agregat =====
-    eprintln!("[orchestrate] [3/4] agregasi...");
-    let combined = subtask_results
-        .iter()
-        .map(|r| {
-            format!(
-                "### Hasil dari {} ({})\n{}\n",
-                r.agent_id,
-                r.task,
-                if r.error.is_some() {
-                    format!("[GAGAL: {}]", r.error.as_ref().unwrap())
-                } else {
-                    r.result.clone()
-                }
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    // ===== [3+4] Agregat → QC → Revisi (loop maks 3x) =====
+    let mut revision_count: u32 = 0;
+    let mut revision_history: Vec<String> = Vec::new();
 
-    let agg_res = chat_internal(
-        router,
-        db,
-        "mimi",
-        mimi_model_id,
-        ModelTier::Berbayar,
-        &aggregate_system_prompt(),
-        &format!("Permintaan asli: {}\n\n{}", user_request, combined),
-    )
-    .await;
+    loop {
+        let round = revision_count + 1;
 
-    let aggregated = match agg_res {
-        Ok(r) if r.error.is_none() => r.text,
-        _ => combined, // Fallback: gabungan mentah
-    };
-    eprintln!("[orchestrate] [3/4] OK");
+        // --- Agregat ---
+        eprintln!("[orchestrate] [3/4] agregasi (putaran {})...", round);
+        let aggregated =
+            aggregate_results(router, db, mimi_model_id, user_request, &subtask_results).await;
+        eprintln!("[orchestrate] [3/4] OK");
 
-    // ===== [4] QC =====
-    eprintln!("[orchestrate] [4/4] QC...");
-    let qc_res = chat_internal(
-        router,
-        db,
-        "mimi",
-        mimi_model_id,
-        ModelTier::Berbayar,
-        &qc_system_prompt(),
-        &format!("Brief: {}\n\nOutput:\n{}", user_request, aggregated),
-    )
-    .await;
+        // --- QC ---
+        eprintln!("[orchestrate] [4/4] QC (putaran {})...", round);
+        let (qc_score, qc_passed, qc_notes, revise_agents) =
+            run_qc(router, db, mimi_model_id, user_request, &aggregated).await;
+        eprintln!(
+            "[orchestrate] [4/4] putaran {}: skor={:?} lolos={}",
+            round, qc_score, qc_passed
+        );
 
-    let (qc_score, qc_passed, qc_notes) = match qc_res {
-        Ok(r) if r.error.is_none() => {
-            let json_str = extract_json(&r.text);
-            #[derive(Deserialize)]
-            struct QcOut {
-                score: i32,
-                passed: bool,
-                notes: String,
+        revision_history.push(format!(
+            "Putaran {}: skor {:?}, lolos={}, catatan: {}",
+            round,
+            qc_score,
+            qc_passed,
+            qc_notes.as_deref().unwrap_or("-").chars().take(120).collect::<String>()
+        ));
+
+        // Lolos atau sudah maksimal → selesai
+        if qc_passed || revision_count >= MAX_REVISIONS {
+            if !qc_passed {
+                eprintln!(
+                    "[orchestrate] QC gagal setelah {} revisi, kembalikan hasil terbaik",
+                    revision_count
+                );
+                revision_history.push(format!(
+                    "Berhenti setelah {} revisi maksimal; hasil terbaik dikembalikan",
+                    MAX_REVISIONS
+                ));
             }
-            match serde_json::from_str::<QcOut>(&json_str) {
-                Ok(q) => (Some(q.score), q.passed, Some(q.notes)),
-                _ => (None, true, Some("QC parse gagal, lolos manual".to_string())),
+            return OrchestrateResult {
+                aggregated,
+                subtask_results,
+                qc_score,
+                qc_passed,
+                qc_notes,
+                error: None,
+                revisions: revision_count,
+                revision_history,
+            };
+        }
+
+        // --- Revisi dibutuhkan ---
+        revision_count += 1;
+        let notes = qc_notes.clone().unwrap_or_default();
+        eprintln!(
+            "[orchestrate] QC gagal, revisi {}/{}: {}",
+            revision_count, MAX_REVISIONS, notes.chars().take(100).collect::<String>()
+        );
+
+        // Tentukan agen yang perlu revisi
+        let agents_to_revise: Vec<String> = if revise_agents.is_empty() {
+            // QC tidak menunjuk spesifik → revisi semua yang sukses
+            subtask_results
+                .iter()
+                .filter(|r| r.error.is_none())
+                .map(|r| r.agent_id.clone())
+                .collect()
+        } else {
+            revise_agents
+                .into_iter()
+                .filter(|a| {
+                    VALID_AGENTS.contains(&a.as_str())
+                        && subtask_results.iter().any(|r| &r.agent_id == a)
+                })
+                .collect()
+        };
+
+        if agents_to_revise.is_empty() {
+            eprintln!("[orchestrate] Tidak ada agen valid untuk revisi, berhenti");
+            revision_history.push("Tidak ada agen valid untuk revisi".to_string());
+            return OrchestrateResult {
+                aggregated,
+                subtask_results,
+                qc_score,
+                qc_passed: false,
+                qc_notes,
+                error: None,
+                revisions: revision_count,
+                revision_history,
+            };
+        }
+
+        eprintln!("[orchestrate] Revisi untuk agen: {:?}", agents_to_revise);
+
+        // Dispatch revisi paralel ke agen terpilih
+        let revised: Vec<SubTaskResult> =
+            futures::future::join_all(agents_to_revise.iter().map(|aid| {
+                let prev = subtask_results
+                    .iter()
+                    .find(|r| &r.agent_id == aid)
+                    .cloned();
+                async move {
+                    match prev {
+                        Some(p) => {
+                            let sys = revision_system_prompt(
+                                &p.agent_id, &p.task, &p.result, &notes,
+                            );
+                            dispatch_one(router, db, &p.agent_id, &p.task, Some(sys), None).await
+                        }
+                        None => SubTaskResult {
+                            agent_id: aid.clone(),
+                            task: String::new(),
+                            result: String::new(),
+                            served_by: String::new(),
+                            error: Some("Subtugas tidak ditemukan".to_string()),
+                        },
+                    }
+                }
+            }))
+            .await;
+
+        // Gabungkan hasil revisi ke subtask_results
+        for r in revised {
+            if let Some(existing) = subtask_results.iter_mut().find(|e| e.agent_id == r.agent_id) {
+                *existing = r;
             }
         }
-        _ => (None, true, Some("QC dilewati (provider gagal)".to_string())),
-    };
-
-    eprintln!(
-        "[orchestrate] [4/4] OK: skor={:?} lolos={}",
-        qc_score, qc_passed
-    );
-
-    OrchestrateResult {
-        aggregated,
-        subtask_results,
-        qc_score,
-        qc_passed,
-        qc_notes,
-        error: None,
+        // Loop kembali ke agregat + QC
     }
 }
