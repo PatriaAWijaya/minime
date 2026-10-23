@@ -109,6 +109,11 @@ export function moveKanbanCard(id: number, col: KanbanCol) {
 /** Approval decisions from the Kanban approval column (Phase 3.2):
     approve -> done, revise -> revision, reject -> back to queue. */
 export function decideKanbanCard(id: number, decision: "approve" | "revise" | "reject") {
+  const col: KanbanCol =
+    decision === "approve" ? "done" : decision === "revise" ? "revision" : "queue";
+  moveKanbanCard(id, col);
+}
+
 export interface ToolRunArgs {
   agentId: string;
   toolId: string;
