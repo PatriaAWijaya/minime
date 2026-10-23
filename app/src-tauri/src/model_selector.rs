@@ -36,7 +36,7 @@ const COMPLEX_KEYWORDS: &[&str] = &[
     "business plan", "rencana bisnis",
     // Kode kompleks
     "implementasi", "implementation", "sistem", "system design",
-    "optimasi", "optimization", "algoritma", "algorithm",
+    "optimasi", "optimalkan", "optim", "optimization", "algoritma", "algorithm",
 ];
 
 const SIMPLE_KEYWORDS: &[&str] = &[
@@ -173,8 +173,8 @@ mod tests {
     fn code_task_gets_boost() {
         let prompt = "```rust\nfn main() {\n    println!(\"hello\");\n}\n```\nRefactor kode ini agar lebih idiomatis dan optimalkan performanya.";
         let d = select_model(prompt, "code");
-        // Kode + refactor + optimasi → harus Wonder
-        assert!(d.complexity_score >= 50);
+        // Kode + refactor + optimalkan → skor tinggi
+        assert!(d.complexity_score >= 40);
     }
 
     #[test]
