@@ -117,7 +117,7 @@
         <button class="btn-primary sm" onclick={save} disabled={saving || (!key.trim() && !baseUrl.trim())}>
           {saving ? "..." : "Simpan"}
         </button>
-        <button class="btn-ghost sm" onclick={test} disabled={testing || !configured}>
+        <button class="btn-test sm" onclick={test} disabled={testing || !configured}>
           {testing ? "..." : "Tes koneksi"}
         </button>
         {#if entry.keys_url}
@@ -125,7 +125,10 @@
         {/if}
       </div>
       {#if testResult}
-        <p class={testResult.ok ? "ok" : "err"}>{testResult.msg}</p>
+        <div class="notice {testResult.ok ? 'ok' : 'err'}" role="status">
+          <span class="notice-icon">{testResult.ok ? "✓" : "✕"}</span>
+          <span>{testResult.msg}</span>
+        </div>
       {/if}
     </div>
   {/if}
@@ -170,6 +173,42 @@
     background: transparent; color: var(--text); cursor: pointer; font-size: 13px; text-decoration: none;
   }
   .btn-ghost.sm:disabled { opacity: .5; }
+  .btn-test.sm {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    cursor: pointer; border: 1px solid rgba(79,166,240,.55); color: #4FA6F0;
+    background: rgba(79,166,240,.1);
+  }
+  .btn-test.sm:hover:not(:disabled) {
+    background: rgba(79,166,240,.2); box-shadow: 0 0 14px rgba(79,166,240,.3);
+  }
+  .btn-test.sm:disabled { opacity: .5; cursor: default; }
+  .notice {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 600; font-family: var(--font-mono);
+    margin: 12px 0 0; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid; animation: pop-in .25s ease-out;
+  }
+  .notice.ok {
+    color: #4ade80; background: rgba(34,197,94,.12);
+    border-color: rgba(34,197,94,.45);
+    box-shadow: 0 0 18px rgba(34,197,94,.18);
+  }
+  .notice.err {
+    color: #f87171; background: rgba(239,68,68,.1);
+    border-color: rgba(239,68,68,.45);
+    box-shadow: 0 0 18px rgba(239,68,68,.15);
+  }
+  .notice-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; font-size: 13px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .notice.ok .notice-icon { background: #22c55e; color: #052e12; }
+  .notice.err .notice-icon { background: #ef4444; color: #450a0a; }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
   .ok { color: #22c55e; font-size: 12px; font-family: var(--font-mono); margin: 8px 0 0; }
   .err { color: #ef4444; font-size: 12px; font-family: var(--font-mono); margin: 8px 0 0; }
 </style>
