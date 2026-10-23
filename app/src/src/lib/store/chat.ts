@@ -1,11 +1,9 @@
-import { writable, get, derived, type Writable, type Readable } from "svelte/store";
-import { loadRecord, persistRecord, loadString, loadBool, loadJSON } from "./_helpers";
+import { writable, get } from "svelte/store";
 import type {
   Agent, AgentFile, AgentStatus, CostRow, FlowEdge, FlowNode, FlowProject,
   KanbanCard, KanbanCol, LibraryItem, Message, ProviderInfo, ScheduledItem,
   ToolInfo, LibraryType,
 } from "../types";
-import { invoke } from "@tauri-apps/api/core";
 import { agentNames, agentTitles, agentGender, agentAge, agentPosition, agentHobbies } from "./agents";
 
 export const messagesByAgent = writable<Record<string, Message[]>>({});
