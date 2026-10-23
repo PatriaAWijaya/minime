@@ -1,6 +1,7 @@
 <script lang="ts">
   import { agents, agentDisplayName, agentDisplayRole, agentAvatar, AVATAR_CHOICES } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
+  import AgentChatPanel from "./AgentChatPanel.svelte";
   import {
     PROVIDERS,
     activeAgentId,
@@ -1400,10 +1401,7 @@
       aria-label={$t("agents.resizeList")}
     ></div>
 
-    <!-- Middle column: chat area (widest) -->
-    <div class="chat-col">
-      <ChatPanel agent={chatAgent} header={false} />
-    </div>
+    <AgentChatPanel chatAgent={chatAgent} />
 
     {#if detailOpen}
       <!-- Column resizer: chat | detail -->
