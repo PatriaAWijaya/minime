@@ -16,11 +16,6 @@ mod social;
 mod voicestudio;
 
 use providers::{ChatMessage, ModelTier, ProviderStatus, Router};
-use providers::catalog::{fetch_provider_models, ollama_installed_models, ollama_pull_model, opencode_free_models, provider_catalog};
-use providers::media::{assemble_video_ai, audio_master, export_timeline, generate_image, generate_subtitle, generate_thumbnail, generate_voiceover, hyperframes_assemble, render_slideshow, set_dalle_key, text_to_video};
-use providers::meta::{meta_generate_image, meta_segment, meta_transcribe};
-use discover_models;
-use providers::yovoice::{yovoice_models, yovoice_status, yovoice_tts, yovoice_voices};
 use serde::Serialize;
 use tauri::State;
 
@@ -491,30 +486,30 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_app_info,
             provider_probe,
-            discover_models,
-            generate_image,
-            meta_generate_image,
-            meta_transcribe,
-            meta_segment,
-            set_dalle_key,
-            render_slideshow,
-            generate_subtitle,
-            generate_thumbnail,
-            generate_voiceover,
-            provider_catalog,
-            fetch_provider_models,
-            ollama_pull_model,
-            ollama_installed_models,
-            opencode_free_models,
-            yovoice_status,
-            yovoice_models,
-            yovoice_voices,
-            yovoice_tts,
-            audio_master,
-            export_timeline,
-            assemble_video_ai,
-            text_to_video,
-            hyperframes_assemble,
+            providers::discover_models,
+            providers::generate_image,
+            providers::meta_generate_image,
+            providers::meta_transcribe,
+            providers::meta_segment,
+            providers::set_dalle_key,
+            providers::render_slideshow,
+            providers::generate_subtitle,
+            providers::generate_thumbnail,
+            providers::generate_voiceover,
+            providers::provider_catalog,
+            providers::fetch_provider_models,
+            providers::ollama_pull_model,
+            providers::ollama_installed_models,
+            providers::opencode_free_models,
+            providers::yovoice_status,
+            providers::yovoice_models,
+            providers::yovoice_voices,
+            providers::yovoice_tts,
+            providers::audio_master,
+            providers::export_timeline,
+            providers::assemble_video_ai,
+            providers::text_to_video,
+            providers::hyperframes_assemble,
             voicestudio::voicestudio_status,
             voicestudio::voicestudio_voices,
             voicestudio::voicestudio_tts,
