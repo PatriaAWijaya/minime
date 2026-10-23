@@ -200,6 +200,12 @@ async fn e2e_ramadan(
     Ok(e2e_test::run_ramadan_e2e(&db, &router).await)
 }
 
+/// Cek file trigger untuk auto-run E2E (sementara).
+#[tauri::command]
+fn check_e2e_trigger() -> bool {
+    std::path::Path::new("/tmp/minime_e2e_trigger").exists()
+}
+
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
 #[tauri::command]
 fn chat_history(
@@ -564,6 +570,7 @@ fn main() {
             transcribe_audio_b64,
             select_model_smart,
             e2e_ramadan,
+            check_e2e_trigger,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,
