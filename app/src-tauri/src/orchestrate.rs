@@ -28,7 +28,7 @@ struct TaskPlan {
 }
 
 /// Hasil satu subtugas setelah dispatch.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubTaskResult {
     pub agent_id: String,
     pub task: String,
@@ -38,7 +38,7 @@ pub struct SubTaskResult {
 }
 
 /// Hasil akhir orkestrasi.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrchestrateResult {
     pub aggregated: String,
     pub subtask_results: Vec<SubTaskResult>,
