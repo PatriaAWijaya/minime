@@ -5,6 +5,7 @@ mod db;
 mod drive;
 mod island;
 mod logger;
+mod model_selector;
 mod orchestrate;
 mod oauth_local;
 mod pireel;
@@ -177,6 +178,16 @@ async fn transcribe_audio_b64(
         .map_err(|e| format!("transkripsi gagal: {e}"));
     let _ = std::fs::remove_file(&path);
     result
+}
+
+/// Pilih model optimal (Spark vs Wonder) berdasarkan kompleksitas tugas.
+/// Heuristik: panjang prompt + kata kunci + jenis agen.
+#[tauri::command]
+fn select_model_smart(
+    prompt: String,
+    agent_id: String,
+) -> Result<model_selector::ModelDecision, String> {
+    Ok(model_selector::select_model(&prompt, &agent_id))
 }
 
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
@@ -541,6 +552,7 @@ fn main() {
             provider_probe,
             orchestrate_task,
             transcribe_audio_b64,
+            select_model_smart,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,

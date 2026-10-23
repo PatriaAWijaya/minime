@@ -200,13 +200,16 @@ pub async fn orchestrate(
 
     // ===== [2] Dispatch paralel =====
     eprintln!("[orchestrate] [2/4] dispatch paralel...");
-    let default_model = |agent_id: &str| -> (String, ModelTier) {
-        // Default: Mimi pakai model berbayar, lainnya gratis-first
-        if agent_id == "mimi" {
-            (mimi_model_id.to_string(), ModelTier::Berbayar)
-        } else {
-            ("ollama:qwen2.5:3b".to_string(), ModelTier::Gratis)
-        }
+    // Model selection cerdas per subtugas (24 Okt 2026):
+    // - Skor >= 60 → Wonder (power mode)
+    // - Skor < 60 → Spark (cepat & murah)
+    let default_model = |agent_id: &str, task: &str| -> (String, ModelTier) {
+        let decision = crate::model_selector::select_model(task, agent_id);
+        eprintln!(
+            "[orchestrate] subtugas {} → {} (skor {})",
+            agent_id, decision.model_id, decision.complexity_score
+        );
+        (decision.model_id, ModelTier::Berbayar)
     };
 
     let futures: Vec<_> = plan
@@ -227,7 +230,7 @@ pub async fn orchestrate(
                     };
                     (m, t)
                 })
-                .unwrap_or_else(|| default_model(&st.agent_id));
+                .unwrap_or_else(|| default_model(&st.agent_id, &st.task));
             let agent_id = st.agent_id.clone();
             let task = st.task.clone();
             let system = format!(
