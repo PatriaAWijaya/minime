@@ -5,6 +5,7 @@ mod db;
 mod drive;
 mod island;
 mod logger;
+mod e2e_test;
 mod model_selector;
 mod orchestrate;
 mod oauth_local;
@@ -188,6 +189,15 @@ fn select_model_smart(
     agent_id: String,
 ) -> Result<model_selector::ModelDecision, String> {
     Ok(model_selector::select_model(&prompt, &agent_id))
+}
+
+/// E2E test sementara — workflow Ramadan (HAPUS setelah test).
+#[tauri::command]
+async fn e2e_ramadan(
+    db: State<'_, db::Db>,
+) -> Result<e2e_test::E2EResult, String> {
+    let router = Router::new(routerku_base_url());
+    Ok(e2e_test::run_ramadan_e2e(&db, &router).await)
 }
 
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
@@ -553,6 +563,7 @@ fn main() {
             orchestrate_task,
             transcribe_audio_b64,
             select_model_smart,
+            e2e_ramadan,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,

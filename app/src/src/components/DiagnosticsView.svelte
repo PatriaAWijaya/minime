@@ -8,6 +8,26 @@
   let pruning = $state(false);
   let filter = $state<"all" | "info" | "warn" | "error">("all");
   let message = $state("");
+  let e2eRunning = $state(false);
+  let e2eResult = $state("");
+
+  // TEMPORARY E2E TEST (24 Okt 2026) — HAPUS setelah test
+  async function runE2E() {
+    if (!confirm("Jalankan E2E test Ramadan? (butuh beberapa menit)")) return;
+    e2eRunning = true;
+    e2eResult = "";
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const res = await invoke("e2e_ramadan");
+      e2eResult = JSON.stringify(res, null, 2);
+      message = res.success ? "E2E BERHASIL" : "E2E GAGAL (lihat detail)";
+    } catch (e) {
+      e2eResult = String(e);
+      message = "E2E error";
+    } finally {
+      e2eRunning = false;
+    }
+  }
 
   async function load() {
     loading = true;
@@ -77,11 +97,17 @@
     <button class="btn-ghost sm" onclick={copyLogs} disabled={filtered.length === 0}>
       Salin
     </button>
+    <button class="btn-ghost sm" onclick={runE2E} disabled={e2eRunning} data-testid="e2e-ramadan-btn">
+      {e2eRunning ? "E2E berjalan..." : "E2E: Ramadan Workflow"}
+    </button>
     <button class="btn-ghost sm danger" onclick={prune} disabled={pruning}>
       {pruning ? "..." : "Bersihkan log lama"}
     </button>
   </div>
 
+  {#if e2eResult}
+    <pre class="e2e-result" data-testid="e2e-result">{e2eResult}</pre>
+  {/if}
   {#if message}<p class="msg">{message}</p>{/if}
 
   <div class="logbox">
