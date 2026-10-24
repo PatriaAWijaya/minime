@@ -502,6 +502,18 @@
     flex: 1; overflow-y: auto;
     padding: 20px;
     display: flex; flex-direction: column; gap: 12px;
+    /* Scrollbar selalu terlihat (bukan overlay macOS) */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .messages::-webkit-scrollbar { width: 8px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  .messages::-webkit-scrollbar-thumb:hover {
+    background: var(--dim);
   }
   .empty {
     margin: auto; text-align: center; color: var(--dim);
