@@ -362,10 +362,27 @@ impl OpenAiCompatProvider {
             // Endpoint OpenAI-compatible resmi Google.
             base_url: "https://generativelanguage.googleapis.com/v1beta/openai".to_string(),
             key_account: "gemini",
+            // 24 Okt 2026: nama model Gemini untuk endpoint OpenAI-compatible
+            // masih belum pasti (3.8-flash 404, 1.5-flash 404 di v1main).
+            // Coba semua varian berurutan; fallback 404 otomatis pindah ke
+            // berikutnya. Daftar ini akan dipangkas setelah varian yang
+            // benar terkonfirmasi dari API /models.
             models: vec![
                 ModelInfo {
                     id: "gemini:gemini-3.8-flash".to_string(),
                     label: "Gemini 3.8 Flash".to_string(),
+                },
+                ModelInfo {
+                    id: "gemini:gemini-3-flash-preview".to_string(),
+                    label: "Gemini 3 Flash Preview".to_string(),
+                },
+                ModelInfo {
+                    id: "gemini:gemini-2.5-flash".to_string(),
+                    label: "Gemini 2.5 Flash".to_string(),
+                },
+                ModelInfo {
+                    id: "gemini:gemini-2.0-flash".to_string(),
+                    label: "Gemini 2.0 Flash".to_string(),
                 },
                 ModelInfo {
                     id: "gemini:gemini-1.5-flash".to_string(),
