@@ -949,7 +949,7 @@ impl GeminiNativeProvider {
 
     fn key(&self) -> Result<String, ProviderError> {
         crate::secrets::api_key(self.key_account)
-            .map_err(|_| ProviderError::NoKey(self.key_account.to_string()))
+            .ok_or_else(|| ProviderError::NoKey(self.key_account.to_string()))
     }
 
     pub async fn status(&self) -> ProviderStatus {
