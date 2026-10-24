@@ -41,7 +41,9 @@ struct CircuitBreaker {
 impl CircuitBreaker {
     fn is_open(&self, provider: &str) -> bool {
         if let Some((count, last)) = self.failures.get(provider) {
-            if *count >= 3 && last.elapsed() < Duration::from_secs(300) {
+            // Timeout 60s (bukan 300s) agar provider pulih lebih cepat
+            // setelah gangguan transient berlalu.
+            if *count >= 3 && last.elapsed() < Duration::from_secs(60) {
                 return true;
             }
         }

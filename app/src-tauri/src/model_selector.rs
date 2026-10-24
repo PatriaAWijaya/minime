@@ -126,10 +126,13 @@ pub fn complexity_score(prompt: &str, agent_id: &str) -> (i32, Vec<String>) {
 pub fn select_model(prompt: &str, agent_id: &str) -> ModelDecision {
     let (score, reasons) = complexity_score(prompt, agent_id);
 
+    // 24 Okt 2026: Muse billing BELUM aktif (kredit hackathon aktif 26 Okt).
+    // Pakai Gemini sebagai default orkestrasi sampai Muse billing aktif.
+    // Kompleks → Gemini 2.5 Pro (power), sederhana → Gemini 3.8 Flash (cepat).
     let (model_id, tier_label) = if score >= 60 {
-        ("muse:muse-wonder-1.0", "Wonder (power mode)")
+        ("gemini:gemini-2.5-pro", "Gemini Pro (power mode)")
     } else {
-        ("muse:muse-spark-1.3", "Spark (cepat & murah)")
+        ("gemini:gemini-3.8-flash", "Gemini Flash (cepat & murah)")
     };
 
     let reasoning = format!(
@@ -156,7 +159,7 @@ mod tests {
     #[test]
     fn simple_task_selects_spark() {
         let d = select_model("Terjemahkan 'hello' ke Indonesia", "mimi");
-        assert_eq!(d.model_id, "muse:muse-spark-1.3");
+        assert_eq!(d.model_id, "gemini:gemini-3.8-flash");
         assert!(d.complexity_score < 60);
     }
 
@@ -166,7 +169,7 @@ mod tests {
             Bandingkan dengan kompetitor, evaluasi channel distribusi, dan susun rencana \
             kampanye 3 bulan dengan budget breakdown. Ini membutuhkan deep analysis.";
         let d = select_model(prompt, "strategis");
-        assert_eq!(d.model_id, "muse:muse-wonder-1.0");
+        assert_eq!(d.model_id, "gemini:gemini-2.5-pro");
         assert!(d.complexity_score >= 60);
     }
 
