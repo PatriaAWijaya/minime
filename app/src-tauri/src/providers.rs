@@ -922,6 +922,169 @@ impl Default for OpenCodeProvider {
 }
 
 // ============================================================================
+// SECTION 3B: GeminiNativeProvider — API native Gemini (24 Okt 2026)
+// ============================================================================
+// Endpoint OpenAI-compatible Gemini (v1beta/openai) me-routing ke v1main dan
+// semua model 404 ("not found for API version v1main"). Solusi: pakai API
+// native Gemini (v1beta/models/{model}:generateContent) yang mendukung
+// semua model termasuk 3.8-flash, 2.5-flash, 2.0-flash.
+pub struct GeminiNativeProvider {
+    key_account: &'static str,
+    models: Vec<ModelInfo>,
+    client: reqwest::Client,
+}
+
+impl GeminiNativeProvider {
+    pub fn new() -> Self {
+        Self {
+            key_account: "gemini",
+            models: vec![
+                ModelInfo { id: "gemini:gemini-3.8-flash".to_string(), label: "Gemini 3.8 Flash".to_string() },
+                ModelInfo { id: "gemini:gemini-2.5-flash".to_string(), label: "Gemini 2.5 Flash".to_string() },
+                ModelInfo { id: "gemini:gemini-2.0-flash".to_string(), label: "Gemini 2.0 Flash".to_string() },
+            ],
+            client: http_client(),
+        }
+    }
+
+    fn key(&self) -> Result<String, ProviderError> {
+        crate::secrets::api_key(self.key_account)
+            .map_err(|_| ProviderError::NoKey(self.key_account.to_string()))
+    }
+
+    pub async fn status(&self) -> ProviderStatus {
+        let has_key = self.key().is_ok();
+        ProviderStatus {
+            id: "gemini".to_string(),
+            label: "Gemini".to_string(),
+            kind: ProviderKind::PaidApiKey,
+            state: if has_key { "connected".to_string() } else { "no_key".to_string() },
+            detail: if has_key {
+                format!("{} model (API native)", self.models.len())
+            } else {
+                "API key belum dikonfigurasi".to_string()
+            },
+            models: self.models.clone(),
+        }
+    }
+
+    pub async fn chat(
+        &self,
+        model: &str,
+        messages: &[ChatMessage],
+    ) -> Result<ChatResult, ProviderError> {
+        let key = self.key()?;
+        let requested = model.strip_prefix("gemini:").unwrap_or(model);
+        // Daftar model untuk dicoba: yang diminta dulu, lalu varian lain.
+        let mut candidates: Vec<String> = Vec::new();
+        if requested == "gemini" || requested.is_empty() {
+            for m in &self.models {
+                candidates.push(m.id.strip_prefix("gemini:").unwrap_or(&m.id).to_string());
+            }
+        } else {
+            candidates.push(requested.to_string());
+            for m in &self.models {
+                let name = m.id.strip_prefix("gemini:").unwrap_or(&m.id);
+                if name != requested {
+                    candidates.push(name.to_string());
+                }
+            }
+        }
+        // Konversi pesan ke format Gemini: role user/model, gabung jadi satu prompt.
+        // Gemini native memakai contents[] dengan role user & model bergantian;
+        // sederhanakan: gabung semua pesan jadi satu user turn.
+        let combined = messages
+            .iter()
+            .map(|m| {
+                let role = if m.role == "assistant" { "model" } else { "user" };
+                format!("{}: {}", role, m.content)
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        let mut last_err: Option<ProviderError> = None;
+        for model_name in &candidates {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+                model_name
+            );
+            let body = serde_json::json!({
+                "contents": [{ "parts": [{ "text": combined }] }],
+            });
+            let resp = self
+                .client
+                .post(&url)
+                .header("x-goog-api-key", &key)
+                .json(&body)
+                .send()
+                .await;
+            let resp = match resp {
+                Ok(r) => r,
+                Err(e) => {
+                    last_err = Some(ProviderError::Failed(format!("gemini native: {e}")));
+                    continue;
+                }
+            };
+            if resp.status().is_success() {
+                #[derive(serde::Deserialize)]
+                struct GenResp {
+                    candidates: Option<Vec<GenCandidate>>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenCandidate {
+                    content: Option<GenContent>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenContent {
+                    parts: Option<Vec<GenPart>>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenPart {
+                    text: Option<String>,
+                }
+                let parsed: Result<GenResp, _> = resp.json().await;
+                match parsed {
+                    Ok(gr) => {
+                        let text = gr
+                            .candidates
+                            .and_then(|c| c.into_iter().next())
+                            .and_then(|c| c.content)
+                            .and_then(|c| c.parts)
+                            .and_then(|mut p| p.pop())
+                            .and_then(|p| p.text)
+                            .unwrap_or_default();
+                        if text.is_empty() {
+                            last_err = Some(ProviderError::Failed("gemini native: respons kosong".to_string()));
+                            continue;
+                        }
+                        return Ok(ChatResult::text_only(text, "gemini".to_string()));
+                    }
+                    Err(e) => {
+                        last_err = Some(ProviderError::Failed(format!("gemini native parse: {e}")));
+                        continue;
+                    }
+                }
+            }
+            let status = resp.status();
+            let body_text = resp.text().await.unwrap_or_default();
+            let snippet: String = body_text.chars().take(200).collect();
+            eprintln!("[gemini-native:{}] gagal HTTP {}: {}", model_name, status, snippet);
+            // 404 → coba model berikutnya; error lain juga coba (fallback).
+            last_err = Some(ProviderError::Failed(format!(
+                "gemini native {} HTTP {}: {}",
+                model_name, status, snippet
+            )));
+        }
+        Err(last_err.unwrap_or(ProviderError::Failed("gemini native: tidak ada model tersedia".to_string())))
+    }
+}
+
+impl Default for GeminiNativeProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ============================================================================
 // SECTION 4: Router — chain fallback antar provider + cross-tier (24 Okt 2026)
 // ============================================================================
 
@@ -940,7 +1103,7 @@ pub struct Router {
     ollama: OllamaProvider,
     opencode: OpenCodeProvider,
     muse: OpenAiCompatProvider,
-    gemini: OpenAiCompatProvider,
+    gemini: GeminiNativeProvider,
     deepseek: OpenAiCompatProvider,
     routerku: OpenAiCompatProvider,
 }
@@ -951,7 +1114,7 @@ impl Router {
             ollama: OllamaProvider::new(),
             opencode: OpenCodeProvider::new(),
             muse: OpenAiCompatProvider::muse(),
-            gemini: OpenAiCompatProvider::gemini(),
+            gemini: GeminiNativeProvider::new(),
             deepseek: OpenAiCompatProvider::deepseek(),
             routerku: OpenAiCompatProvider::routerku(routerku_base_url),
         }
@@ -1001,7 +1164,7 @@ impl Router {
         ];
         let berbayar: Vec<ChainLink<'_>> = vec![
             ChainLink::Compat(&self.muse),
-            ChainLink::Compat(&self.gemini),
+            ChainLink::GeminiNative(&self.gemini),
             ChainLink::Compat(&self.deepseek),
             ChainLink::Compat(&self.routerku),
         ];
@@ -1105,6 +1268,7 @@ enum ChainLink<'a> {
     Ollama(&'a OllamaProvider),
     OpenCode(&'a OpenCodeProvider),
     Compat(&'a OpenAiCompatProvider),
+    GeminiNative(&'a GeminiNativeProvider),
 }
 
 impl<'a> ChainLink<'a> {
@@ -1113,6 +1277,7 @@ impl<'a> ChainLink<'a> {
             ChainLink::Ollama(_) => OllamaProvider::id(),
             ChainLink::OpenCode(_) => OpenCodeProvider::id(),
             ChainLink::Compat(p) => p.id,
+            ChainLink::GeminiNative(_) => "gemini",
         }
     }
 
@@ -1125,6 +1290,7 @@ impl<'a> ChainLink<'a> {
             ChainLink::Ollama(p) => p.chat(model_id, messages).await,
             ChainLink::OpenCode(p) => p.chat(model_id, messages).await,
             ChainLink::Compat(p) => p.chat(model_id, messages).await,
+            ChainLink::GeminiNative(p) => p.chat(model_id, messages).await,
         }
     }
 }
