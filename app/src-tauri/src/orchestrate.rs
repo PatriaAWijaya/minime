@@ -305,8 +305,8 @@ async fn aggregate_results(
                 "### Hasil dari {} ({})\n{}\n",
                 r.agent_id,
                 r.task,
-                if r.error.is_some() {
-                    format!("[GAGAL: {}]", r.error.as_ref().unwrap())
+                if let Some(err) = &r.error {
+                    format!("[GAGAL: {err}]")
                 } else {
                     r.result.clone()
                 }
@@ -465,7 +465,7 @@ pub async fn orchestrate(
         user_request.hash(&mut h);
         h.finish() & 0xFFFFFFFF
     });
-    eprintln!("[orchestrate:{}] mulai: {}", run_id, &user_request.chars().take(80).collect::<String>());
+    eprintln!("[orchestrate:{}] mulai: {}", run_id, user_request.chars().take(80).collect::<String>());
 
     // ===== [0] Pre-flight: cek kredensial distribusi bila dibutuhkan =====
     if needs_distribution(user_request) {

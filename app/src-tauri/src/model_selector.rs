@@ -82,7 +82,7 @@ pub fn complexity_score(prompt: &str, agent_id: &str) -> (i32, Vec<String>) {
             simple_hits += 1;
         }
     }
-    let kw_score = (complex_hits.min(4) as i32 * 10) - (simple_hits.min(2) as i32 * 5);
+    let kw_score = (complex_hits.min(4) * 10) - (simple_hits.min(2) * 5);
     let kw_score = kw_score.clamp(-10, 40);
     score += kw_score;
     if complex_hits > 0 {

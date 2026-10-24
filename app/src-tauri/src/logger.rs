@@ -80,7 +80,7 @@ pub fn read_logs(lines: usize) -> Result<Vec<String>, String> {
     }
     let content = fs::read_to_string(&path).map_err(|e| format!("Gagal membaca log: {}", e))?;
     let all: Vec<String> = content.lines().map(|s| s.to_string()).collect();
-    let n = lines.max(1).min(2000);
+    let n = lines.clamp(1, 2000);
     Ok(if all.len() > n {
         all[all.len() - n..].to_vec()
     } else {
@@ -107,10 +107,8 @@ pub fn prune_logs(keep_days: u64) -> Result<usize, String> {
         if let Ok(meta) = entry.metadata() {
             if let Ok(modified) = meta.modified() {
                 if let Ok(age) = modified.duration_since(std::time::UNIX_EPOCH) {
-                    if now.saturating_sub(age.as_secs()) > keep_secs {
-                        if fs::remove_file(&p).is_ok() {
-                            removed += 1;
-                        }
+                    if now.saturating_sub(age.as_secs()) > keep_secs && fs::remove_file(&p).is_ok() {
+                        removed += 1;
                     }
                 }
             }
