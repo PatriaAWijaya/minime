@@ -32,6 +32,10 @@ fn skills_for(agent_id: &str) -> &'static [&'static str] {
             "storytelling",
             "branding-playbook",
             "unslop",
+            // Fase 2/3 (24 Okt 2026): media-studio mendeskripsikan tool
+            // generate_image yang NYATA tersedia di dispatch (bukan lagi
+            // sekadar konsep teks).
+            "media-studio",
         ],
         "riset" => &["riset-web", "openviking"],
         "finance" => &["finance-playbook"],

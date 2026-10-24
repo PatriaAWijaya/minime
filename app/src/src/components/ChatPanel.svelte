@@ -34,6 +34,7 @@
     setAgentEnabled,
   } from "../lib/store";
   import { t } from "../lib/i18n";
+  import { convertFileSrc } from "@tauri-apps/api/core";
   import MetaStatus from "./MetaStatus.svelte";
 
   let {
@@ -300,7 +301,18 @@
           : mopt.kind === "paid"
             ? "berbayar"
             : "gratis";
-      // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
+      // Helper Fase 2: path gambar dari backend → attachment tampil di bubble.
+    // convertFileSrc mengubah path file lokal menjadi URL asset:// yang
+    // diizinkan CSP (img-src sudah mencakup asset:).
+    function imageAttachments(paths: string[] | undefined): Message["attachments"] {
+      if (!paths || paths.length === 0) return undefined;
+      return paths.map((p) => {
+        const name = p.split("/").pop() ?? p;
+        return { name, kind: "image" as const, size: "", url: convertFileSrc(p) };
+      });
+    }
+
+    // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
       // yang tepat (bukan dijawab Mimi sendiri).
       if (shouldOrchestrate(id, text) && (await isTauri())) {
         // MIMI MENJAWAB DULU (perintah Patria 24 Okt): tiap instruksi user
@@ -394,7 +406,7 @@
                 const label = agentLabel(st.agent_id);
                 if (st.result && !st.error) {
                   try {
-                    pushMessage(id, "agent", st.result, undefined, undefined, { id: st.agent_id, name: label });
+                    pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, { id: st.agent_id, name: label });
                   } catch {}
                   try {
                     pushMessage(st.agent_id, "agent", st.result);
@@ -576,8 +588,8 @@
                 if (!st.agent_id) continue;
                 const label = agentLabel(st.agent_id);
                 if (st.result && !st.error) {
-                  // Balasan agen di chat Mimi dengan header identitas
-                  pushMessage(id, "agent", st.result, undefined, undefined, {
+                  // Balasan agen di chat Mimi dengan header identitas (+ gambar tool)
+                  pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, {
                     id: st.agent_id,
                     name: label,
                   });
@@ -811,10 +823,14 @@
             {#if m.attachments && m.attachments.length > 0}
               <div class="msg-attach">
                 {#each m.attachments as att (att.name)}
-                  <span class="attach-chip sm">
-                    <span class="attach-kind">{att.kind}</span>
-                    <span class="attach-name">{att.name}</span>
-                  </span>
+                  {#if att.kind === "image" && att.url}
+                    <img class="msg-img" src={att.url} alt={att.name} />
+                  {:else}
+                    <span class="attach-chip sm">
+                      <span class="attach-kind">{att.kind}</span>
+                      <span class="attach-name">{att.name}</span>
+                    </span>
+                  {/if}
                 {/each}
               </div>
             {/if}
@@ -1052,6 +1068,8 @@
   }
   .attach-x:hover { color: var(--text); }
   .msg-attach { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  /* Gambar hasil tool agen (Fase 2): tampil penuh di dalam bubble */
+  .msg-img { max-width: 100%; border-radius: 10px; display: block; }
   .bubble { position: relative; }
   .msg-menu-btn {
     position: absolute; top: 4px; right: 4px;

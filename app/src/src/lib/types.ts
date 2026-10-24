@@ -28,6 +28,8 @@ export interface AttachmentMeta {
   name: string;
   kind: "image" | "audio" | "video" | "document";
   size: string;
+  /** URL tampil (mis. asset URL Tauri untuk file lokal) — Fase 2. */
+  url?: string;
 }
 
 /** Tool registry entry from the Rust tools gateway (Phase 3.1). */

@@ -1,47 +1,41 @@
-# Media Studio Pipeline Skill
+# Media Studio Pipeline Skill (Fase 2/3, 24 Okt 2026)
 
-Media Studio adalah tempat agen Kreatif memproduksi aneka konten yang diinginkan user.
+Media Studio adalah tempat agen Kreatif memproduksi konten nyata — bukan
+hanya konsep teks. Skill ini mendeskripsikan interface tool yang BENAR-BENAR
+tersedia di runtime agen Minime. Jangan mengarang tool lain.
 
-PRINSIP: User menambahkan beberapa hal yang diinginkan sebagai input.
-Otomasi SEPENUHNYA ditangani oleh agen Kreatif — user tidak perlu mengerjakan
-langkah manual apapun setelah input diberikan.
+## Tools yang tersedia
 
-## Pipeline (otomatis penuh oleh agen Kreatif)
+Agen memanggil tool dengan SATU blok per tool, JSON valid di dalamnya:
 
-### 1. Input User
-- Baca semua input dari localStorage `minime.inputs`:
-  `[{id, kind, title, content, createdAt}]`
-- Jenis input: riset, goal/tujuan, preferensi, materi mentah, lainnya.
-- User boleh menambah banyak input; agen menggabungkan semuanya sebagai brief.
+<tool_call>
+{"name": "generate_image", "args": {"prompt": "deskripsi visual detail dalam Bahasa Inggris", "size": "portrait"}}
+</tool_call>
 
-### 2. Script Produksi (otomatis)
-Untuk SETIAP input (atau gabungannya), kembangkan menjadi beberapa script:
-- Jenis: reels, carousel, poster, story, thumbnail, artikel
-- Format per script: hook (3 detik) → isi → CTA
-- Hormati brand kit (warna, font, tone, template) dari `minime.brand-kit`
-- Simpan ke localStorage `minime.scripts`:
-  `[{id, researchId, title, kind, content, status: "draft", createdAt}]`
-
-### 3. Produksi Media (otomatis per script)
-Setiap script OTOMATIS menjadi source produksi tanpa campur tangan user:
-- **Storyboard**: pecah script per baris/paragraf menjadi scene
-  → simpan ke `minime.storyboard`:
-  `[{id, duration, visual, narration, dialogue, action, notes, shotType}]`
-- **Gambar**: generate via tool `generate_image` dengan prompt dari deskripsi visual scene
-- **Video**: render slideshow dari gambar via `render_slideshow`
-- **Voiceover**: generate via `generate_voiceover` (arboTTS, Bahasa Indonesia)
-- **Subtitle**: via `generate_subtitle`
-- Update status script: `draft` → `in_production` → `done`
-
-### 4. Draft & Review
-Setelah semua siap, informasikan user:
-"Draft selesai! Buka tab Studio untuk review. Kamu bisa Approve untuk lanjut ke penjadwalan, atau Sesuaikan dengan editor."
-
-### 5. Approval → Jadwal
-Jika user approve, arahkan ke tab Studio bagian Jadwal Konten.
+- `generate_image(prompt: string, size: "square"|"portrait"|"portrait45"|"landscape")`:
+  menghasilkan file gambar PNG dan mengembalikan path file-nya.
+- Ukuran: poster rasio 9:16 → `"portrait"`; feed kotak → `"square"`;
+  story/poster 4:5 → `"portrait45"`; banner lebar → `"landscape"`.
+- Setelah tool dipanggil, hasilnya dikirim kembali sebagai pesan
+  `HASIL TOOL`. Lanjutkan sampai semua output nyata selesai, lalu berikan
+  jawaban akhir TANPA blok tool_call lagi.
+- Gambar yang berhasil dibuat OTOMATIS dilampirkan ke pesan hasilmu di chat
+  (backend yang mengurus path-nya). Sebutkan di jawaban akhir bahwa gambar
+  sudah dibuat dan apa isinya.
 
 ## Aturan
-- JANGAN auto-posting. Semua konten berhenti di draft.
-- Hormati brand kit user dari localStorage `minime.brand-kit`.
-- Bahasa: Indonesia (default), ikuti preferensi user.
-- User cukup beri input; SEMUA langkah setelahnya otomatis oleh agen Kreatif.
+
+- Bila tugas membutuhkan gambar (poster, thumbnail, visual konten),
+  PANGGIL `generate_image` — jangan hanya mendeskripsikan gambar yang
+  "seharusnya" dibuat.
+- Prompt gambar ditulis dalam Bahasa Inggris yang detail: subjek, gaya
+  visual, palet warna, komposisi, suasana, dan teks yang harus tampil di
+  gambar (tulis teks persis seperti yang diminta, dalam bahasa yang diminta).
+- Jangan mengarang path file atau mengklaim gambar sudah dibuat bila tool
+  belum mengembalikannya. Bila tool gagal, sampaikan kegagalannya dengan
+  jujur dan tetap berikan konsep teks sebagai fallback.
+- Bahasa jawaban ke user: Indonesia (default), ikuti preferensi user.
+- JANGAN auto-posting. Semua konten berhenti di draft/chat sampai user
+  memutuskan langkah berikutnya.
+- Satu tugas bisa memanggil tool beberapa kali (mis. beberapa variasi
+  poster), selama masih dalam batas iterasi loop.

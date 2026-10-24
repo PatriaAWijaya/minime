@@ -21,6 +21,12 @@ pub trait ChatClient: Send + Sync {
         tier: ModelTier,
         messages: Vec<ChatMessage>,
     ) -> Result<ChatResult, String>;
+
+    /// Tool eksekusi: generate gambar → path file (Fase 2, 24 Okt 2026).
+    /// Default: tidak didukung (MockRouter test memakai ini).
+    async fn generate_image(&self, _prompt: &str, _size: &str) -> Result<String, String> {
+        Err("generate_image tidak didukung provider ini".to_string())
+    }
 }
 
 #[async_trait::async_trait]
@@ -32,6 +38,10 @@ impl ChatClient for Router {
         messages: Vec<ChatMessage>,
     ) -> Result<ChatResult, String> {
         Router::chat(self, model_id, tier, messages).await
+    }
+
+    async fn generate_image(&self, prompt: &str, size: &str) -> Result<String, String> {
+        crate::providers::generate_image_with_fallback(self, prompt, size).await
     }
 }
 
@@ -59,6 +69,9 @@ pub struct SubTaskResult {
     pub result: String,
     pub served_by: String,
     pub error: Option<String>,
+    /// Path file gambar yang dihasilkan tool generate_image (Fase 2).
+    #[serde(default)]
+    pub images: Vec<String>,
 }
 
 /// Hasil akhir orkestrasi.
@@ -199,6 +212,69 @@ async fn chat_internal(
     router.chat(model_id, tier, wire).await
 }
 
+/// Satu pemanggilan tool dari LLM (format teks, provider-agnostic).
+/// Dipilih atas native function-calling per-provider karena Minime memakai
+/// 6+ provider dengan format tool-call berbeda (OpenAI-compat, Gemini native,
+/// Ollama) — format teks ini jalan di semuanya tanpa branching per-provider.
+#[derive(Debug, Clone, Deserialize)]
+struct ToolCall {
+    name: String,
+    #[serde(default)]
+    args: serde_json::Value,
+}
+
+/// Parse blok <tool_call>{...json...}</tool_call> dari teks LLM.
+/// Mengembalikan (calls_valid, ada_blok_malformed).
+fn parse_tool_calls(text: &str) -> (Vec<ToolCall>, bool) {
+    let mut calls = Vec::new();
+    let mut malformed = false;
+    let mut rest = text;
+    while let Some(start) = rest.find("<tool_call>") {
+        let after = &rest[start + "<tool_call>".len()..];
+        if let Some(end) = after.find("</tool_call>") {
+            let inner = after[..end].trim();
+            match serde_json::from_str::<ToolCall>(inner) {
+                Ok(c) => calls.push(c),
+                Err(_) => malformed = true,
+            }
+            rest = &after[end + "</tool_call>".len()..];
+        } else {
+            malformed = true;
+            break;
+        }
+    }
+    (calls, malformed)
+}
+
+/// Tools eksekusi per agen (Fase 2, 24 Okt 2026). Saat ini hanya Kreatif.
+/// Desain registry: tambah agen/tool baru di sini tanpa mengubah loop.
+fn tools_for(agent_id: &str) -> &'static [&'static str] {
+    match agent_id {
+        "kreatif" => &["generate_image"],
+        _ => &[],
+    }
+}
+
+const TOOL_INSTRUCTIONS: &str = r#"
+## TOOLS (alat eksekusi nyata — BUKAN sekadar tulisan)
+Kamu BISA mengeksekusi tools berikut. Bila tugasmu membutuhkan output nyata (mis. gambar poster), PANGGIL tool-nya — jangan hanya mendeskripsikan hasilnya.
+Format pemanggilan (SATU blok per tool, JSON valid di dalamnya):
+<tool_call>
+{"name": "generate_image", "args": {"prompt": "deskripsi visual detail dalam Bahasa Inggris", "size": "portrait"}}
+</tool_call>
+Tools yang tersedia:
+- generate_image(prompt: string, size: "square"|"portrait"|"portrait45"|"landscape"): menghasilkan file gambar PNG, mengembalikan path file. Prompt harus detail visual: subjek, gaya, warna, komposisi, dan teks yang harus tampil di gambar. Poster rasio 9:16 → size "portrait".
+Aturan:
+- Setelah memanggil tool, kamu menerima hasil eksekusinya. Lanjutkan sampai semua output nyata selesai, lalu berikan jawaban akhir TANPA blok tool_call lagi.
+- Jangan mengarang path file atau mengklaim gambar sudah dibuat bila tool belum mengembalikannya.
+- Bila tool gagal, sampaikan kegagalannya dengan jujur di jawaban akhir.
+"#;
+
+/// Timeout total loop tool (image generation bisa lambat: SD lokal menit-an).
+const TOOL_LOOP_TIMEOUT_SECS: u64 = 600;
+/// Maksimum iterasi tool loop (cegah loop tak berujung).
+const MAX_TOOL_ITERS: usize = 5;
+
 /// Dispatch satu subtugas ke agen (untuk initial maupun revisi).
 /// `system_override`: system prompt kustom (untuk revisi). `None` = default.
 /// Timeout per subtugas dalam detik. Satu agen hang tidak boleh membunuh orkestrasi.
@@ -262,7 +338,7 @@ async fn dispatch_one(
     // dan tercampur antar peran (kasus nyata: Kreatif menghasilkan konten
     // "CIO / Scale-Up Blueprint" milik Strategis, bukan poster yang diminta).
     let role_desc = match agent_id {
-        "kreatif" => "Kreatif: desainer & copywriter. Buat konsep visual, copywriting, dan materi kreatif (poster, konten, naskah). Fokus pada visual dan pesan yang menarik, BUKAN analisis bisnis.",
+        "kreatif" => "Kreatif: desainer & copywriter. Buat konsep visual, copywriting, dan materi kreatif (poster, konten, naskah). Fokus pada visual dan pesan yang menarik, BUKAN analisis bisnis. Bila tugas membutuhkan gambar nyata, gunakan tool generate_image (lihat bagian TOOLS di system prompt).",
         "riset" => "Riset: peneliti. Cari data, fakta, dan analisis berbasis bukti. Sajikan temuan dengan sumber yang jelas.",
         "finance" => "Finance: analis keuangan. Hitung anggaran, proyeksi, dan analisis finansial dengan angka yang akurat.",
         "strategis" => "Bisnis Strategis: konsultan strategi. Susun strategi, positioning, dan rencana bisnis berbasis analisis.",
@@ -276,36 +352,145 @@ async fn dispatch_one(
         )
     });
 
-    // Circuit breaker: timeout per subtugas agar satu agen hang tidak menggagalkan semua
-    let res = match tokio::time::timeout(
-        std::time::Duration::from_secs(SUBTASK_TIMEOUT_SECS),
-        chat_internal(router, db, agent_id, &model_id, tier, &system, task),
-    )
-    .await
-    {
-        Ok(r) => r,
-        Err(_) => {
-            eprintln!(
-                "[orchestrate:{run_id}] TIMEOUT {} setelah {}s",
-                agent_id, SUBTASK_TIMEOUT_SECS
-            );
-            Err(format!("Timeout setelah {} detik", SUBTASK_TIMEOUT_SECS))
-        }
-    };
-    match res {
-        Ok(r) => SubTaskResult {
+    // ===== Jalur TANPA tool (semua agen kecuali yang terdaftar): satu call =====
+    if tools_for(agent_id).is_empty() {
+        // Circuit breaker: timeout per subtugas agar satu agen hang tidak menggagalkan semua
+        let res = match tokio::time::timeout(
+            std::time::Duration::from_secs(SUBTASK_TIMEOUT_SECS),
+            chat_internal(router, db, agent_id, &model_id, tier, &system, task),
+        )
+        .await
+        {
+            Ok(r) => r,
+            Err(_) => {
+                eprintln!(
+                    "[orchestrate:{run_id}] TIMEOUT {} setelah {}s",
+                    agent_id, SUBTASK_TIMEOUT_SECS
+                );
+                Err(format!("Timeout setelah {} detik", SUBTASK_TIMEOUT_SECS))
+            }
+        };
+        return match res {
+            Ok(r) => SubTaskResult {
+                agent_id: agent_id.to_string(),
+                task: task.to_string(),
+                result: r.text.clone(),
+                served_by: r.served_by.clone(),
+                error: r.error.clone(),
+                images: vec![],
+            },
+            Err(e) => SubTaskResult {
+                agent_id: agent_id.to_string(),
+                task: task.to_string(),
+                result: String::new(),
+                served_by: String::new(),
+                error: Some(e),
+                images: vec![],
+            },
+        };
+    }
+
+    // ===== Jalur TOOL LOOP (Fase 2): LLM ↔ eksekusi sampai jawaban akhir =====
+    // chat_internal tidak dipakai di sini karena loop butuh histori penuh
+    // (bukan wire 2-pesan); skill disuntik manual ke system prompt.
+    let skill_ctx = crate::skills::skill_context(db, agent_id);
+    let mut system_full = system.clone();
+    system_full.push_str(TOOL_INSTRUCTIONS);
+    if !skill_ctx.is_empty() {
+        system_full.push_str(&format!("\n\n{skill_ctx}"));
+    }
+    let mut history: Vec<ChatMessage> = vec![
+        ChatMessage { role: "system".to_string(), content: system_full },
+        ChatMessage { role: "user".to_string(), content: task.to_string() },
+    ];
+    let mut images: Vec<String> = Vec::new();
+    let mut last_text = String::new();
+    let mut last_served = String::new();
+    let mut last_error: Option<String> = None;
+    let loop_res: Result<Result<(), String>, tokio::time::error::Elapsed> =
+        tokio::time::timeout(
+            std::time::Duration::from_secs(TOOL_LOOP_TIMEOUT_SECS),
+            async {
+                for _ in 0..MAX_TOOL_ITERS {
+                    let r = router.chat(&model_id, tier, history.clone()).await;
+                    let r = match r {
+                        Ok(r) => r,
+                        Err(e) => return Err(e),
+                    };
+                    if let Some(e) = r.error.clone() {
+                        last_text = r.text.clone();
+                        last_error = Some(e);
+                        break;
+                    }
+                    last_text = r.text.clone();
+                    last_served = r.served_by.clone();
+                    let (calls, malformed) = parse_tool_calls(&r.text);
+                    if calls.is_empty() {
+                        if malformed {
+                            history.push(ChatMessage { role: "assistant".to_string(), content: r.text.clone() });
+                            history.push(ChatMessage { role: "user".to_string(), content: "Format <tool_call> kamu tidak valid (JSON di dalamnya harus valid). Perbaiki dan kirim ulang, atau berikan jawaban akhir tanpa tool_call.".to_string() });
+                            continue;
+                        }
+                        break; // jawaban akhir, tanpa tool call
+                    }
+                    // Eksekusi tools satu per satu
+                    let mut tool_outputs = String::new();
+                    for call in calls {
+                        match call.name.as_str() {
+                            "generate_image" => {
+                                let prompt = call.args.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+                                let size = call.args.get("size").and_then(|v| v.as_str()).unwrap_or("square");
+                                if prompt.is_empty() {
+                                    tool_outputs.push_str("Tool generate_image GAGAL: prompt kosong.\n");
+                                } else {
+                                    match router.generate_image(prompt, size).await {
+                                        Ok(path) => {
+                                            eprintln!("[orchestrate:{run_id}] tool generate_image OK: {path}");
+                                            images.push(path.clone());
+                                            tool_outputs.push_str(&format!("Tool generate_image OK: file tersimpan di {path}\n"));
+                                        }
+                                        Err(e) => {
+                                            tool_outputs.push_str(&format!("Tool generate_image GAGAL: {e}\n"));
+                                        }
+                                    }
+                                }
+                            }
+                            other => {
+                                tool_outputs.push_str(&format!("Tool {other} tidak dikenal, tersedia: generate_image.\n"));
+                            }
+                        }
+                    }
+                    history.push(ChatMessage { role: "assistant".to_string(), content: r.text.clone() });
+                    history.push(ChatMessage { role: "user".to_string(), content: format!("HASIL TOOL:\n{tool_outputs}\nLanjutkan tugasmu. Bila semua output nyata sudah selesai, berikan jawaban akhir TANPA blok tool_call.") });
+                }
+                Ok(())
+            },
+        )
+        .await;
+    match loop_res {
+        Ok(Ok(())) => SubTaskResult {
             agent_id: agent_id.to_string(),
             task: task.to_string(),
-            result: r.text.clone(),
-            served_by: r.served_by.clone(),
-            error: r.error.clone(),
+            result: last_text,
+            served_by: last_served,
+            error: last_error,
+            images,
         },
-        Err(e) => SubTaskResult {
+        Ok(Err(e)) => SubTaskResult {
             agent_id: agent_id.to_string(),
             task: task.to_string(),
-            result: String::new(),
-            served_by: String::new(),
+            result: last_text,
+            served_by: last_served,
             error: Some(e),
+            images,
+        },
+        Err(_) => SubTaskResult {
+            agent_id: agent_id.to_string(),
+            task: task.to_string(),
+            result: last_text,
+            served_by: last_served,
+            error: Some(format!("Timeout tool loop setelah {} detik", TOOL_LOOP_TIMEOUT_SECS)),
+            images,
         },
     }
 }
@@ -755,6 +940,7 @@ pub async fn orchestrate(
                             result: String::new(),
                             served_by: String::new(),
                             error: Some("Subtugas tidak ditemukan".to_string()),
+                            images: vec![],
                         },
                     }
                 }
@@ -1058,6 +1244,9 @@ pub struct OrchestrationSubtaskEvent {
     pub result: String,
     pub error: Option<String>,
     pub revision: bool,
+    /// Path file gambar dari tool generate_image (Fase 2).
+    #[serde(default)]
+    pub images: Vec<String>,
 }
 
 /// Payload event selesai.
@@ -1227,6 +1416,7 @@ pub async fn orchestrate_stream(
             result: res.result.clone(),
             error: res.error.clone(),
             revision: false,
+            images: res.images.clone(),
         });
         eprintln!("[orchestrate-stream:{run_id}] subtugas selesai: {}", res.agent_id);
         subtask_results.push(res);
@@ -1320,6 +1510,7 @@ pub async fn orchestrate_stream(
                         result: String::new(),
                         served_by: String::new(),
                         error: Some("Subtugas tidak ditemukan".to_string()),
+                        images: vec![],
                     },
                 }
             };
@@ -1334,6 +1525,7 @@ pub async fn orchestrate_stream(
                 result: res.result.clone(),
                 error: res.error.clone(),
                 revision: true,
+                images: res.images.clone(),
             });
             revised.push(res);
         }

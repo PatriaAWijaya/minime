@@ -1452,28 +1452,35 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
 // ============================================================================
 // SECTION 5: Meta endpoints — image, transcribe, SAM segment (23 Okt 2026)
 // ============================================================================
-pub async fn meta_generate_image(
-    router: tauri::State<'_, Router>,
-    prompt: String,
-    size: String,
+/// Generate gambar: Meta dulu, fallback SD.cpp lokal (Fase 2, 24 Okt 2026).
+/// Dipakai command Tauri DAN tool agen — satu logika, dua jalur.
+pub async fn generate_image_with_fallback(
+    router: &Router,
+    prompt: &str,
+    size: &str,
 ) -> Result<String, String> {
-    // Coba Meta dulu
-    match router.muse().image(&prompt, &size).await {
+    match router.muse().image(prompt, size).await {
         Ok(bytes) => {
             let path = std::env::temp_dir().join(format!("meta_img_{}.png", chrono::Utc::now().timestamp_millis()));
             std::fs::write(&path, &bytes).map_err(|e| format!("simpan gambar gagal: {e}"))?;
-            // Catat biaya
             if let Ok(db) = crate::db::Db::open() {
                 let _ = db.record_usage("studio", "muse", "muse:muse-image-1.0", 0, 0);
             }
             Ok(path.to_string_lossy().to_string())
         }
         Err(e) => {
-            // Fallback ke SD.cpp lokal
             eprintln!("Meta image gagal ({}), fallback ke SD.cpp lokal", e);
-            generate_image(prompt, size).await
+            generate_image(prompt.to_string(), size.to_string()).await
         }
     }
+}
+
+pub async fn meta_generate_image(
+    router: tauri::State<'_, Router>,
+    prompt: String,
+    size: String,
+) -> Result<String, String> {
+    generate_image_with_fallback(&router, &prompt, &size).await
 }
 
 /// Transkripsi audio via Meta muse-voice-transcribe-1.0.

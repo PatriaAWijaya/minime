@@ -159,6 +159,7 @@ export interface OrchestrateResult {
     result: string;
     served_by: string;
     error?: string | null;
+    images?: string[];
   }>;
   qc_score?: number | null;
   qc_passed: boolean;
@@ -181,6 +182,7 @@ export interface OrchestrationSubtaskEvent {
   result: string;
   error?: string | null;
   revision: boolean;
+  images?: string[];
 }
 export interface OrchestrationDoneEvent {
   run_id: string;
@@ -267,7 +269,7 @@ export async function sendOrchestratedStream(
         userRequest,
         mimiModelId: modelId ?? null,
       }),
-      300000,
+      600000,
       "orkestrator",
     );
     if (!doneHandled.current && !result.error) {
@@ -308,7 +310,7 @@ export async function sendOrchestrated(
       userRequest,
       mimiModelId: modelId ?? null,
     }),
-    300000,
+    600000,
     "orkestrator",
   );
 }
