@@ -30,6 +30,7 @@
     addKanbanCard,
     moveKanbanCard,
     ensureFlowAgents,
+    setAgentEnabled,
   } from "../lib/store";
   import { t } from "../lib/i18n";
   import MetaStatus from "./MetaStatus.svelte";
@@ -304,27 +305,83 @@
         try {
           const orch = await sendOrchestrated(text, mid);
           if (orch && !orch.error) {
-            // Format hasil orkestrasi: agregasi + hasil per agen
-            let out = orch.aggregated || "";
-            if (orch.subtask_results && orch.subtask_results.length > 0) {
-              const parts = orch.subtask_results
-                .filter((st) => st.result && !st.error)
-                .map((st) => `**${st.agent_id}**: ${st.result}`);
-              if (parts.length > 0 && !out) {
-                out = parts.join("\n\n");
+            // VISIBILITAS DELEGASI PENUH (keputusan Patria 24 Okt):
+            // 1. Agen yang didelegasikan muncul di list (aktifkan bila belum)
+            // 2. Tiap agen "membalas" di chat Mimi sesuai arahannya
+            // 3. Tiap agen dapat kartu Kanban sendiri
+            // 4. Koneksi Mimi → agen tampil di visualisasi
+            const results = orch.subtask_results || [];
+            const delegated = results.map((st) => st.agent_id).filter(Boolean);
+            // 1+4. Aktifkan agen di list + tampilkan di Koneksi
+            try {
+              for (const aid of delegated) {
+                if (aid !== "mimi") {
+                  setAgentEnabled(aid, true);
+                  agentStatus.update((st) => ({ ...st, [aid]: "working" }));
+                }
+              }
+              if (delegated.length > 0) ensureFlowAgents(delegated);
+            } catch {}
+            // 3. Kartu Kanban per agen (kolom Dikerjakan dulu)
+            const agentKanban = new Map<string, number>();
+            try {
+              for (const st of results) {
+                if (st.agent_id && st.agent_id !== "mimi") {
+                  const subTitle = st.task.length > 50
+                    ? st.task.slice(0, 47) + "..."
+                    : st.task;
+                  const kid = addKanbanCard(
+                    `${st.agent_id}: ${subTitle}`,
+                    st.agent_id,
+                    "doing",
+                    "",
+                  );
+                  agentKanban.set(st.agent_id, kid);
+                }
+              }
+            } catch {}
+            // 2. Tiap agen membalas di chat Mimi + di chatnya sendiri
+            let combined = "";
+            for (const st of results) {
+              if (st.result && !st.error) {
+                // Balasan agen di chat Mimi (seolah membalas arahan Mimi)
+                pushMessage(id, "agent", `**${st.agent_id}**: ${st.result}`);
+                // Hasil yang sama di chat agen sendiri
+                try {
+                  pushMessage(st.agent_id, "agent", st.result);
+                } catch {}
+                combined += `**${st.agent_id}**: ${st.result}\n\n`;
+                // Kanban agen → Selesai, status → idle
+                try {
+                  const kid = agentKanban.get(st.agent_id);
+                  if (kid !== undefined) moveKanbanCard(kid, "done");
+                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "idle" }));
+                } catch {}
+              } else if (st.error) {
+                pushMessage(id, "agent", `**${st.agent_id}**: [GAGAL: ${st.error}]`);
+                try {
+                  const kid = agentKanban.get(st.agent_id);
+                  if (kid !== undefined) moveKanbanCard(kid, "revision");
+                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "idle" }));
+                } catch {}
               }
             }
-            if (out.trim()) {
-              pushMessage(id, "agent", out);
-              // Simpan ke Library + Kanban Selesai (sama seperti chat sukses)
+            // Ringkasan Mimi (agregasi) setelah balasan agen
+            const summary = orch.aggregated || combined.trim();
+            if (summary.trim()) {
+              // Bila agregasi sama dengan gabungan balasan, jangan duplikasi
+              if (summary.trim() !== combined.trim()) {
+                pushMessage(id, "agent", summary);
+              }
+              // Simpan ke Library + Kanban utama Selesai
               const taskTitle = text.trim().length > 60
                 ? text.trim().slice(0, 57) + "..."
                 : text.trim();
               try {
                 addLibraryItem({
                   title: taskTitle,
-                  summary: out.length > 200 ? out.slice(0, 197) + "..." : out,
-                  content: out,
+                  summary: summary.length > 200 ? summary.slice(0, 197) + "..." : summary,
+                  content: summary,
                   type: "doc",
                   agentId: id,
                   taskKey: "orch-" + Date.now(),
@@ -332,13 +389,6 @@
               } catch {}
               try {
                 if (kanbanId !== null) moveKanbanCard(kanbanId, "done");
-              } catch {}
-              // Visualisasi Koneksi: agen yang didelegasikan otomatis muncul
-              try {
-                const delegated = (orch.subtask_results || [])
-                  .map((st) => st.agent_id)
-                  .filter(Boolean);
-                if (delegated.length > 0) ensureFlowAgents(delegated);
               } catch {}
               return;
             }
