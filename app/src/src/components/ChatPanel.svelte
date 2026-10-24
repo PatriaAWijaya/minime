@@ -24,6 +24,8 @@
     pushMessage,
     setMessageReaction,
     sendChatViaRouter,
+    sendOrchestrated,
+    shouldOrchestrate,
     addLibraryItem,
     addKanbanCard,
     moveKanbanCard,
@@ -282,6 +284,49 @@
       }
       const mopt = getModel(mid);
       const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
+      // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
+      // yang tepat via orchestrate_task (bukan dijawab Mimi sendiri).
+      if (shouldOrchestrate(id, text) && (await isTauri())) {
+        try {
+          const orch = await sendOrchestrated(text, mid);
+          if (orch && !orch.error) {
+            // Format hasil orkestrasi: agregasi + hasil per agen
+            let out = orch.aggregated || "";
+            if (orch.subtask_results && orch.subtask_results.length > 0) {
+              const parts = orch.subtask_results
+                .filter((st) => st.result && !st.error)
+                .map((st) => `**${st.agent_id}**: ${st.result}`);
+              if (parts.length > 0 && !out) {
+                out = parts.join("\n\n");
+              }
+            }
+            if (out.trim()) {
+              pushMessage(id, "agent", out);
+              // Simpan ke Library + Kanban Selesai (sama seperti chat sukses)
+              const taskTitle = text.trim().length > 60
+                ? text.trim().slice(0, 57) + "..."
+                : text.trim();
+              try {
+                addLibraryItem({
+                  title: taskTitle,
+                  summary: out.length > 200 ? out.slice(0, 197) + "..." : out,
+                  content: out,
+                  type: "doc",
+                  agentId: id,
+                  taskKey: "orch-" + Date.now(),
+                });
+              } catch {}
+              try {
+                if (kanbanId !== null) moveKanbanCard(kanbanId, "done");
+              } catch {}
+              return;
+            }
+          }
+          // Bila orkestrasi gagal/kosong, lanjut ke chat langsung (fallback)
+        } catch {
+          // Fallback ke chat langsung
+        }
+      }
       const systemPrompt = buildSystemPrompt(id, translate(agent.roleKey));
       const history = ($messagesByAgent[id] ?? []).map((m) => ({
         role: m.role === "agent" ? "assistant" : "user",

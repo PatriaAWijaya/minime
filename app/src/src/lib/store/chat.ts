@@ -149,6 +149,63 @@ export async function sendChatViaRouter(
   );
 }
 
+/** Hasil orkestrasi dari backend (cocok dengan struct Rust). */
+export interface OrchestrateResult {
+  aggregated: string;
+  subtask_results: Array<{
+    agent_id: string;
+    task: string;
+    result: string;
+    served_by: string;
+    error?: string | null;
+  }>;
+  qc_score?: number | null;
+  qc_passed: boolean;
+  qc_notes?: string | null;
+  error?: string | null;
+  revisions?: number;
+  revision_history?: string[];
+  estimated_cost_usd?: number;
+}
+
+/** Panggil orkestrator Mimi: delegasikan tugas ke agen-agen yang tepat. */
+export async function sendOrchestrated(
+  userRequest: string,
+  modelId?: string,
+): Promise<OrchestrateResult | null> {
+  const tauri = await withTimeout(isTauri(), 10000, "deteksi backend");
+  if (!tauri) return null;
+  const { invoke } = await import("@tauri-apps/api/core");
+  return await withTimeout(
+    invoke<OrchestrateResult>("orchestrate_task", {
+      userRequest,
+      mimiModelId: modelId ?? null,
+    }),
+    300000,
+    "orkestrator",
+  );
+}
+
+/** Deteksi apakah pesan ke Mimi adalah tugas yang perlu diorkestrasi
+ *  (bukan sekadar sapaan/pertanyaan sederhana). */
+export function shouldOrchestrate(agentId: string, text: string): boolean {
+  if (agentId !== "mimi") return false;
+  const t = text.toLowerCase().trim();
+  // Sapaan/pertanyaan sederhana → chat langsung, bukan orkestrasi
+  if (/^(halo|hai|hi|selamat|terima kasih|thanks|ok|oke|ya|tidak|apa kabar)[\s!?.]*$/i.test(t)) {
+    return false;
+  }
+  if (t.length < 10) return false;
+  // Kata kerja tugas atau penyebutan tim/agen → orkestrasi
+  const taskWords = [
+    "buatkan", "buat", "tolong", "desain", "poster", "analisis", "riset",
+    "laporan", "rencana", "strategi", "konten", "video", "gambar", "tulis",
+    "siapkan", "susun", "rancang", "kembangkan", "tim", "agen", "kreatif",
+    "finance", "bisnis", "code", "builder", "kampanye", "proposal",
+  ];
+  return taskWords.some((w) => t.includes(w));
+}
+
 const historyLoadedFor = new Set<string>();
 
 /** Muat riwayat chat agen dari SQLite (sekali per agen per sesi). */
