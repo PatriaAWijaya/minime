@@ -283,7 +283,20 @@
         agentModel.update((m) => ({ ...m, [id]: mid }));
       }
       const mopt = getModel(mid);
-      const tier = mopt.kind === "paid" ? "berbayar" : "gratis";
+      // Tier dari katalog BISA salah (getModel return "free" bila ID tak
+      // ditemukan) → cek nama model langsung sebagai koreksi.
+      const midLower = (mid || "").toLowerCase();
+      const isPaidName = ["muse", "gemini", "deepseek", "claude", "gpt", "openai"].some((k) =>
+        midLower.includes(k),
+      );
+      const isFreeName = ["ollama", "opencode"].some((k) => midLower.includes(k));
+      const tier = isPaidName
+        ? "berbayar"
+        : isFreeName
+          ? "gratis"
+          : mopt.kind === "paid"
+            ? "berbayar"
+            : "gratis";
       // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
       // yang tepat via orchestrate_task (bukan dijawab Mimi sendiri).
       if (shouldOrchestrate(id, text) && (await isTauri())) {

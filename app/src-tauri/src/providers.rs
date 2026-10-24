@@ -215,10 +215,12 @@ impl OllamaProvider {
     ) -> Result<ChatResult, ProviderError> {
         let url = format!("{}/api/chat", self.base_url);
         let mut model = model.strip_prefix("ollama:").unwrap_or(model).to_string();
-        // Bila model hanya nama provider ("ollama") atau kosong, pakai model
-        // CHAT pertama yang tersedia (jangan kirim "ollama" ke API → 404).
-        // Filter: lewati model embedding/intent (tidak support /api/chat).
-        if model.is_empty() || model == "ollama" {
+        // Bila model hanya nama provider ("ollama"), kosong, ATAU model
+        // embedding/intent (tidak support /api/chat), pakai model CHAT
+        // pertama yang tersedia. Jangan kirim nama tak-valid ke API → 404.
+        let lower_req = model.to_lowercase();
+        let is_non_chat = lower_req.contains("embedding") || lower_req.contains("intent");
+        if model.is_empty() || model == "ollama" || is_non_chat {
             if let Ok(models) = self.tags().await {
                 for m in &models {
                     let name = m.id.strip_prefix("ollama:").unwrap_or(&m.id);
