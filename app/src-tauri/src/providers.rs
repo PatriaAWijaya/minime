@@ -216,15 +216,22 @@ impl OllamaProvider {
         let url = format!("{}/api/chat", self.base_url);
         let mut model = model.strip_prefix("ollama:").unwrap_or(model).to_string();
         // Bila model hanya nama provider ("ollama") atau kosong, pakai model
-        // pertama yang tersedia di server (jangan kirim "ollama" ke API → 404).
+        // CHAT pertama yang tersedia (jangan kirim "ollama" ke API → 404).
+        // Filter: lewati model embedding/intent (tidak support /api/chat).
         if model.is_empty() || model == "ollama" {
             if let Ok(models) = self.tags().await {
-                if let Some(first) = models.first() {
-                    model = first.id.strip_prefix("ollama:").unwrap_or(&first.id).to_string();
+                for m in &models {
+                    let name = m.id.strip_prefix("ollama:").unwrap_or(&m.id);
+                    let lower = name.to_lowercase();
+                    if lower.contains("embedding") || lower.contains("intent") {
+                        continue;
+                    }
+                    model = name.to_string();
+                    break;
                 }
             }
             if model.is_empty() || model == "ollama" {
-                return Err(ProviderError::Failed("ollama: tidak ada model tersedia".to_string()));
+                return Err(ProviderError::Failed("ollama: tidak ada model chat tersedia".to_string()));
             }
         }
         let body = serde_json::json!({
