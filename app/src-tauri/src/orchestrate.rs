@@ -13,7 +13,7 @@ use crate::providers::{ChatMessage, ChatResult, ModelTier, Router};
 
 /// Trait untuk LLM client — memungkinkan mock dalam test.
 /// Implementasi nyata: `Router`. Implementasi test: `MockRouter`.
-#[allow(async_fn_in_trait)]
+#[async_trait::async_trait]
 pub trait ChatClient: Send + Sync {
     async fn chat(
         &self,
@@ -23,6 +23,7 @@ pub trait ChatClient: Send + Sync {
     ) -> Result<ChatResult, String>;
 }
 
+#[async_trait::async_trait]
 impl ChatClient for Router {
     async fn chat(
         &self,
@@ -722,6 +723,7 @@ impl MockRouter {
 }
 
 #[cfg(test)]
+#[async_trait::async_trait]
 impl ChatClient for MockRouter {
     async fn chat(
         &self,
