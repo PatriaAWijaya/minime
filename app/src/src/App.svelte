@@ -97,17 +97,19 @@
   });
 
   onMount(() => {
-    // Reset status agen ke idle saat app dibuka (24 Okt 2026): status
-    // "working" yang nyangkut dari sesi sebelumnya (mis. restart saat
-    // flow run / orkestrasi berjalan) tidak boleh tampil sebagai
-    // "sedang bekerja" padahal tidak ada kerja nyata.
-    agentStatus.set({
-      mimi: "idle",
-      kreatif: "idle",
-      riset: "idle",
-      finance: "idle",
-      strategis: "idle",
-      code: "idle",
+    // Reset CERDAS saat app dibuka (24 Okt 2026, revisi): hanya status
+    // TRANSIENT (working/researching/delayed) yang direset ke idle, karena
+    // tidak ada kerja nyata yang berjalan saat app baru dibuka. Status
+    // BERMANKNA (done/attention) DIPERTAHANKAN — sebelumnya reset total
+    // menghapus ikon heart/perhatian tiap restart/pindah window.
+    agentStatus.update((cur) => {
+      const next = { ...cur };
+      for (const k of Object.keys(next)) {
+        if (next[k] === "working" || next[k] === "researching" || next[k] === "delayed") {
+          next[k] = "idle";
+        }
+      }
+      return next;
     });
     // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
     // model Ollama dinamis + status Penyedia Model).

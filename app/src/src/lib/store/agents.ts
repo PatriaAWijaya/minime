@@ -39,15 +39,23 @@ agentColWidths.subscribe((w) => {
 /** Selected agent (shared by the Agents detail panel and the Tasks chat). */
 export const activeAgentId = writable<string>("mimi");
 
-/** Live status per agent id (yellow = working, green = idle, red = attention). */
-export const agentStatus = writable<Record<string, AgentStatus>>({
+/** Live status per agent id.
+    PERSISTEN (24 Okt 2026): sebelumnya store ini in-memory saja sehingga
+    ikon status hilang tiap app reload / pindah window yang me-reload WebView.
+    Kini disimpan ke localStorage seperti store agen lainnya. */
+const DEFAULT_AGENT_STATUS: Record<string, AgentStatus> = {
   mimi: "idle",
   kreatif: "idle",
   riset: "idle",
   finance: "idle",
   strategis: "idle",
   code: "idle",
+};
+export const agentStatus = writable<Record<string, AgentStatus>>({
+  ...DEFAULT_AGENT_STATUS,
+  ...loadRecord<AgentStatus>("minime.agent-status"),
 });
+persistRecord("minime.agent-status", agentStatus);
 
 /** Agent active/enabled state (Patria 20 Okt): by default ONLY the main
     agent (Mimi) is active. Other agents activate when the user enables

@@ -356,9 +356,10 @@
               for (const st of results) {
                 if (st.agent_id && st.agent_id !== "mimi") {
                   const label = agentLabel(st.agent_id);
-                  const taskShort = st.task.length > 80
-                    ? st.task.slice(0, 77) + "..."
-                    : st.task;
+                  const taskText = st.task ?? "";
+                  const taskShort = taskText.length > 80
+                    ? taskText.slice(0, 77) + "..."
+                    : taskText;
                   pushMessage(
                     id,
                     "agent",
@@ -388,36 +389,62 @@
                 }
               }
             } catch {}
-            // 2. Tiap agen membalas di chat Mimi + di chatnya sendiri
+            // 2. Tiap agen membalas di chat Mimi + di chatnya sendiri.
+            // BULLETPROOF (24 Okt 2026): SELURUH blok per-agen dibungkus
+            // try/catch. Sebelumnya pushMessage utama TIDAK dibungkus — bila
+            // ia throw di tengah loop, agen sisanya tidak pernah diproses:
+            // kartu mereka nyangkut di Dikerjakan, status nyangkut working.
             let combined = "";
             for (const st of results) {
-              const label = agentLabel(st.agent_id);
-              if (st.result && !st.error) {
-                // Balasan agen di chat Mimi dengan header identitas
-                pushMessage(id, "agent", st.result, undefined, undefined, {
-                  id: st.agent_id,
-                  name: label,
-                });
-                // Hasil yang sama di chat agen sendiri
+              try {
+                if (!st.agent_id) continue;
+                const label = agentLabel(st.agent_id);
+                if (st.result && !st.error) {
+                  // Balasan agen di chat Mimi dengan header identitas
+                  pushMessage(id, "agent", st.result, undefined, undefined, {
+                    id: st.agent_id,
+                    name: label,
+                  });
+                  // Hasil yang sama di chat agen sendiri
+                  try {
+                    pushMessage(st.agent_id, "agent", st.result);
+                  } catch {}
+                  combined += `**${label}**: ${st.result}\n\n`;
+                  // Kanban agen → Selesai, status → done (heart)
+                  try {
+                    const kid = agentKanban.get(st.agent_id);
+                    if (kid !== undefined) moveKanbanCard(kid, "done");
+                  } catch {}
+                  try {
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
+                  } catch {}
+                } else if (st.error) {
+                  pushMessage(id, "agent", `[GAGAL: ${st.error}]`, undefined, undefined, {
+                    id: st.agent_id,
+                    name: label,
+                  });
+                  try {
+                    const kid = agentKanban.get(st.agent_id);
+                    if (kid !== undefined) moveKanbanCard(kid, "revision");
+                  } catch {}
+                  try {
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  } catch {}
+                } else {
+                  // Hasil kosong tanpa error eksplisit: jangan biarkan nyangkut
+                  try {
+                    const kid = agentKanban.get(st.agent_id);
+                    if (kid !== undefined) moveKanbanCard(kid, "revision");
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  } catch {}
+                }
+              } catch {
+                // Satu agen gagal total → lanjut ke agen berikutnya, dan
+                // pastikan statusnya tidak nyangkut working
                 try {
-                  pushMessage(st.agent_id, "agent", st.result);
-                } catch {}
-                combined += `**${label}**: ${st.result}\n\n`;
-                // Kanban agen → Selesai, status → done (heart)
-                try {
-                  const kid = agentKanban.get(st.agent_id);
-                  if (kid !== undefined) moveKanbanCard(kid, "done");
-                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
-                } catch {}
-              } else if (st.error) {
-                pushMessage(id, "agent", `[GAGAL: ${st.error}]`, undefined, undefined, {
-                  id: st.agent_id,
-                  name: label,
-                });
-                try {
-                  const kid = agentKanban.get(st.agent_id);
-                  if (kid !== undefined) moveKanbanCard(kid, "revision");
-                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  if (st.agent_id) {
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  }
                 } catch {}
               }
             }
