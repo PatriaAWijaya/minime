@@ -213,6 +213,7 @@ async fn dispatch_one(
     system_override: Option<String>,
     model_override: Option<String>,
     mimi_model_id: &str,
+    user_request: &str,
 ) -> SubTaskResult {
     // Keputusan Patria 24 Okt: agen SELALU mengikuti model Mimi secara
     // default. Saran model dari LLM (plan) diabaikan — itu bukan perintah
