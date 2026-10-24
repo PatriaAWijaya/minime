@@ -528,21 +528,35 @@ impl OpenAiCompatProvider {
             });
             let mut attempt = 0;
             let resp = loop {
-                let r = self
+                // Retry juga untuk network error (bukan hanya 503): koneksi
+                // putus/timeout/DNS sering transient, jangan langsung gagal.
+                match self
                     .client
                     .post(&url)
                     .bearer_auth(&key)
                     .json(&body)
                     .send()
                     .await
-                    .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
-                if r.status().as_u16() == 503 && attempt < 2 {
-                    attempt += 1;
-                    eprintln!("[{}:{}] 503 overload, retry {} dalam {}s", self.id, model_name, attempt, attempt * 2);
-                    tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
-                    continue;
+                {
+                    Ok(r) => {
+                        if r.status().as_u16() == 503 && attempt < 2 {
+                            attempt += 1;
+                            eprintln!("[{}:{}] 503 overload, retry {} dalam {}s", self.id, model_name, attempt, attempt * 2);
+                            tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
+                            continue;
+                        }
+                        break r;
+                    }
+                    Err(e) => {
+                        if attempt < 2 {
+                            attempt += 1;
+                            eprintln!("[{}:{}] network error, retry {} dalam {}s: {}", self.id, model_name, attempt, attempt * 2, e);
+                            tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
+                            continue;
+                        }
+                        return Err(ProviderError::Failed(format!("{}: {e}", self.id)));
+                    }
                 }
-                break r;
             };
             if resp.status().is_success() {
                 // Sukses: parse dan return (kode parse di bawah, pakai resp ini)

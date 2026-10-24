@@ -26,6 +26,7 @@
     sendChatViaRouter,
     addLibraryItem,
     addKanbanCard,
+    moveKanbanCard,
   } from "../lib/store";
   import { t } from "../lib/i18n";
   import MetaStatus from "./MetaStatus.svelte";
@@ -251,6 +252,15 @@
     const id = agent.id;
     const translate = $t;
     pushMessage(id, "user", text || $t("chat.attachmentSent"), atts.length > 0 ? atts : undefined);
+    // Kanban: kartu muncul SEJAK tugas diberikan (kolom Dikerjakan),
+    // bukan hanya saat selesai.
+    let kanbanId: number | null = null;
+    try {
+      const taskTitle = text.trim().length > 60
+        ? text.trim().slice(0, 57) + "..."
+        : text.trim() || "Tugas " + agent.name;
+      kanbanId = addKanbanCard(taskTitle, id, "doing", "");
+    } catch {}
     draft = "";
     attachments = [];
     agentStatus.update((s) => ({ ...s, [id]: "working" }));
@@ -304,8 +314,9 @@
             taskKey: "chat-" + Date.now(),
           });
         } catch {}
+        // Sukses → pindah kartu ke Selesai
         try {
-          addKanbanCard(title, id, "done", "");
+          if (kanbanId !== null) moveKanbanCard(kanbanId, "done");
         } catch {}
       } else if (res === null) {
         // Bukan di Tauri (browser/preview): pakai mock lokal.
@@ -325,6 +336,10 @@
             ? e.message
             : translate("chat.routerFailed");
       pushMessage(id, "agent", msg);
+      // Gagal → pindah kartu ke Revisi (butuh perhatian)
+      try {
+        if (kanbanId !== null) moveKanbanCard(kanbanId, "revision");
+      } catch {}
     } finally {
       agentStatus.update((s) => ({ ...s, [id]: "idle" }));
     }
@@ -519,8 +534,9 @@
 <style>
   .chat {
     display: flex; flex-direction: column;
+    flex: 1;
     min-height: 0; min-width: 0;
-    height: 100%;
+    overflow: hidden;
     background: var(--bg);
   }
   .chat-head {

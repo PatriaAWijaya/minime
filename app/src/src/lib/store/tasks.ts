@@ -68,12 +68,13 @@ export function addKanbanCard(
   agentId: string,
   col: KanbanCol,
   projectId: string,
-) {
+): number {
   const now = new Date();
+  const id = kanbanSeq++;
   kanbanCards.update((list) => [
     ...list,
     {
-      id: kanbanSeq++,
+      id,
       title,
       agentId,
       col,
@@ -82,6 +83,7 @@ export function addKanbanCard(
       createdAtTs: now.getTime(),
     },
   ]);
+  return id;
 }
 
 export function moveKanbanCard(id: number, col: KanbanCol) {
