@@ -653,6 +653,35 @@ fn main() {
             runtime::tool_run,
             runtime::runtime_allowed_tools,
         ])
+        .setup(|app| {
+            // TEMPORARY E2E TRIGGER via Rust (24 Okt 2026) — bypass WebView.
+            // HAPUS setelah test selesai.
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let trigger_path = std::path::Path::new("/tmp/minime_e2e_trigger");
+                // Tunggu 10 detik agar app fully ready
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                // Poll setiap 5 detik, maksimal 10 menit
+                for _ in 0..120 {
+                    if trigger_path.exists() {
+                        eprintln!("[e2e-trigger] File trigger ditemukan, jalankan E2E...");
+                        // Hapus trigger agar tidak re-run
+                        let _ = std::fs::remove_file(trigger_path);
+                        let db = app_handle.state::<db::Db>();
+                        let router = Router::new(routerku_base_url());
+                        let result = e2e_test::run_ramadan_e2e(&db, &router).await;
+                        eprintln!(
+                            "[e2e-trigger] Selesai: success={}",
+                            result.success
+                        );
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                }
+                eprintln!("[e2e-trigger] Watcher selesai");
+            });
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
