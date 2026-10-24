@@ -75,6 +75,9 @@ pub fn usage_cost(row: &UsageRow) -> f64 {
     }
 }
 
+/// Satu baris riwayat keputusan model: (waktu, agen, panjang_prompt, skor, model, qc).
+pub type ModelDecisionRow = (String, String, i64, i64, String, Option<i64>);
+
 pub struct Db {
     conn: Mutex<Connection>,
 }
@@ -185,9 +188,6 @@ impl Db {
         }
         Ok(())
     }
-
-/// Satu baris riwayat keputusan model: (waktu, agen, panjang_prompt, skor, model, qc).
-pub type ModelDecisionRow = (String, String, i64, i64, String, Option<i64>);
 
     /// Ambil riwayat keputusan model (untuk tab Orkestrasi di Diagnostics).
     /// Return: vec of (created_at, agent_id, prompt_len, complexity_score, model_id, qc_score)
