@@ -440,14 +440,25 @@ impl OpenAiCompatProvider {
             "model": model,
             "messages": messages,
         });
-        let resp = self
-            .client
-            .post(&url)
-            .bearer_auth(&key)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+        // Retry otomatis untuk 503 (overload sementara): 3x dengan jeda 2s, 4s
+        let mut attempt = 0;
+        let resp = loop {
+            let r = self
+                .client
+                .post(&url)
+                .bearer_auth(&key)
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+            if r.status().as_u16() == 503 && attempt < 2 {
+                attempt += 1;
+                eprintln!("[{}] 503 overload, retry {} dalam {}s", self.id, attempt, attempt * 2);
+                tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
+                continue;
+            }
+            break r;
+        };
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
