@@ -984,10 +984,12 @@
     white-space: pre-wrap;
   }
   .time { display: block; font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: right; }
-  /* Header identitas grup chat (Patria 24 Okt): nama pengirim di atas bubble */
+  /* Header identitas grup chat (Patria 24 Okt): nama pengirim di atas bubble.
+     Revisi 24 Okt: agen = bold hijau, user = bold hitam (identifikasi cepat). */
   .msg-sender { margin-bottom: 4px; }
-  .msg-sender-name { font-size: 12px; font-weight: 700; opacity: 0.85; letter-spacing: 0.01em; }
+  .msg-sender-name { font-size: 12px; font-weight: 700; color: #2ecc71; letter-spacing: 0.01em; }
   .msg.user .msg-sender { text-align: right; }
+  .msg.user .msg-sender-name { color: #000000; }
   .thinking { font-style: italic; color: var(--dim); animation: pulse 1.2s infinite; }
   .composer {
     display: flex; gap: 8px; align-items: flex-end;
