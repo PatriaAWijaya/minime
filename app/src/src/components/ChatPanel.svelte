@@ -245,7 +245,10 @@
         await refreshProviders();
       }
       let mid = $agentModel[id];
-      if (!mid || !get(modelCatalog).some((m) => m.id === mid)) {
+      const catalog = get(modelCatalog);
+      // Hanya reset jika katalog sudah dimuat (tidak kosong) DAN model tidak valid.
+      // Jangan reset saat katalog belum siap — itu yang menyebabkan model "terkunci".
+      if (!mid || (catalog.length > 0 && !catalog.some((m) => m.id === mid))) {
         mid = defaultModelFor(id);
         agentModel.update((m) => ({ ...m, [id]: mid }));
       }
