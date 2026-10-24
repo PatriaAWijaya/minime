@@ -425,9 +425,16 @@ impl OpenAiCompatProvider {
         messages: &[ChatMessage],
     ) -> Result<ChatResult, ProviderError> {
         let key = self.key()?;
-        let model = model
+        let mut model = model
             .strip_prefix(&format!("{}:", self.id))
             .unwrap_or(model);
+        // Bila model_id hanya nama provider ("gemini") atau kosong, pakai
+        // model default provider (pertama di daftar).
+        if model == self.id || model.is_empty() {
+            if let Some(first) = self.models.first() {
+                model = first.id.strip_prefix(&format!("{}:", self.id)).unwrap_or(&first.id);
+            }
+        }
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
         let body = serde_json::json!({
             "model": model,
@@ -823,9 +830,21 @@ impl Router {
     /// Rantai provider untuk sebuah model id (`provider:model`).
     /// Model tanpa prefix provider → default tier-nya.
     fn chain_for(&self, model_id: &str, tier: ModelTier) -> Vec<ChainLink<'_>> {
-        let (want_provider, _want_model) = match model_id.split_once(':') {
-            Some((p, _)) => (Some(p), model_id),
-            None => (None, model_id),
+        // Kenali provider dari model_id: format "provider:model" atau nama
+        // provider saja ("gemini", "Gemini", "muse", dll — dari UI lama).
+        let want_provider: Option<&str> = if let Some((p, _)) = model_id.split_once(':') {
+            Some(p)
+        } else {
+            // Nama provider saja (dari UI): cocokkan case-insensitive ke id statis
+            match model_id.to_lowercase().as_str() {
+                "muse" => Some("muse"),
+                "gemini" => Some("gemini"),
+                "deepseek" => Some("deepseek"),
+                "routerku" => Some("routerku"),
+                "ollama" => Some("ollama"),
+                "opencode" => Some("opencode"),
+                _ => None,
+            }
         };
         // Bila user memilih provider spesifik, coba itu dulu lalu fallback
         // se-tier; bila tidak, pakai urutan default tier.
