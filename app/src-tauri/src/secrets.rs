@@ -115,7 +115,8 @@ fn file_read_enc(account: &str) -> Option<String> {
         return None;
     }
     let (nonce_bytes, ciphertext) = data.split_at(12);
-    let key = Key::<Aes256Gcm>::from_slice(&machine_key());
+    let mk = machine_key();
+    let key = Key::<Aes256Gcm>::from_slice(&mk);
     let cipher = Aes256Gcm::new(key);
     let nonce = GenericArray::from_slice(nonce_bytes);
     let plaintext = cipher.decrypt(nonce, ciphertext).ok()?;
@@ -128,7 +129,8 @@ fn file_write(account: &str, key: &str) -> Result<(), String> {
     use aes_gcm::{Aes256Gcm, Key, KeyInit, aead::{Aead, AeadCore, OsRng, generic_array::GenericArray}};
     let dir = keys_dir().ok_or("HOME tidak ditemukan")?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir gagal: {e}"))?;
-    let key_bytes = Key::<Aes256Gcm>::from_slice(&machine_key());
+    let mk = machine_key();
+    let key_bytes = Key::<Aes256Gcm>::from_slice(&mk);
     let cipher = Aes256Gcm::new(key_bytes);
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
     let ciphertext = cipher.encrypt(&nonce, key.as_bytes())
