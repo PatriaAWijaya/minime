@@ -877,6 +877,7 @@ impl Router {
             ModelTier::Berbayar => [ModelTier::Berbayar, ModelTier::Gratis],
         };
         let mut last_err = String::new();
+        let mut first_err: Option<String> = None;
         for t in tiers {
             if t != tier {
                 eprintln!("[router] tier {tier:?} gagal total, coba fallback ke tier {t:?}");
@@ -891,14 +892,21 @@ impl Router {
                         continue;
                     }
                     Err(e) => {
-                        last_err = e.to_string();
+                        let msg = e.to_string();
+                        // Simpan error provider PERTAMA (yang dipilih user) untuk diagnosis
+                        if first_err.is_none() {
+                            first_err = Some(format!("{}: {}", link.id(), msg));
+                        }
+                        last_err = msg;
                         eprintln!("[router] {} gagal: {last_err}", link.id());
                         continue;
                     }
                 }
             }
         }
-        Err(if last_err.is_empty() {
+        Err(if let Some(fe) = first_err {
+            format!("semua provider gagal; {fe}")
+        } else if last_err.is_empty() {
             "tidak ada provider tersedia".to_string()
         } else {
             format!("semua provider gagal; terakhir: {last_err}")
