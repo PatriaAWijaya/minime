@@ -28,6 +28,7 @@
     sendOrchestratedStream,
     shouldOrchestrate,
     addLibraryItem,
+    pendingBrief,
     addKanbanCard,
     moveKanbanCard,
     ensureFlowAgents,
@@ -130,6 +131,19 @@
   const agent = $derived(agentProp ?? getAgent($activeAgentId));
   const messages = $derived($messagesByAgent[$activeAgentId] ?? []);
   const status = $derived($agentStatus[$activeAgentId] ?? "idle");
+
+  // Brief dari Library ("Input Tugas"): bila brief ditujukan ke agen chat ini,
+  // isi sebagai draft input (BUKAN auto-kirim) agar user bisa menambah detail
+  // sebelum mengirim. Konsumsi sekali lalu kosongkan store.
+  $effect(() => {
+    const pb = $pendingBrief;
+    const aid = agent.id;
+    if (pb && pb.agentId === aid) {
+      draft = pb.text;
+      pendingBrief.set(null);
+      queueMicrotask(() => inputEl?.focus());
+    }
+  });
 
   // Auto-scroll: tiap pesan baru / status berubah, gulir ke bawah agar
   // chat terbaru tidak terpotong di luar window.
@@ -408,6 +422,17 @@
                   try {
                     pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, { id: st.agent_id, name: label });
                   } catch {}
+                  // Output final per-agen masuk Library (bukan hanya ringkasan Mimi)
+                  try {
+                    addLibraryItem({
+                      title: st.task.length > 60 ? st.task.slice(0, 57) + "..." : st.task,
+                      summary: st.result.length > 200 ? st.result.slice(0, 197) + "..." : st.result,
+                      content: st.result,
+                      type: st.images && st.images.length > 0 ? "image" : "doc",
+                      agentId: st.agent_id,
+                      taskKey: "orch-" + Date.now(),
+                    });
+                  } catch {}
                   try {
                     pushMessage(st.agent_id, "agent", st.result);
                   } catch {}
@@ -597,6 +622,17 @@
                     id: st.agent_id,
                     name: label,
                   });
+                  // Output final per-agen masuk Library (bukan hanya ringkasan Mimi)
+                  try {
+                    addLibraryItem({
+                      title: st.task.length > 60 ? st.task.slice(0, 57) + "..." : st.task,
+                      summary: st.result.length > 200 ? st.result.slice(0, 197) + "..." : st.result,
+                      content: st.result,
+                      type: st.images && st.images.length > 0 ? "image" : "doc",
+                      agentId: st.agent_id,
+                      taskKey: "orch-" + Date.now(),
+                    });
+                  } catch {}
                   // Hasil yang sama di chat agen sendiri
                   try {
                     pushMessage(st.agent_id, "agent", st.result);

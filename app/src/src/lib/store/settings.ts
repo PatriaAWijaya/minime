@@ -397,6 +397,12 @@ export function addLibraryItem(input: {
   return id;
 }
 
+/** Hapus satu item Library (24 Okt 2026): user bisa membuang output yang
+ *  sudah tidak dibutuhkan. Persist otomatis via persistList. */
+export function deleteLibraryItem(id: number): void {
+  libraryItems.update((list) => list.filter((i) => i.id !== id));
+}
+
 /** Cost rows (mock). */
 export const costRows: CostRow[] = [
   { id: 1, agentId: "kreatif", tokens: 48200, costUsd: 0.38, dateKey: "cost.date.1", daysAgo: 1 },

@@ -1,4 +1,13 @@
 import { writable, get } from "svelte/store";
+
+/** Brief tugas dari Library (24 Okt 2026): LibraryView mengisi store ini saat
+ *  user memilih "Input Tugas" + agen, lalu ChatPanel agen tersebut mengambilnya
+ *  sebagai draft input agar user bisa menambah detail sebelum mengirim. */
+export interface PendingBrief {
+  agentId: string;
+  text: string;
+}
+export const pendingBrief = writable<PendingBrief | null>(null);
 import type {
   Agent, AgentFile, AgentStatus, CostRow, FlowEdge, FlowNode, FlowProject,
   KanbanCard, KanbanCol, LibraryItem, Message, ProviderInfo, ScheduledItem,

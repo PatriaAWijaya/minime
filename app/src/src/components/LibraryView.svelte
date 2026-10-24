@@ -1,6 +1,15 @@
 <script lang="ts">
   import { agents, getAgent, agentDisplayName } from "../lib/agents";
-  import { agentNames, libraryItems } from "../lib/store";
+  import {
+    agentNames,
+    agentEnabled,
+    libraryItems,
+    deleteLibraryItem,
+    pendingBrief,
+    activeAgentId,
+    activeView,
+    customAgents,
+  } from "../lib/store";
   import { t } from "../lib/i18n";
   import type { LibraryItem, LibraryType } from "../lib/types";
 
@@ -27,6 +36,51 @@
     }),
   );
   let viewItem: LibraryItem | null = $state(null);
+  // Dialog pilih agen untuk "Input Tugas" + konfirmasi hapus dua langkah.
+  let taskItem: LibraryItem | null = $state(null);
+  let pickedAgent = $state("");
+  let confirmDeleteId: number | null = $state(null);
+
+  // Agen yang bisa diberi tugas: yang aktif saja (Mimi selalu aktif).
+  const pickableAgents = $derived(
+    [...agents, ...$customAgents].filter(
+      (a) => a.id === "mimi" || ($agentEnabled[a.id] ?? false),
+    ),
+  );
+
+  function openTaskPicker(item: LibraryItem) {
+    taskItem = item;
+    // Default: agen pembuat item bila masih aktif, sonst agen aktif pertama.
+    pickedAgent = pickableAgents.some((a) => a.id === item.agentId)
+      ? item.agentId
+      : (pickableAgents[0]?.id ?? "");
+  }
+
+  function confirmTask() {
+    if (!taskItem || !pickedAgent) return;
+    const title = taskItem.title || (taskItem.titleKey ? $t(taskItem.titleKey) : "Output");
+    const body = (taskItem.content ?? taskItem.summary ?? "").slice(0, 1500);
+    // Brief masuk sebagai draft chat (bukan auto-kirim) agar user bisa
+    // menambah detail sebelum mengirim ke agen yang dipilih.
+    pendingBrief.set({
+      agentId: pickedAgent,
+      text: `${$t("library.fromLibrary")}: "${title}"\n\n${body}\n\n---\n${$t("library.extraBrief")} `,
+    });
+    activeAgentId.set(pickedAgent);
+    activeView.set("agents");
+    taskItem = null;
+    viewItem = null;
+  }
+
+  function deleteItem(item: LibraryItem) {
+    if (confirmDeleteId === item.id) {
+      deleteLibraryItem(item.id);
+      confirmDeleteId = null;
+      if (viewItem?.id === item.id) viewItem = null;
+    } else {
+      confirmDeleteId = item.id;
+    }
+  }
 
   function downloadItem(item: LibraryItem) {
     const blob = new Blob([item.content ?? item.summary ?? ""], { type: "text/plain;charset=utf-8" });
@@ -101,15 +155,46 @@
             <p class="summary">{item.summary}</p>
           {/if}
           <p>{$t("library.by", { agent: getAgent(item.agentId).name })} · {item.dateLabel ?? $t(item.dateKey)}</p>
-          {#if item.content}
-            <div class="actions">
+          <div class="actions">
+            {#if item.content}
               <button class="btn-sm" onclick={() => (viewItem = item)}>Lihat</button>
               <button class="btn-sm" onclick={() => downloadItem(item)}>Unduh</button>
               <button class="btn-sm" onclick={() => reuseItem(item)}>Pakai lagi</button>
-            </div>
-          {/if}
+            {/if}
+            <button class="btn-sm" onclick={() => openTaskPicker(item)}>{$t("library.inputTask")}</button>
+            <button
+              class="btn-sm"
+              class:danger={confirmDeleteId === item.id}
+              onclick={() => deleteItem(item)}
+            >{confirmDeleteId === item.id ? $t("library.confirmDelete") : $t("library.delete")}</button>
+          </div>
         </div>
       {/each}
+    </div>
+  {/if}
+
+  {#if taskItem}
+    <div class="dialog-backdrop" onclick={() => (taskItem = null)}>
+      <div class="dialog" onclick={(e) => e.stopPropagation()}>
+        <h3>{$t("library.inputTask")}: {taskItem.title || (taskItem.titleKey ? $t(taskItem.titleKey) : "Output")}</h3>
+        <p class="summary">{$t("library.chooseAgent")}</p>
+        {#if pickableAgents.length === 0}
+          <p class="summary">{$t("library.empty")}</p>
+        {:else}
+          <div class="radio-list">
+            {#each pickableAgents as a (a.id)}
+              <label class="radio-row">
+                <input type="radio" name="task-agent" value={a.id} bind:group={pickedAgent} />
+                <span>{agentDisplayName(a, $agentNames, $t)}</span>
+              </label>
+            {/each}
+          </div>
+        {/if}
+        <div class="actions">
+          <button class="btn-sm" disabled={!pickedAgent} onclick={confirmTask}>{$t("library.continueChat")}</button>
+          <button class="btn-sm" onclick={() => (taskItem = null)}>Tutup</button>
+        </div>
+      </div>
     </div>
   {/if}
 
@@ -121,6 +206,12 @@
         <div class="actions">
           <button class="btn-sm" onclick={() => downloadItem(viewItem!)}>Unduh</button>
           <button class="btn-sm" onclick={() => { reuseItem(viewItem!); viewItem = null; }}>Salin & Tutup</button>
+          <button class="btn-sm" onclick={() => openTaskPicker(viewItem!)}>{$t("library.inputTask")}</button>
+          <button
+            class="btn-sm"
+            class:danger={confirmDeleteId === viewItem.id}
+            onclick={() => deleteItem(viewItem!)}
+          >{confirmDeleteId === viewItem.id ? $t("library.confirmDelete") : $t("library.delete")}</button>
           <button class="btn-sm" onclick={() => (viewItem = null)}>Tutup</button>
         </div>
       </div>
@@ -145,6 +236,27 @@
   }
   .btn-sm:hover {
     background: var(--hover);
+  }
+  .btn-sm.danger {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+  }
+  .btn-sm:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .radio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .radio-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
   }
   .dialog-backdrop {
     position: fixed;
