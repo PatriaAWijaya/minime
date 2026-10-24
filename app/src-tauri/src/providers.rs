@@ -27,6 +27,41 @@
 // ============================================================================
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
+
+/// Circuit Breaker: lacak kegagalan per provider, skip sementara bila
+/// sudah 3x gagal berturut-turut (cooldown 5 menit).
+/// Ini mencegah buang waktu timeout ke provider yang jelas mati.
+struct CircuitBreaker {
+    failures: HashMap<String, (u32, Instant)>,
+}
+
+impl CircuitBreaker {
+    fn is_open(&self, provider: &str) -> bool {
+        if let Some((count, last)) = self.failures.get(provider) {
+            if *count >= 3 && last.elapsed() < Duration::from_secs(300) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn record_success(&mut self, provider: &str) {
+        self.failures.remove(provider);
+    }
+
+    fn record_failure(&mut self, provider: &str) {
+        let entry = self.failures.entry(provider.to_string()).or_insert((0, Instant::now()));
+        entry.0 += 1;
+        entry.1 = Instant::now();
+    }
+}
+
+static CIRCUIT_BREAKER: LazyLock<Mutex<CircuitBreaker>> = LazyLock::new(|| {
+    Mutex::new(CircuitBreaker { failures: HashMap::new() })
+});
 
 use crate::secrets;
 
@@ -304,10 +339,20 @@ impl OpenAiCompatProvider {
             // Endpoint OpenAI-compatible resmi Google.
             base_url: "https://generativelanguage.googleapis.com/v1beta/openai".to_string(),
             key_account: "gemini",
-            models: vec![ModelInfo {
-                id: "gemini:gemini-3.8-flash".to_string(),
-                label: "Gemini 3.8 Flash".to_string(),
-            }],
+            models: vec![
+                ModelInfo {
+                    id: "gemini:gemini-3.8-flash".to_string(),
+                    label: "Gemini 3.8 Flash".to_string(),
+                },
+                ModelInfo {
+                    id: "gemini:gemini-2.5-flash".to_string(),
+                    label: "Gemini 2.5 Flash".to_string(),
+                },
+                ModelInfo {
+                    id: "gemini:gemini-1.5-flash".to_string(),
+                    label: "Gemini 1.5 Flash".to_string(),
+                },
+            ],
             client: http_client(),
         }
     }
@@ -425,50 +470,90 @@ impl OpenAiCompatProvider {
         messages: &[ChatMessage],
     ) -> Result<ChatResult, ProviderError> {
         let key = self.key()?;
-        let mut model = model
+        // Bangun daftar model untuk dicoba: model diminta dulu, lalu model
+        // lain dari provider yang sama sebagai fallback (atasi 503 per-model).
+        let mut candidates: Vec<String> = Vec::new();
+        let requested = model
             .strip_prefix(&format!("{}:", self.id))
             .unwrap_or(model);
-        // Bila model_id hanya nama provider ("gemini") atau kosong, pakai
-        // model default provider (pertama di daftar).
-        if model == self.id || model.is_empty() {
-            if let Some(first) = self.models.first() {
-                model = first.id.strip_prefix(&format!("{}:", self.id)).unwrap_or(&first.id);
+        if requested == self.id || requested.is_empty() {
+            // Hanya nama provider: pakai semua model provider berurutan
+            for m in &self.models {
+                let name = m.id.strip_prefix(&format!("{}:", self.id)).unwrap_or(&m.id);
+                candidates.push(name.to_string());
+            }
+        } else {
+            candidates.push(requested.to_string());
+            // Tambah model lain sebagai fallback
+            for m in &self.models {
+                let name = m.id.strip_prefix(&format!("{}:", self.id)).unwrap_or(&m.id);
+                if name != requested {
+                    candidates.push(name.to_string());
+                }
             }
         }
+        if candidates.is_empty() {
+            candidates.push(requested.to_string());
+        }
+
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let body = serde_json::json!({
-            "model": model,
-            "messages": messages,
-        });
-        // Retry otomatis untuk 503 (overload sementara): 3x dengan jeda 2s, 4s
-        let mut attempt = 0;
-        let resp = loop {
-            let r = self
-                .client
-                .post(&url)
-                .bearer_auth(&key)
-                .json(&body)
-                .send()
-                .await
-                .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
-            if r.status().as_u16() == 503 && attempt < 2 {
-                attempt += 1;
-                eprintln!("[{}] 503 overload, retry {} dalam {}s", self.id, attempt, attempt * 2);
-                tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
-                continue;
+        let mut last_err: Option<ProviderError> = None;
+        // Coba tiap model: retry 503 2x per model, lalu pindah model berikutnya
+        for (idx, model_name) in candidates.iter().enumerate() {
+            if idx > 0 {
+                eprintln!("[{}] fallback ke model {}", self.id, model_name);
             }
-            break r;
-        };
-        if !resp.status().is_success() {
+            let body = serde_json::json!({
+                "model": model_name,
+                "messages": messages,
+            });
+            let mut attempt = 0;
+            let resp = loop {
+                let r = self
+                    .client
+                    .post(&url)
+                    .bearer_auth(&key)
+                    .json(&body)
+                    .send()
+                    .await
+                    .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
+                if r.status().as_u16() == 503 && attempt < 2 {
+                    attempt += 1;
+                    eprintln!("[{}:{}] 503 overload, retry {} dalam {}s", self.id, model_name, attempt, attempt * 2);
+                    tokio::time::sleep(std::time::Duration::from_secs((attempt * 2) as u64)).await;
+                    continue;
+                }
+                break r;
+            };
+            if resp.status().is_success() {
+                // Sukses: parse dan return (kode parse di bawah, pakai resp ini)
+                // Simpan resp untuk parsing di luar loop
+                return self.parse_chat_response(resp, model_name).await;
+            }
             let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            // Potong body agar tidak terlalu panjang di log
-            let snippet: String = body.chars().take(300).collect();
-            return Err(ProviderError::Failed(format!(
+            let body_text = resp.text().await.unwrap_or_default();
+            let snippet: String = body_text.chars().take(300).collect();
+            let err = ProviderError::Failed(format!(
                 "{} chat HTTP {}: {}",
                 self.id, status, snippet
-            )));
+            ));
+            eprintln!("[{}:{}] gagal: {}", self.id, model_name, err);
+            // Hanya lanjut ke model berikutnya untuk 503/429/5xx; error lain langsung gagal
+            if status.as_u16() == 503 || status.as_u16() == 429 || status.is_server_error() {
+                last_err = Some(err);
+                continue;
+            }
+            return Err(err);
         }
+        Err(last_err.unwrap_or(ProviderError::Failed(format!("{}: tidak ada model tersedia", self.id))))
+    }
+
+    /// Parse respons chat sukses menjadi ChatResult.
+    async fn parse_chat_response(
+        &self,
+        resp: reqwest::Response,
+        _model_name: &str,
+    ) -> Result<ChatResult, ProviderError> {
         #[derive(Deserialize)]
         struct ChatResp {
             choices: Vec<Choice>,
@@ -913,15 +998,35 @@ impl Router {
                 eprintln!("[router] tier {tier:?} gagal total, coba fallback ke tier {t:?}");
             }
             for link in self.chain_for(model_id, t) {
+                // Circuit breaker: skip provider yang sedang "open" (3x gagal)
+                {
+                    let cb = CIRCUIT_BREAKER.lock().unwrap();
+                    if cb.is_open(link.id()) {
+                        eprintln!("[router] {} di-skip (circuit breaker open)", link.id());
+                        continue;
+                    }
+                }
                 eprintln!("[router] coba provider: {}", link.id());
                 match link.chat(model_id, &messages).await {
-                    Ok(res) => return Ok(res),
+                    Ok(res) => {
+                        // Sukses: reset circuit breaker
+                        {
+                            let mut cb = CIRCUIT_BREAKER.lock().unwrap();
+                            cb.record_success(link.id());
+                        }
+                        return Ok(res);
+                    }
                     Err(ProviderError::NoKey(_)) | Err(ProviderError::NotReachable(_)) => {
                         last_err = format!("{} dilewati (belum terkonfigurasi)", link.id());
                         eprintln!("[router] {last_err}");
                         continue;
                     }
                     Err(e) => {
+                        // Catat kegagalan ke circuit breaker
+                        {
+                            let mut cb = CIRCUIT_BREAKER.lock().unwrap();
+                            cb.record_failure(link.id());
+                        }
                         let msg = e.to_string();
                         // Simpan error provider PERTAMA (yang dipilih user) untuk diagnosis
                         if first_err.is_none() {
