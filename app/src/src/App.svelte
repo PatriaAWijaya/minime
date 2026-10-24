@@ -97,6 +97,18 @@
   });
 
   onMount(() => {
+    // Reset status agen ke idle saat app dibuka (24 Okt 2026): status
+    // "working" yang nyangkut dari sesi sebelumnya (mis. restart saat
+    // flow run / orkestrasi berjalan) tidak boleh tampil sebagai
+    // "sedang bekerja" padahal tidak ada kerja nyata.
+    agentStatus.set({
+      mimi: "idle",
+      kreatif: "idle",
+      riset: "idle",
+      finance: "idle",
+      strategis: "idle",
+      code: "idle",
+    });
     // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
     // model Ollama dinamis + status Penyedia Model).
     refreshProviders();
