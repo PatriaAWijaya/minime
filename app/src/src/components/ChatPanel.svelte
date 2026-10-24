@@ -29,6 +29,7 @@
     addLibraryItem,
     addKanbanCard,
     moveKanbanCard,
+    ensureFlowAgents,
   } from "../lib/store";
   import { t } from "../lib/i18n";
   import MetaStatus from "./MetaStatus.svelte";
@@ -331,6 +332,13 @@
               } catch {}
               try {
                 if (kanbanId !== null) moveKanbanCard(kanbanId, "done");
+              } catch {}
+              // Visualisasi Koneksi: agen yang didelegasikan otomatis muncul
+              try {
+                const delegated = (orch.subtask_results || [])
+                  .map((st) => st.agent_id)
+                  .filter(Boolean);
+                if (delegated.length > 0) ensureFlowAgents(delegated);
               } catch {}
               return;
             }

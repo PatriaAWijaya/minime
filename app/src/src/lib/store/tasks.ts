@@ -718,6 +718,38 @@ export function regenChain(pid: string): void {
   }
 }
 
+/** Otomatis tambahkan agen yang didelegasikan Mimi ke kanvas Koneksi.
+ *  Keputusan Patria 24 Okt: saat orkestrasi mendelegasikan tugas ke agen
+ *  (mis. Strategis, Kreatif), agen itu otomatis muncul di visualisasi
+ *  Koneksi sebagai node tim Mimi (star). Bila belum ada project, buat
+ *  project default "Orkestrasi Mimi" dulu. */
+export function ensureFlowAgents(agentIds: string[]): void {
+  const wanted = [...new Set(agentIds.filter((a) => a && a !== "mimi"))];
+  if (wanted.length === 0) return;
+  let pid = resolveProjectId();
+  let list = get(projects);
+  if (list.length === 0) {
+    // Buat project default untuk visualisasi delegasi
+    const id = `proj-${Date.now()}`;
+    projects.update((cur) => [...cur, { id, name: "Orkestrasi Mimi", agentIds: [] }]);
+    flowMap[id] = { nodes: [], edges: [] };
+    saveFlowMap();
+    activeFlowProjectId.set(id);
+    pid = id;
+    list = get(projects);
+  }
+  const proj = list.find((p) => p.id === pid);
+  if (!proj) return;
+  const missing = wanted.filter((a) => !proj.agentIds.includes(a));
+  if (missing.length === 0) return;
+  projects.update((cur) =>
+    cur.map((p) =>
+      p.id === pid ? { ...p, agentIds: [...p.agentIds, ...missing] } : p,
+    ),
+  );
+  regenChain(pid);
+}
+
 /** Switch the Connection canvas to another project. */
 export function switchFlowProject(id: string): void {
   if (id === resolveProjectId()) return;
