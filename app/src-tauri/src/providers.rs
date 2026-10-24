@@ -305,8 +305,8 @@ impl OpenAiCompatProvider {
             base_url: "https://generativelanguage.googleapis.com/v1beta/openai".to_string(),
             key_account: "gemini",
             models: vec![ModelInfo {
-                id: "gemini:gemini-2.0-flash".to_string(),
-                label: "Gemini 2.0 Flash".to_string(),
+                id: "gemini:gemini-3.8-flash".to_string(),
+                label: "Gemini 3.8 Flash".to_string(),
             }],
             client: http_client(),
         }
