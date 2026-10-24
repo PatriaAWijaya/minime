@@ -122,6 +122,22 @@
   const messages = $derived($messagesByAgent[$activeAgentId] ?? []);
   const status = $derived($agentStatus[$activeAgentId] ?? "idle");
 
+  // Auto-scroll: tiap pesan baru / status berubah, gulir ke bawah agar
+  // chat terbaru tidak terpotong di luar window.
+  let messagesEl: HTMLDivElement | undefined = $state();
+  $effect(() => {
+    // Dependensi: panjang pesan + status (thinking) memicu scroll
+    const _len = messages.length;
+    const _status = status;
+    if (messagesEl) {
+      queueMicrotask(() => {
+        if (messagesEl) {
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      });
+    }
+  });
+
   // "+ Tugas Baru" focuses the input so the user can type immediately.
   const unsub = newTaskSignal.subscribe(() => {
     queueMicrotask(() => inputEl?.focus());
@@ -321,7 +337,7 @@
   </header>
   {/if}
 
-  <div class="messages">
+  <div class="messages" bind:this={messagesEl}>
     {#if messages.length === 0}
       <div class="empty">
         <span class="badge big" style:background={agent.color}>{agent.badge}</span>
