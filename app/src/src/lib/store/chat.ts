@@ -5,6 +5,7 @@ import type {
   ToolInfo, LibraryType,
 } from "../types";
 import { agentNames, agentTitles, agentInstructions, agentGender, agentAge, agentPosition, agentHobbies } from "./agents";
+import { isTauri } from "./settings";
 
 export const messagesByAgent = writable<Record<string, Message[]>>({});
 
