@@ -520,6 +520,7 @@
   .chat {
     display: flex; flex-direction: column;
     min-height: 0; min-width: 0;
+    height: 100%;
     background: var(--bg);
   }
   .chat-head {
@@ -575,9 +576,12 @@
   .thinking { font-style: italic; color: var(--dim); animation: pulse 1.2s infinite; }
   .composer {
     display: flex; gap: 8px; align-items: flex-end;
-    padding: 8px 16px 10px;
+    padding: 12px 16px;
     border-top: 1px solid var(--border);
     background: var(--panel);
+    /* Menempel ke bawah window, bukan floating */
+    margin-top: auto;
+    flex: none;
   }
   .composer .field { flex: 1; }
   .composer textarea { resize: none; }
