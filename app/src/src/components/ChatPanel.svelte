@@ -703,10 +703,10 @@
     background: var(--panel-2);
     border: 1px solid var(--border);
     /* Teks panjang (URL, JSON, error) wajib wrap di dalam bubble,
-       jangan sampai keluar/meluap. */
+       jangan sampai keluar/meluap. overflow:hidden DIHAPUS (24 Okt):
+       ia ikut memotong menu konteks absolut di dalam bubble. */
     overflow-wrap: break-word;
     word-break: break-word;
-    overflow: hidden;
   }
   .msg.user .bubble { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .bubble p {
@@ -789,8 +789,8 @@
   }
   .msg-menu-btn:hover { opacity: 1; background: rgba(127, 127, 127, 0.2); }
   .msg-menu {
-    position: absolute; top: 30px; right: 4px; z-index: 20;
-    min-width: 150px;
+    position: absolute; top: 30px; right: 4px; z-index: 50;
+    min-width: 160px; max-width: 220px;
     background: var(--panel-solid, var(--panel));
     border: 1px solid var(--border);
     border-radius: var(--radius);
