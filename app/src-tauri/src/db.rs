@@ -169,6 +169,48 @@ impl Db {
         Ok(())
     }
 
+    /// Ambil riwayat keputusan model (untuk tab Orkestrasi di Diagnostics).
+    /// Return: vec of (created_at, agent_id, prompt_len, complexity_score, model_id, qc_score)
+    pub fn get_model_decisions(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<(String, String, i64, i64, String, Option<i64>)>, String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock gagal: {e}"))?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT created_at, agent_id, prompt_len, complexity_score, model_id, qc_score                  FROM model_decisions ORDER BY id DESC LIMIT ?1",
+            )
+            .map_err(|e| format!("prepare gagal: {e}"))?;
+        let rows = stmt
+            .query_map([limit], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, Option<i64>>(5)?,
+                ))
+            })
+            .map_err(|e| format!("query gagal: {e}"))?;
+
+        let mut out = vec![];
+        for r in rows {
+            out.push(r.map_err(|e| format!("row gagal: {e}"))?);
+        }
+        Ok(out)
+    }
+
+    /// Hitung failure rate parse dalam 24 jam terakhir (untuk dead letter #7).
+    /// Return: (total_parse_attempts, failed_count)
+    /// Note: saat ini parse failure tidak dicatat terpisah; gunakan heuristic:
+    /// hitung dari log_model_decision dengan agent_id='mimi' sebagai proxy.
+    /// TODO(#7): tambah tabel parse_attempts untuk tracking akurat.
+    pub fn get_parse_stats_24h(&self) -> Result<(i64, i64), String> {
+        // Placeholder — implementasi penuh di #7
+        Ok((0, 0))
+    }
+
     /// Catat keputusan pemilihan model (untuk audit & learning).
     pub fn log_model_decision(
         &self,

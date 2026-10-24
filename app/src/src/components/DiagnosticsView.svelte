@@ -8,6 +8,25 @@
   let pruning = $state(false);
   let filter = $state<"all" | "info" | "warn" | "error">("all");
   let message = $state("");
+  let orchHistory = $state<Array<[string, string, number, number, string, number | null]>>([]);
+  let orchLoading = $state(false);
+
+  async function loadOrchHistory() {
+    orchLoading = true;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      orchHistory = await invoke("get_orchestration_history", { limit: 50 });
+    } catch (e) {
+      message = "Gagal muat riwayat: " + String(e);
+    } finally {
+      orchLoading = false;
+    }
+  }
+
+  // Muat saat komponen mount
+  $effect(() => {
+    loadOrchHistory();
+  });
 
   async function load() {
     loading = true;
@@ -83,6 +102,36 @@
   </div>
 
   {#if message}<p class="msg">{message}</p>{/if}
+
+  <!-- Tab Orkestrasi (saran #3) -->
+  <section class="diag-section">
+    <div class="section-head">
+      <h3>Riwayat Orkestrasi</h3>
+      <button class="btn-ghost sm" onclick={loadOrchHistory} disabled={orchLoading}>
+        {orchLoading ? "Memuat..." : "Muat Ulang"}
+      </button>
+    </div>
+    {#if orchHistory.length === 0}
+      <p class="empty">Belum ada riwayat orkestrasi.</p>
+    {:else}
+      <table class="orch-table">
+        <thead>
+          <tr><th>Waktu</th><th>Agen</th><th>Prompt</th><th>Skor</th><th>Model</th><th>QC</th></tr>
+        </thead>
+        <tbody>
+          {#each orchHistory as [waktu, agen, plen, cscore, model, qc]}
+            <tr>
+              <td class="mono">{waktu.slice(0, 16)}</td>
+              <td>{agen}</td>
+              <td class="mono">{plen} chr / skor {cscore}</td>
+              <td class="mono">{model.replace("muse:", "")}</td>
+              <td>{qc === null ? "—" : qc}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </section>
 
   <div class="logbox">
     {#if loading}

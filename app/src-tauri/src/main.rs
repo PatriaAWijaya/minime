@@ -181,6 +181,15 @@ async fn transcribe_audio_b64(
 }
 
 /// Pilih model optimal (Spark vs Wonder) berdasarkan kompleksitas tugas.
+/// Ambil riwayat orkestrasi untuk tab Diagnostics (saran #3).
+#[tauri::command]
+fn get_orchestration_history(
+    db: State<'_, db::Db>,
+    limit: Option<i64>,
+) -> Result<Vec<(String, String, i64, i64, String, Option<i64>)>, String> {
+    db.get_model_decisions(limit.unwrap_or(50))
+}
+
 /// Heuristik: panjang prompt + kata kunci + jenis agen.
 #[tauri::command]
 fn select_model_smart(
@@ -553,6 +562,7 @@ fn main() {
             orchestrate_task,
             transcribe_audio_b64,
             select_model_smart,
+            get_orchestration_history,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,
