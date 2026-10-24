@@ -24,6 +24,8 @@
     pushMessage,
     setMessageReaction,
     sendChatViaRouter,
+    addLibraryItem,
+    addKanbanCard,
   } from "../lib/store";
   import { t } from "../lib/i18n";
   import MetaStatus from "./MetaStatus.svelte";
@@ -283,6 +285,28 @@
         pushMessage(id, "agent", clean.trim());
       } else if (res && res.text.trim()) {
         pushMessage(id, "agent", res.text);
+        // Otomatis: tugas berhasil → output ke Library + proses ke Kanban
+        // Judul dari prompt user (maks 60 char), tipe dari konten
+        const userPrompt = text.trim();
+        const title = userPrompt.length > 60
+          ? userPrompt.slice(0, 57) + "..."
+          : userPrompt || "Tugas " + agent.name;
+        const summary = res.text.length > 200
+          ? res.text.slice(0, 197) + "..."
+          : res.text;
+        try {
+          addLibraryItem({
+            title,
+            summary,
+            content: res.text,
+            type: "doc",
+            agentId: id,
+            taskKey: "chat-" + Date.now(),
+          });
+        } catch {}
+        try {
+          addKanbanCard(title, id, "done", "");
+        } catch {}
       } else if (res === null) {
         // Bukan di Tauri (browser/preview): pakai mock lokal.
         timer = setTimeout(() => {

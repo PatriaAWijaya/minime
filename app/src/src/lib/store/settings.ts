@@ -365,6 +365,7 @@ for (const i of get(libraryItems)) {
 export function addLibraryItem(input: {
   title: string;
   summary?: string;
+  content?: string;
   type: LibraryType;
   agentId: string;
   taskKey?: string;
@@ -382,6 +383,7 @@ export function addLibraryItem(input: {
       taskKey: input.taskKey ?? "library.task.once",
       title: input.title,
       summary: input.summary,
+      content: input.content,
       dateLabel: now.toLocaleDateString("id-ID", {
         day: "numeric",
         month: "short",

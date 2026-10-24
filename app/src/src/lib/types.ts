@@ -71,6 +71,8 @@ export interface LibraryItem {
   title?: string;
   /** Plain one-line summary of a real tool result. */
   summary?: string;
+  /** Full output content for viewing/downloading/reuse. */
+  content?: string;
   /** Plain date label for real items; falls back to dateKey. */
   dateLabel?: string;
 }
