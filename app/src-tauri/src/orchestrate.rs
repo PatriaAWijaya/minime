@@ -1076,6 +1076,15 @@ pub struct OrchestrationErrorEvent {
     pub error: String,
 }
 
+/// Payload event revisi dimulai (24 Okt 2026): QC meminta revisi, agen-agen
+/// ini KEMBALI bekerja — frontend harus menurunkan status mereka dari done
+/// ke working/researching sampai subtugas revisi selesai.
+#[derive(Debug, Clone, Serialize)]
+pub struct OrchestrationRevisionEvent {
+    pub run_id: String,
+    pub agents: Vec<String>,
+}
+
 fn emit_event<T: Serialize>(app: &tauri::AppHandle, event: &str, payload: &T) {
     use tauri::Emitter;
     if let Err(e) = app.emit(event, payload) {
@@ -1288,6 +1297,11 @@ pub async fn orchestrate_stream(
             };
         }
 
+        // Beri tahu frontend: agen-agen ini kembali bekerja (turun dari done)
+        emit_event(app, "orchestration-revision", &OrchestrationRevisionEvent {
+            run_id: run_id.clone(),
+            agents: agents_to_revise.clone(),
+        });
         // Dispatch revisi streaming
         let mut unordered_rev = FuturesUnordered::new();
         for aid in agents_to_revise.iter() {

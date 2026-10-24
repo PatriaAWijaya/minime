@@ -323,7 +323,16 @@
           };
           return map[aid] ?? aid;
         };
+        // Pelacakan per-SUBTUGAS (24 Okt 2026, perbaikan blocking):
+        // satu agen bisa dapat >1 subtugas dalam satu run. Map lama ber kunci
+        // agent_id menimpa kartu subtugas pertama dengan kartu kedua → kartu
+        // pertama nyangkut di Dikerjakan selamanya, dan status jadi done (❤️)
+        // begitu subtugas PERTAMA selesai padahal masih ada subtugas lain.
+        // Kunci sekarang: agent_id + task. Pending counter: agen baru done
+        // bila SEMUA subtugasnya selesai.
+        const subtaskKey = (agentId: string, task: string) => `${agentId}\n${task ?? ""}`;
         const agentKanban = new Map<string, number>();
+        const pendingCount = new Map<string, number>();
         let streamCombined = "";
         let streamSuccess = false;
         let streamError = false;
@@ -362,13 +371,14 @@
                 if (parts.length > 0) {
                   pushMessage(id, "agent", `Saya delegasikan tugas ini ke: ${parts.join("; ")}. Mereka akan membalas di sini begitu selesai.`, undefined, undefined, { id: "mimi", name: "Mimi" });
                 }
-                // Kartu Kanban per agen + acknowledgment tiap agen
+                // Kartu Kanban per SUBTUGAS + acknowledgment tiap agen
                 for (const s of subtasks) {
                   if (!s.agent_id || s.agent_id === "mimi") continue;
                   try {
                     const subTitle = (s.task ?? "").length > 50 ? (s.task ?? "").slice(0, 47) + "..." : (s.task ?? "");
                     const kid = addKanbanCard(`${s.agent_id}: ${subTitle}`, s.agent_id, "doing", "");
-                    agentKanban.set(s.agent_id, kid);
+                    agentKanban.set(subtaskKey(s.agent_id, s.task ?? ""), kid);
+                    pendingCount.set(s.agent_id, (pendingCount.get(s.agent_id) ?? 0) + 1);
                   } catch {}
                   try {
                     const taskShort = (s.task ?? "").length > 80 ? (s.task ?? "").slice(0, 77) + "..." : (s.task ?? "");
@@ -390,21 +400,31 @@
                     pushMessage(st.agent_id, "agent", st.result);
                   } catch {}
                   streamCombined += `**${label}**: ${st.result}\n\n`;
+                  // Pindahkan kartu SUBTUGAS yang tepat (bukan kartu agen terakhir)
                   try {
-                    const kid = agentKanban.get(st.agent_id);
+                    const kid = agentKanban.get(subtaskKey(st.agent_id, st.task ?? ""));
                     if (kid !== undefined) moveKanbanCard(kid, "done");
                   } catch {}
+                  // Done (❤️) HANYA bila semua subtugas agen ini selesai
                   try {
-                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
+                    const left = (pendingCount.get(st.agent_id) ?? 1) - 1;
+                    pendingCount.set(st.agent_id, Math.max(0, left));
+                    if (left <= 0) {
+                      agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
+                    }
                   } catch {}
                 } else {
                   try {
                     pushMessage(id, "agent", `[GAGAL: ${st.error ?? "hasil kosong"}]`, undefined, undefined, { id: st.agent_id, name: label });
                   } catch {}
                   try {
-                    const kid = agentKanban.get(st.agent_id);
+                    const kid = agentKanban.get(subtaskKey(st.agent_id, st.task ?? ""));
                     if (kid !== undefined) moveKanbanCard(kid, "revision");
                     agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  } catch {}
+                  try {
+                    const left = (pendingCount.get(st.agent_id) ?? 1) - 1;
+                    pendingCount.set(st.agent_id, Math.max(0, left));
                   } catch {}
                 }
               } catch {
@@ -412,6 +432,24 @@
                   if (st.agent_id) agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
                 } catch {}
               }
+            },
+            onRevision: (r) => {
+              // QC meminta revisi: agen-agen ini KEMBALI bekerja — turunkan
+              // dari done (❤️) ke working/researching sampai revisi selesai.
+              try {
+                for (const aid of r.agents ?? []) {
+                  if (!aid || aid === "mimi") continue;
+                  pendingCount.set(aid, (pendingCount.get(aid) ?? 0) + 1);
+                  agentStatus.update((cur) => ({
+                    ...cur,
+                    [aid]: aid === "riset" ? "researching" : "working",
+                  }));
+                }
+                if ((r.agents ?? []).length > 0) {
+                  const names = (r.agents ?? []).map((a) => agentLabel(a)).join(", ");
+                  pushMessage(id, "agent", `Hasil awal perlu perbaikan — saya minta revisi dari: ${names}.`, undefined, undefined, { id: "mimi", name: "Mimi" });
+                }
+              } catch {}
             },
             onDone: (d) => {
               streamSuccess = true;
@@ -507,8 +545,10 @@
                 }
               }
             } catch {}
-            // 3. Kartu Kanban per agen (kolom Dikerjakan dulu)
+            // 3. Kartu Kanban per SUBTUGAS (kolom Dikerjakan dulu)
             // agentKanban sudah didefinisikan di scope blok (dipakai streaming & legacy).
+            // Kunci per-subtugas (perbaikan blocking 24 Okt): kunci per-agen
+            // menimpa kartu subtugas pertama bila satu agen dapat >1 subtugas.
             try {
               for (const st of results) {
                 if (st.agent_id && st.agent_id !== "mimi") {
@@ -521,7 +561,7 @@
                     "doing",
                     "",
                   );
-                  agentKanban.set(st.agent_id, kid);
+                  agentKanban.set(subtaskKey(st.agent_id, st.task ?? ""), kid);
                 }
               }
             } catch {}
@@ -548,7 +588,7 @@
                   combined += `**${label}**: ${st.result}\n\n`;
                   // Kanban agen → Selesai, status → done (heart)
                   try {
-                    const kid = agentKanban.get(st.agent_id);
+                    const kid = agentKanban.get(subtaskKey(st.agent_id, st.task ?? ""));
                     if (kid !== undefined) moveKanbanCard(kid, "done");
                   } catch {}
                   try {
@@ -560,7 +600,7 @@
                     name: label,
                   });
                   try {
-                    const kid = agentKanban.get(st.agent_id);
+                    const kid = agentKanban.get(subtaskKey(st.agent_id, st.task ?? ""));
                     if (kid !== undefined) moveKanbanCard(kid, "revision");
                   } catch {}
                   try {
@@ -569,7 +609,7 @@
                 } else {
                   // Hasil kosong tanpa error eksplisit: jangan biarkan nyangkut
                   try {
-                    const kid = agentKanban.get(st.agent_id);
+                    const kid = agentKanban.get(subtaskKey(st.agent_id, st.task ?? ""));
                     if (kid !== undefined) moveKanbanCard(kid, "revision");
                     agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
                   } catch {}

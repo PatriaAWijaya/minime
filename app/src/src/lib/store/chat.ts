@@ -192,6 +192,10 @@ export interface OrchestrationErrorEvent {
   run_id: string;
   error: string;
 }
+export interface OrchestrationRevisionEvent {
+  run_id: string;
+  agents: string[];
+}
 
 /** Hasil sendOrchestratedStream: berapa event yang sempat diproses. */
 export interface StreamOutcome {
@@ -211,6 +215,7 @@ export async function sendOrchestratedStream(
   handlers: {
     onPlan: (subtasks: OrchestrationPlanSubtask[]) => void;
     onSubtask: (s: OrchestrationSubtaskEvent) => void;
+    onRevision: (r: OrchestrationRevisionEvent) => void;
     onDone: (d: OrchestrationDoneEvent) => void;
     onError: (e: OrchestrationErrorEvent) => void;
   },
@@ -250,6 +255,10 @@ export async function sendOrchestratedStream(
       eventsProcessed++;
       settled = true;
       handlers.onError(e.payload);
+    }));
+    unlisteners.push(await listen<OrchestrationRevisionEvent>("orchestration-revision", (e) => {
+      eventsProcessed++;
+      handlers.onRevision(e.payload);
     }));
     // Invoke: backend memancarkan done SEBELUM return, jadi event done
     // normalnya tiba dulu; bila balapan (event telat), sintesis dari return.
