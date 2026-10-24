@@ -1446,9 +1446,6 @@ pub async fn discover_models(base_url: String, api_key: Option<String>) -> Resul
     Ok(models)
 }
 
-/// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
-/// Menyimpan hasil ke file temp dan mengembalikan path.
-#[tauri::command]
 // ============================================================================
 // SECTION 5: Meta endpoints — image, transcribe, SAM segment (23 Okt 2026)
 // ============================================================================
@@ -1475,6 +1472,9 @@ pub async fn generate_image_with_fallback(
     }
 }
 
+/// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
+/// Menyimpan hasil ke file temp dan mengembalikan path.
+#[tauri::command]
 pub async fn meta_generate_image(
     router: tauri::State<'_, Router>,
     prompt: String,
