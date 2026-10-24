@@ -169,7 +169,14 @@
     <div class="grid">
       {#each visible as item (item.id)}
         {@const imgs = itemImages(item)}
-        <div class="card">
+        <div
+          class="card"
+          title="Klik dua kali untuk melihat"
+          ondblclick={(e) => {
+            if ((e.target as HTMLElement).closest("button")) return;
+            if (item.content) viewItem = item;
+          }}
+        >
           <span class="chip">{$t(`library.type.${item.type}`)}</span>
           <h4>{item.title ?? $t(item.titleKey)}</h4>
           {#if imgs.length > 0}
@@ -181,7 +188,6 @@
           <p>{$t("library.by", { agent: getAgent(item.agentId).name })} · {item.dateLabel ?? $t(item.dateKey)}</p>
           <div class="actions">
             {#if item.content}
-              <button class="btn-sm" onclick={() => (viewItem = item)}>Lihat</button>
               <button class="btn-sm" onclick={() => downloadItem(item)}>Unduh</button>
               <button class="btn-sm" onclick={() => reuseItem(item)}>Pakai lagi</button>
             {/if}
@@ -330,6 +336,10 @@
     border-radius: 8px;
     margin: 6px 0;
     display: block;
+  }
+  /* Kartu bisa diklik dua kali untuk melihat isinya */
+  .card {
+    cursor: pointer;
   }
   /* Dialog: tampil penuh, tidak dipotong */
   .lib-img-full {

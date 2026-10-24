@@ -54,6 +54,9 @@ export interface Message {
   // Bila diisi, bubble menampilkan header nama + avatar pengirim.
   senderId?: string;
   senderName?: string;
+  // Jalur Canva (24 Okt 2026): prompt gambar persis dari agen — tombol
+  // "Buat di Canva" hanya muncul bila field ini ada.
+  canvaPrompt?: string;
 }
 
 export type ScheduleRange = "day" | "week" | "month";

@@ -72,6 +72,10 @@ pub struct SubTaskResult {
     /// Path file gambar yang dihasilkan tool generate_image (Fase 2).
     #[serde(default)]
     pub images: Vec<String>,
+    /// Prompt gambar persis seperti yang ditulis agen (24 Okt 2026):
+    /// dipakai jalur Canva — prompt ini yang disalin ke Canva AI.
+    #[serde(default)]
+    pub image_prompts: Vec<String>,
 }
 
 /// Hasil akhir orkestrasi.
@@ -386,6 +390,7 @@ async fn dispatch_one(
                 served_by: r.served_by.clone(),
                 error: r.error.clone(),
                 images: vec![],
+                image_prompts: vec![],
             },
             Err(e) => SubTaskResult {
                 agent_id: agent_id.to_string(),
@@ -394,6 +399,7 @@ async fn dispatch_one(
                 served_by: String::new(),
                 error: Some(e),
                 images: vec![],
+                image_prompts: vec![],
             },
         };
     }
@@ -412,6 +418,7 @@ async fn dispatch_one(
         ChatMessage { role: "user".to_string(), content: task.to_string() },
     ];
     let mut images: Vec<String> = Vec::new();
+    let mut image_prompts: Vec<String> = Vec::new();
     let mut last_text = String::new();
     let mut last_served = String::new();
     let mut last_error: Option<String> = None;
@@ -455,6 +462,7 @@ async fn dispatch_one(
                                         Ok(path) => {
                                             eprintln!("[orchestrate:{run_id}] tool generate_image OK: {path}");
                                             images.push(path.clone());
+                                            image_prompts.push(prompt.to_string());
                                             tool_outputs.push_str(&format!("Tool generate_image OK: file tersimpan di {path}\n"));
                                         }
                                         Err(e) => {
@@ -483,6 +491,7 @@ async fn dispatch_one(
             served_by: last_served,
             error: last_error,
             images,
+            image_prompts,
         },
         Ok(Err(e)) => SubTaskResult {
             agent_id: agent_id.to_string(),
@@ -491,6 +500,7 @@ async fn dispatch_one(
             served_by: last_served,
             error: Some(e),
             images,
+            image_prompts,
         },
         Err(_) => SubTaskResult {
             agent_id: agent_id.to_string(),
@@ -499,6 +509,7 @@ async fn dispatch_one(
             served_by: last_served,
             error: Some(format!("Timeout tool loop setelah {} detik", TOOL_LOOP_TIMEOUT_SECS)),
             images,
+            image_prompts,
         },
     }
 }
@@ -1008,6 +1019,7 @@ pub async fn orchestrate(
                             served_by: String::new(),
                             error: Some("Subtugas tidak ditemukan".to_string()),
                             images: vec![],
+                            image_prompts: vec![],
                         },
                     }
                 }
@@ -1314,6 +1326,9 @@ pub struct OrchestrationSubtaskEvent {
     /// Path file gambar dari tool generate_image (Fase 2).
     #[serde(default)]
     pub images: Vec<String>,
+    /// Prompt gambar agen (jalur Canva).
+    #[serde(default)]
+    pub image_prompts: Vec<String>,
 }
 
 /// Payload event selesai.
@@ -1490,6 +1505,7 @@ pub async fn orchestrate_stream(
             error: res.error.clone(),
             revision: false,
             images: res.images.clone(),
+            image_prompts: res.image_prompts.clone(),
         });
         eprintln!("[orchestrate-stream:{run_id}] subtugas selesai: {}", res.agent_id);
         subtask_results.push(res);
@@ -1590,6 +1606,7 @@ pub async fn orchestrate_stream(
                         served_by: String::new(),
                         error: Some("Subtugas tidak ditemukan".to_string()),
                         images: vec![],
+                        image_prompts: vec![],
                     },
                 }
             };
@@ -1605,6 +1622,7 @@ pub async fn orchestrate_stream(
                 error: res.error.clone(),
                 revision: true,
                 images: res.images.clone(),
+                image_prompts: res.image_prompts.clone(),
             });
             revised.push(res);
         }

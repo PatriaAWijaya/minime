@@ -35,7 +35,7 @@
     setAgentEnabled,
   } from "../lib/store";
   import { t } from "../lib/i18n";
-  import { convertFileSrc } from "@tauri-apps/api/core";
+  import { convertFileSrc, invoke } from "@tauri-apps/api/core";
   import MetaStatus from "./MetaStatus.svelte";
 
   let {
@@ -326,6 +326,54 @@
       });
     }
 
+    // ===== Jalur Canva (24 Okt 2026): alternatif bila engine internal
+    // belum memadai. Prompt persis agen disalin, Canva dibuka di browser
+    // user (login Canva milik user — tanpa key Minime), hasil unduhan
+    // diimpor kembali sebagai hasil akhir (chat + Library).
+    let canvaState = $state<{ prompt: string; copied: boolean } | null>(null);
+    let canvaError = $state("");
+    async function openCanva(prompt: string) {
+      canvaError = "";
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(prompt);
+        copied = true;
+      } catch {
+        copied = false;
+      }
+      try {
+        await invoke("open_url", { url: "https://www.canva.com/" });
+      } catch (e) {
+        canvaError = `Gagal membuka browser: ${e}`;
+      }
+      canvaState = { prompt, copied };
+    }
+    async function importCanva() {
+      if (!canvaState) return;
+      canvaError = "";
+      try {
+        const picked = await invoke<string | null>("pick_image_file");
+        if (!picked) return;
+        const path = await invoke<string>("import_image_file", { path: picked });
+        const name = path.split("/").pop() ?? path;
+        pushMessage(id, "agent", "Hasil final via Canva:", [{ name, kind: "image" as const, size: "", url: convertFileSrc(path) }], undefined, { id: "kreatif", name: "Kreatif" });
+        try {
+          addLibraryItem({
+            title: "Hasil final via Canva",
+            summary: canvaState.prompt.slice(0, 200),
+            content: `Hasil final via Canva.\nPrompt: ${canvaState.prompt}`,
+            images: [path],
+            type: "image",
+            agentId: "kreatif",
+            taskKey: "canva-" + Date.now(),
+          });
+        } catch {}
+        canvaState = null;
+      } catch (e) {
+        canvaError = `Gagal mengimpor: ${e}`;
+      }
+    }
+
     // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
       // yang tepat (bukan dijawab Mimi sendiri).
       if (shouldOrchestrate(id, text) && (await isTauri())) {
@@ -420,7 +468,7 @@
                 const label = agentLabel(st.agent_id);
                 if (st.result && !st.error) {
                   try {
-                    pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, { id: st.agent_id, name: label });
+                    pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, { id: st.agent_id, name: label }, st.image_prompts?.[0]);
                   } catch {}
                   // Output final per-agen masuk Library (bukan hanya ringkasan Mimi)
                   try {
@@ -623,7 +671,7 @@
                   pushMessage(id, "agent", st.result, imageAttachments(st.images), undefined, {
                     id: st.agent_id,
                     name: label,
-                  });
+                  }, st.image_prompts?.[0]);
                   // Output final per-agen masuk Library (bukan hanya ringkasan Mimi)
                   try {
                     addLibraryItem({
@@ -883,6 +931,11 @@
               </div>
             {/if}
             <p>{m.text}</p>
+            {#if m.canvaPrompt && m.attachments?.some((a) => a.kind === "image")}
+              <div class="canva-row">
+                <button class="canva-btn" onclick={() => openCanva(m.canvaPrompt!)}>Buat di Canva</button>
+              </div>
+            {/if}
             <span class="time">{m.time}</span>
             {#if m.reaction}
               <span class="msg-reaction" aria-label={$t("chat.msgReaction")}>{m.reaction}</span>
@@ -894,6 +947,19 @@
     {#if status === "working"}
       <div class="msg agent">
         <div class="bubble thinking">{$t("chat.thinking", { name: agent.name })}</div>
+      </div>
+    {/if}
+    {#if canvaState}
+      <div class="canva-banner">
+        <p><strong>Jalur Canva:</strong> prompt agen {canvaState.copied ? "sudah disalin" : "gagal disalin otomatis — salin manual dari kotak di bawah"} dan Canva dibuka di browser. Di Canva: buat desain → Magic Media → tempel prompt → generate → unduh hasilnya, lalu impor di sini.</p>
+        {#if !canvaState.copied}
+          <textarea readonly rows="3" value={canvaState.prompt}></textarea>
+        {/if}
+        <div class="canva-row">
+          <button class="canva-btn-primary" onclick={importCanva}>Impor hasil Canva</button>
+          <button class="canva-btn" onclick={() => (canvaState = null)}>Tutup</button>
+        </div>
+        {#if canvaError}<p class="err">{canvaError}</p>{/if}
       </div>
     {/if}
   </div>
@@ -1116,6 +1182,28 @@
   }
   .attach-x:hover { color: var(--text); }
   .msg-attach { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  /* Jalur Canva (24 Okt 2026) */
+  .canva-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .canva-btn {
+    padding: 6px 12px; font-size: 13px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+    cursor: pointer; white-space: nowrap;
+  }
+  .canva-btn:hover { background: var(--hover); }
+  .canva-btn-primary {
+    padding: 6px 12px; font-size: 13px; border-radius: 8px; border: none;
+    background: #4FA6F0; color: #fff; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .canva-banner {
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    margin: 8px 0; background: var(--card);
+  }
+  .canva-banner p { font-size: 13px; line-height: 1.5; margin: 0 0 8px; }
+  .canva-banner textarea {
+    width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); font-size: 13px; margin-bottom: 8px;
+  }
+  .canva-banner .err { color: #ef4444; margin: 8px 0 0; }
   /* Gambar hasil tool agen (Fase 2): tampil penuh di dalam bubble */
   .msg-img { max-width: 100%; border-radius: 10px; display: block; }
   .bubble { position: relative; }

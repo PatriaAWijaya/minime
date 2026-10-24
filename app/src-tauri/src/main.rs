@@ -630,6 +630,8 @@ fn main() {
             social::set_video_ai_key,
             social::fetch_image_as_data_url,
             social::pick_image_file,
+            social::open_url,
+            social::import_image_file,
             social::read_image_as_data_url,
             agent_chat,
             chat_history,

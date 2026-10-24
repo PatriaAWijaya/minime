@@ -399,6 +399,56 @@ pub async fn fetch_image_as_data_url(url: String) -> Result<String, String> {
     ))
 }
 
+/// Buka URL di browser default (24 Okt 2026, jalur Canva).
+/// DIBATASI ke host canva.com saja — command ini bukan open-redirect umum:
+/// frontend hanya memakainya untuk membuka Canva AI di sesi browser user
+/// sendiri (login Canva milik user, tanpa key yang disimpan Minime).
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    let rest = url
+        .strip_prefix("https://")
+        .ok_or_else(|| "hanya URL https yang diizinkan".to_string())?;
+    let host = rest.split('/').next().unwrap_or("");
+    if host != "canva.com" && !host.ends_with(".canva.com") {
+        return Err("host tidak diizinkan (hanya canva.com)".to_string());
+    }
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(target_os = "windows")]
+    let r = std::process::Command::new("cmd")
+        .args(["/C", "start", "", &url])
+        .spawn();
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let r = std::process::Command::new("xdg-open").arg(&url).spawn();
+    r.map(|_| ()).map_err(|e| format!("gagal membuka browser: {e}"))
+}
+
+/// Salin file gambar hasil Canva (diunduh user, mis. di ~/Downloads) ke
+/// temp Minime (24 Okt 2026). Alasan: <img> chat/Library memakai
+/// convertFileSrc yang scope-nya hanya $TEMP — path di luar temp
+/// (mis. Downloads) akan ditolak asset protocol dan gambar tidak tampil.
+/// Mengembalikan path baru di temp.
+#[tauri::command]
+pub fn import_image_file(path: String) -> Result<String, String> {
+    let src = std::path::Path::new(path.trim());
+    let ext = src
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png")
+        .to_lowercase();
+    if !["png", "jpg", "jpeg", "webp", "gif", "bmp"].contains(&ext.as_str()) {
+        return Err("bukan file gambar".to_string());
+    }
+    let out_dir = std::env::temp_dir().join("minime-studio");
+    std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let out_path = out_dir.join(format!("canva-{}.{}", chrono::Utc::now().timestamp(), ext));
+    std::fs::copy(src, &out_path).map_err(|e| format!("gagal menyalin: {e}"))?;
+    out_path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "path tidak valid".to_string())
+}
+
 /// Buka dialog pilih file native (macOS/Windows/Linux) untuk gambar.
 /// Mengembalikan path file yang dipilih, atau None bila dibatalkan.
 #[tauri::command]
