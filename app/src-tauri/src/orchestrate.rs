@@ -297,6 +297,7 @@ async fn aggregate_results(
     user_request: &str,
     subtask_results: &[SubTaskResult],
 ) -> String {
+    eprintln!("[orchestrate:{run_id}] [3/4] agregasi hasil...");
     let combined = subtask_results
         .iter()
         .map(|r| {
@@ -350,6 +351,7 @@ async fn run_qc(
     user_request: &str,
     aggregated: &str,
 ) -> (Option<i32>, bool, Option<String>, Vec<String>) {
+    eprintln!("[orchestrate:{run_id}] [4/4] QC...");
     let qc_res = chat_internal(
         router,
         db,

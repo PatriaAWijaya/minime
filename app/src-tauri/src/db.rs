@@ -218,16 +218,6 @@ impl Db {
         Ok(out)
     }
 
-    /// Hitung failure rate parse dalam 24 jam terakhir (untuk dead letter #7).
-    /// Return: (total_parse_attempts, failed_count)
-    /// Note: saat ini parse failure tidak dicatat terpisah; gunakan heuristic:
-    /// hitung dari log_model_decision dengan agent_id='mimi' sebagai proxy.
-    /// TODO(#7): tambah tabel parse_attempts untuk tracking akurat.
-    pub fn get_parse_stats_24h(&self) -> Result<(i64, i64), String> {
-        // Placeholder — implementasi penuh di #7
-        Ok((0, 0))
-    }
-
     /// Catat hasil parse attempt (saran #7).
     pub fn log_parse_attempt(&self, success: bool) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
@@ -293,6 +283,7 @@ impl Db {
     }
 
     /// Update skor QC untuk keputusan terakhir agen ini (untuk korelasi).
+    #[allow(dead_code)]
     pub fn update_decision_qc(&self, agent_id: &str, model_id: &str, qc_score: i32) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
         conn.execute(
