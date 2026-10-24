@@ -1026,15 +1026,14 @@ impl GeminiNativeProvider {
                         continue;
                     }
                 };
-                if !resp.status().is_success() {
+                let status = resp.status();
+                if !status.is_success() {
                     let txt = resp.text().await.unwrap_or_default();
                     let snippet: String = txt.chars().take(200).collect();
-                    eprintln!("[gemini-image:{}] HTTP {}: {}", model_name, resp.status(), snippet);
+                    eprintln!("[gemini-image:{}] HTTP {}: {}", model_name, status, snippet);
                     last_err = Some(ProviderError::Failed(format!(
                         "gemini image {} HTTP {}: {}",
-                        model_name,
-                        resp.status(),
-                        snippet
+                        model_name, status, snippet
                     )));
                     continue;
                 }
