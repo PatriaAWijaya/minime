@@ -226,8 +226,7 @@
     <div class="dialog-backdrop" onclick={() => (viewItem = null)}>
       <div class="dialog" onclick={(e) => e.stopPropagation()}>
         <h3>{viewItem.title}</h3>
-        {@const vimgs = itemImages(viewItem)}
-        {#each vimgs as vp}
+        {#each itemImages(viewItem) as vp}
           <img class="lib-img-full" src={convertFileSrc(vp)} alt={viewItem.title ?? ""} />
         {/each}
         <pre class="content">{viewItem.content}</pre>
