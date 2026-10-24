@@ -37,6 +37,13 @@
     }),
   );
   let viewItem: LibraryItem | null = $state(null);
+
+  // Double-click kartu = Lihat (tombol Lihat dihapus 24 Okt 2026).
+  // Abaikan double-click pada tombol aksi di dalam kartu.
+  function cardDblClick(e: MouseEvent, item: LibraryItem) {
+    if ((e.target as HTMLElement).closest("button")) return;
+    if (item.content) viewItem = item;
+  }
   // Dialog pilih agen untuk "Input Tugas" + konfirmasi hapus dua langkah.
   let taskItem: LibraryItem | null = $state(null);
   let pickedAgent = $state("");
@@ -172,10 +179,7 @@
         <div
           class="card"
           title="Klik dua kali untuk melihat"
-          ondblclick={(e) => {
-            if ((e.target as HTMLElement).closest("button")) return;
-            if (item.content) viewItem = item;
-          }}
+          ondblclick={(e) => cardDblClick(e, item)}
         >
           <span class="chip">{$t(`library.type.${item.type}`)}</span>
           <h4>{item.title ?? $t(item.titleKey)}</h4>

@@ -79,6 +79,54 @@
     attachments = attachments.filter((_, idx) => idx !== i);
   }
 
+// ===== Jalur Canva (24 Okt 2026): alternatif bila engine internal
+// belum memadai. Prompt persis agen disalin, Canva dibuka di browser
+// user (login Canva milik user — tanpa key Minime), hasil unduhan
+// diimpor kembali sebagai hasil akhir (chat + Library).
+let canvaState = $state<{ prompt: string; copied: boolean } | null>(null);
+let canvaError = $state("");
+async function openCanva(prompt: string) {
+  canvaError = "";
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(prompt);
+    copied = true;
+  } catch {
+    copied = false;
+  }
+  try {
+    await invoke("open_url", { url: "https://www.canva.com/" });
+  } catch (e) {
+    canvaError = `Gagal membuka browser: ${e}`;
+  }
+  canvaState = { prompt, copied };
+}
+async function importCanva() {
+  if (!canvaState) return;
+  canvaError = "";
+  try {
+    const picked = await invoke<string | null>("pick_image_file");
+    if (!picked) return;
+    const path = await invoke<string>("import_image_file", { path: picked });
+    const name = path.split("/").pop() ?? path;
+    pushMessage(agent.id, "agent", "Hasil final via Canva:", [{ name, kind: "image" as const, size: "", url: convertFileSrc(path) }], undefined, { id: "kreatif", name: "Kreatif" });
+    try {
+      addLibraryItem({
+        title: "Hasil final via Canva",
+        summary: canvaState.prompt.slice(0, 200),
+        content: `Hasil final via Canva.\nPrompt: ${canvaState.prompt}`,
+        images: [path],
+        type: "image",
+        agentId: "kreatif",
+        taskKey: "canva-" + Date.now(),
+      });
+    } catch {}
+    canvaState = null;
+  } catch (e) {
+    canvaError = `Gagal mengimpor: ${e}`;
+  }
+}
+
   // Per-message action menu (reply / reaction / copy / delete).
   let openMenuId = $state<number | null>(null);
   let emojiForId = $state<number | null>(null);
@@ -324,54 +372,6 @@
         const name = p.split("/").pop() ?? p;
         return { name, kind: "image" as const, size: "", url: convertFileSrc(p) };
       });
-    }
-
-    // ===== Jalur Canva (24 Okt 2026): alternatif bila engine internal
-    // belum memadai. Prompt persis agen disalin, Canva dibuka di browser
-    // user (login Canva milik user — tanpa key Minime), hasil unduhan
-    // diimpor kembali sebagai hasil akhir (chat + Library).
-    let canvaState = $state<{ prompt: string; copied: boolean } | null>(null);
-    let canvaError = $state("");
-    async function openCanva(prompt: string) {
-      canvaError = "";
-      let copied = false;
-      try {
-        await navigator.clipboard.writeText(prompt);
-        copied = true;
-      } catch {
-        copied = false;
-      }
-      try {
-        await invoke("open_url", { url: "https://www.canva.com/" });
-      } catch (e) {
-        canvaError = `Gagal membuka browser: ${e}`;
-      }
-      canvaState = { prompt, copied };
-    }
-    async function importCanva() {
-      if (!canvaState) return;
-      canvaError = "";
-      try {
-        const picked = await invoke<string | null>("pick_image_file");
-        if (!picked) return;
-        const path = await invoke<string>("import_image_file", { path: picked });
-        const name = path.split("/").pop() ?? path;
-        pushMessage(id, "agent", "Hasil final via Canva:", [{ name, kind: "image" as const, size: "", url: convertFileSrc(path) }], undefined, { id: "kreatif", name: "Kreatif" });
-        try {
-          addLibraryItem({
-            title: "Hasil final via Canva",
-            summary: canvaState.prompt.slice(0, 200),
-            content: `Hasil final via Canva.\nPrompt: ${canvaState.prompt}`,
-            images: [path],
-            type: "image",
-            agentId: "kreatif",
-            taskKey: "canva-" + Date.now(),
-          });
-        } catch {}
-        canvaState = null;
-      } catch (e) {
-        canvaError = `Gagal mengimpor: ${e}`;
-      }
     }
 
     // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
@@ -933,7 +933,7 @@
             <p>{m.text}</p>
             {#if m.canvaPrompt && m.attachments?.some((a) => a.kind === "image")}
               <div class="canva-row">
-                <button class="canva-btn" onclick={() => openCanva(m.canvaPrompt!)}>Buat di Canva</button>
+                <button class="canva-btn" onclick={() => openCanva(m.canvaPrompt ?? "")}>Buat di Canva</button>
               </div>
             {/if}
             <span class="time">{m.time}</span>
