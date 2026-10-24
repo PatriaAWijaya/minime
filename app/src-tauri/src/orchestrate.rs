@@ -11,6 +11,29 @@ use serde::{Deserialize, Serialize};
 
 use crate::providers::{ChatMessage, ChatResult, ModelTier, Router};
 
+/// Trait untuk LLM client — memungkinkan mock dalam test.
+/// Implementasi nyata: `Router`. Implementasi test: `MockRouter`.
+#[allow(async_fn_in_trait)]
+pub trait ChatClient: Send + Sync {
+    async fn chat(
+        &self,
+        model_id: &str,
+        tier: ModelTier,
+        messages: Vec<ChatMessage>,
+    ) -> Result<ChatResult, String>;
+}
+
+impl ChatClient for Router {
+    async fn chat(
+        &self,
+        model_id: &str,
+        tier: ModelTier,
+        messages: Vec<ChatMessage>,
+    ) -> Result<ChatResult, String> {
+        Router::chat(self, model_id, tier, messages).await
+    }
+}
+
 /// Satu subtugas hasil parsing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubTask {
@@ -145,7 +168,7 @@ Aturan revisi:
 
 /// Panggil router untuk satu chat (internal, tanpa Tauri State).
 async fn chat_internal(
-    router: &Router,
+    router: &dyn ChatClient,
     db: &crate::db::Db,
     agent_id: &str,
     model_id: &str,
@@ -181,7 +204,7 @@ async fn chat_internal(
 const SUBTASK_TIMEOUT_SECS: u64 = 120;
 
 async fn dispatch_one(
-    router: &Router,
+    router: &dyn ChatClient,
     db: &crate::db::Db,
     run_id: &str,
     agent_id: &str,
@@ -264,7 +287,7 @@ async fn dispatch_one(
 
 /// Agregat hasil subtugas menjadi laporan kohesif.
 async fn aggregate_results(
-    router: &Router,
+    router: &dyn ChatClient,
     db: &crate::db::Db,
     run_id: &str,
     mimi_model_id: &str,
@@ -317,7 +340,7 @@ struct QcOut {
 
 /// Jalankan QC terhadap output agregat.
 async fn run_qc(
-    router: &Router,
+    router: &dyn ChatClient,
     db: &crate::db::Db,
     run_id: &str,
     mimi_model_id: &str,
@@ -394,7 +417,7 @@ fn extract_json(text: &str) -> String {
 /// Orkestrasi tugas: parse → dispatch paralel → agregat → QC (+ revisi maks 3x).
 pub async fn orchestrate(
     db: &crate::db::Db,
-    router: &Router,
+    router: &dyn ChatClient,
     user_request: &str,
     mimi_model_id: &str,
 ) -> OrchestrateResult {
@@ -665,6 +688,84 @@ pub async fn orchestrate(
     }
 }
 
+/// Mock router untuk testing — return respons yang diprogram.
+#[cfg(test)]
+pub struct MockRouter {
+    /// Respons QC berurutan: tiap panggilan QC ambil satu dari sini.
+    pub qc_scores: std::sync::Mutex<Vec<(i32, bool, String, Vec<String>)>>,
+    /// Respons default untuk non-QC calls.
+    pub default_text: String,
+}
+
+#[cfg(test)]
+impl MockRouter {
+    pub fn new() -> Self {
+        Self {
+            qc_scores: std::sync::Mutex::new(vec![]),
+            default_text: "Hasil mock".to_string(),
+        }
+    }
+
+    pub fn with_qc_sequence(scores: Vec<(i32, bool, &str, Vec<&str>)>) -> Self {
+        Self {
+            qc_scores: std::sync::Mutex::new(
+                scores
+                    .into_iter()
+                    .map(|(s, p, n, r)| {
+                        (s, p, n.to_string(), r.into_iter().map(|x| x.to_string()).collect())
+                    })
+                    .collect(),
+            ),
+            default_text: "Hasil mock".to_string(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl ChatClient for MockRouter {
+    async fn chat(
+        &self,
+        _model_id: &str,
+        _tier: ModelTier,
+        messages: Vec<ChatMessage>,
+    ) -> Result<ChatResult, String> {
+        // Deteksi apakah ini panggilan QC (system prompt mengandung "QC senior")
+        let is_qc = messages.iter().any(|m| m.content.contains("QC senior"));
+
+        let text = if is_qc {
+            let mut scores = self.qc_scores.lock().unwrap();
+            if scores.is_empty() {
+                // Default: lolos
+                r#"{"score": 85, "passed": true, "notes": "-", "revise_agents": []}"#.to_string()
+            } else {
+                let (score, passed, notes, revise) = scores.remove(0);
+                let revise_json = revise
+                    .iter()
+                    .map(|r| format!("\"{}\"", r))
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!(
+                    r#"{{"score": {}, "passed": {}, "notes": "{}", "revise_agents": [{}]}}"#,
+                    score, passed, notes, revise_json
+                )
+            }
+        } else if messages.iter().any(|m| m.content.contains("CIO orkestrator") && m.content.contains("subtugas")) {
+            // Parse call — return 1 subtugas
+            r#"{"subtasks": [{"agent_id": "kreatif", "task": "Buat caption test"}]}"#.to_string()
+        } else {
+            self.default_text.clone()
+        };
+
+        Ok(ChatResult {
+            text,
+            served_by: "mock".to_string(),
+            input_tokens: Some(10),
+            output_tokens: Some(20),
+            error: None,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -734,5 +835,58 @@ mod tests {
         // Pastikan semua agen di roster terdaftar
         let valid = ["mimi", "kreatif", "riset", "finance", "strategis", "code"];
         assert_eq!(valid.len(), 6);
+    }
+
+    /// Test kritis: QC gagal sekali (skor 60) lalu lolos (skor 80).
+    /// Verifikasi revisi terjadi TEPAT 1x.
+    #[tokio::test]
+    async fn qc_retry_happens_exactly_once() {
+        let mock = MockRouter::with_qc_sequence(vec![
+            (60, false, "Caption kurang CTA", vec!["kreatif"]),
+            (80, true, "-", vec![]),
+        ]);
+
+        // Buat DB in-memory untuk test
+        let db = crate::db::Db::open_in_memory().expect("db test");
+
+        let result = orchestrate(&db, &mock, "Buatkan caption", "muse:muse-spark-1.3").await;
+
+        assert!(result.qc_passed, "QC harus lolos setelah revisi");
+        assert_eq!(result.revisions, 1, "Revisi harus terjadi tepat 1x");
+        assert_eq!(result.qc_score, Some(80));
+        assert_eq!(result.revision_history.len(), 2, "Harus ada 2 entri riwayat");
+    }
+
+    /// Test: QC lolos langsung tanpa revisi.
+    #[tokio::test]
+    async fn qc_pass_no_revision() {
+        let mock = MockRouter::with_qc_sequence(vec![
+            (85, true, "-", vec![]),
+        ]);
+
+        let db = crate::db::Db::open_in_memory().expect("db test");
+        let result = orchestrate(&db, &mock, "Test sederhana", "muse:muse-spark-1.3").await;
+
+        assert!(result.qc_passed);
+        assert_eq!(result.revisions, 0, "Tidak boleh ada revisi jika lolos langsung");
+    }
+
+    /// Test: QC gagal 3x berturut-turut → berhenti di max revisi.
+    #[tokio::test]
+    async fn qc_max_revisions_respected() {
+        let mock = MockRouter::with_qc_sequence(vec![
+            (50, false, "Buruk", vec!["kreatif"]),
+            (55, false, "Masih buruk", vec!["kreatif"]),
+            (60, false, "Tetap buruk", vec!["kreatif"]),
+            (65, false, "Tetap gagal", vec!["kreatif"]),
+        ]);
+
+        let db = crate::db::Db::open_in_memory().expect("db test");
+        let result = orchestrate(&db, &mock, "Test gagal terus", "muse:muse-spark-1.3").await;
+
+        assert!(!result.qc_passed, "QC tetap gagal");
+        assert_eq!(result.revisions, 3, "Harus berhenti di 3 revisi maksimal");
+        // Revision history: 4 entri (3 gagal + 1 final) atau pesan berhenti
+        assert!(result.revision_history.len() >= 4);
     }
 }

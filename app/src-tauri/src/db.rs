@@ -118,6 +118,12 @@ impl Db {
         Ok(db)
     }
 
+    /// Buka database in-memory untuk testing.
+    #[cfg(test)]
+    pub fn open_in_memory() -> Result<Self, String> {
+        Self::open_memory()
+    }
+
     fn migrate(&self) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
         conn.execute_batch(
