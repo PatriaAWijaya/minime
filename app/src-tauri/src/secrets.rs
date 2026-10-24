@@ -26,6 +26,11 @@ pub fn api_key(account: &str) -> Option<String> {
             return Some(v);
         }
     }
+    // 1b. File fallback (~/.minime/keys/<account>.key) — untuk binary ad-hoc
+    // yang Keychain-nya tidak stabil (write OK, read gagal).
+    if let Some(k) = file_read(account) {
+        return Some(k);
+    }
     // 2. OS keychain.
     if let Some(k) = keyring_read(account) {
         return Some(k);
@@ -45,10 +50,40 @@ pub fn set_api_key(account: &str, key: &str) -> Result<(), String> {
     if key.is_empty() {
         return Err("empty key".to_string());
     }
-    keyring::Entry::new(SERVICE, account)
-        .map_err(|e| format!("keychain open failed: {e}"))?
-        .set_password(key)
-        .map_err(|e| format!("keychain write failed: {e}"))
+    // Selalu tulis backup ke file dulu (anti-gagal).
+    file_write(account, key)?;
+    // Lalu coba Keychain (boleh gagal, file sudah aman).
+    let _ = keyring::Entry::new(SERVICE, account)
+        .map_err(|e| format!("keychain open failed: {e}"))
+        .and_then(|e| e.set_password(key).map_err(|e| format!("keychain write failed: {e}")));
+    Ok(())
+}
+
+/// File fallback: ~/.minime/keys/<account>.key (mode 600).
+fn keys_dir() -> Option<std::path::PathBuf> {
+    std::env::var("HOME").ok().map(|h| {
+        std::path::Path::new(&h).join(".minime").join("keys")
+    })
+}
+
+fn file_read(account: &str) -> Option<String> {
+    let p = keys_dir()?.join(format!("{account}.key"));
+    let c = std::fs::read_to_string(p).ok()?;
+    let c = c.trim().to_string();
+    if c.is_empty() { None } else { Some(c) }
+}
+
+fn file_write(account: &str, key: &str) -> Result<(), String> {
+    let dir = keys_dir().ok_or("HOME tidak ditemukan")?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir gagal: {e}"))?;
+    let p = dir.join(format!("{account}.key"));
+    std::fs::write(&p, key).map_err(|e| format!("tulis file gagal: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
 }
 
 /// Remove an API key for `account` from the OS keychain (disconnect).
