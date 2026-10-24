@@ -167,6 +167,17 @@ impl Db {
         )
         .map_err(|e| format!("migrasi db gagal: {e}"))?;
 
+        // Tabel #7: tracking parse failures untuk dead letter
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS parse_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                success INTEGER NOT NULL
+            );",
+            [],
+        )
+        .map_err(|e| format!("migrasi parse_attempts gagal: {e}"))?;
+
         // Migrasi #5: tambah duration_ms ke tabel lama (ignore jika sudah ada)
         {
             let conn2 = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
@@ -215,6 +226,38 @@ impl Db {
     pub fn get_parse_stats_24h(&self) -> Result<(i64, i64), String> {
         // Placeholder — implementasi penuh di #7
         Ok((0, 0))
+    }
+
+    /// Catat hasil parse attempt (saran #7).
+    pub fn log_parse_attempt(&self, success: bool) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        conn.execute(
+            "INSERT INTO parse_attempts (success) VALUES (?1)",
+            rusqlite::params![if success { 1 } else { 0 }],
+        )
+        .map_err(|e| format!("log parse gagal: {e}"))?;
+        Ok(())
+    }
+
+    /// Hitung failure rate parse dalam 24 jam terakhir (saran #7).
+    /// Return: (total, failed, rate_percent)
+    pub fn get_parse_failure_rate(&self) -> Result<(i64, i64, f64), String> {
+        let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+        let (total, failed): (i64, i64) = conn
+            .query_row(
+                "SELECT COUNT(*), COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0)
+                 FROM parse_attempts
+                 WHERE created_at > datetime('now', '-24 hours')",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| format!("query gagal: {e}"))?;
+        let rate = if total > 0 {
+            (failed as f64 / total as f64) * 100.0
+        } else {
+            0.0
+        };
+        Ok((total, failed, rate))
     }
 
     /// Catat keputusan pemilihan model (untuk audit & learning).

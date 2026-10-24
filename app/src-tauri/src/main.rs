@@ -181,6 +181,14 @@ async fn transcribe_audio_b64(
 }
 
 /// Pilih model optimal (Spark vs Wonder) berdasarkan kompleksitas tugas.
+/// Ambil failure rate parse untuk dead letter warning (saran #7).
+#[tauri::command]
+fn get_parse_health(
+    db: State<'_, db::Db>,
+) -> Result<(i64, i64, f64), String> {
+    db.get_parse_failure_rate()
+}
+
 /// Ambil riwayat orkestrasi untuk tab Diagnostics (saran #3).
 #[tauri::command]
 fn get_orchestration_history(
@@ -563,6 +571,7 @@ fn main() {
             transcribe_audio_b64,
             select_model_smart,
             get_orchestration_history,
+            get_parse_health,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,

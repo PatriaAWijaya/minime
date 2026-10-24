@@ -502,9 +502,13 @@ pub async fn orchestrate(
         Ok(r) if r.error.is_none() => {
             let json_str = extract_json(&r.text);
             match serde_json::from_str::<TaskPlan>(&json_str) {
-                Ok(p) if !p.subtasks.is_empty() => p,
+                Ok(p) if !p.subtasks.is_empty() => {
+                    let _ = db.log_parse_attempt(true);
+                    p
+                },
                 _ => {
                     eprintln!("[orchestrate:{run_id}] parse gagal, fallback ke single task");
+                    let _ = db.log_parse_attempt(false);
                     // Fallback: satu tugas untuk Mimi sendiri
                     TaskPlan {
                         subtasks: vec![SubTask {

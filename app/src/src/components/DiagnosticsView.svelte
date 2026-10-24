@@ -23,9 +23,21 @@
     }
   }
 
+  let parseHealth = $state<[number, number, number] | null>(null);
+
+  async function loadParseHealth() {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      parseHealth = await invoke("get_parse_health");
+    } catch (e) {
+      console.error("Gagal muat parse health:", e);
+    }
+  }
+
   // Muat saat komponen mount
   $effect(() => {
     loadOrchHistory();
+    loadParseHealth();
   });
 
   async function load() {
@@ -102,6 +114,13 @@
   </div>
 
   {#if message}<p class="msg">{message}</p>{/if}
+
+  {#if parseHealth && parseHealth[2] > 20}
+    <div class="warn-box">
+      ⚠️ Parse failure rate tinggi: {parseHealth[2].toFixed(1)}% ({parseHealth[1]}/{parseHealth[0]} gagal dalam 24 jam).
+      Prompt template mungkin perlu diperbaiki.
+    </div>
+  {/if}
 
   <!-- Tab Orkestrasi (saran #3) -->
   <section class="diag-section">
