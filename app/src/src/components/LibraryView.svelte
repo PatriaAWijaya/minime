@@ -11,6 +11,7 @@
     customAgents,
   } from "../lib/store";
   import { t } from "../lib/i18n";
+  import { convertFileSrc } from "@tauri-apps/api/core";
   import type { LibraryItem, LibraryType } from "../lib/types";
 
   let typeFilter = $state<string>("all");
@@ -82,6 +83,25 @@
     }
   }
 
+  // Gambar item Library (24 Okt 2026): dari field images (item baru) +
+  // fallback link markdown ![alt](path) di content (item lama yang hanya
+  // menyimpan teks — gambarnya dulu hanya tampil sebagai path file://).
+  function itemImages(item: LibraryItem): string[] {
+    const out: string[] = [...(item.images ?? [])];
+    if (item.content) {
+      const re = /!\[\[^\]]*\]\(([^)]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(item.content)) !== null) {
+        let pth = m[1].trim().replace(/^file:\/\//, "");
+        try {
+          pth = decodeURIComponent(pth);
+        } catch {}
+        if (pth && !out.includes(pth)) out.push(pth);
+      }
+    }
+    return out;
+  }
+
   function downloadItem(item: LibraryItem) {
     const blob = new Blob([item.content ?? item.summary ?? ""], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -148,9 +168,13 @@
   {:else}
     <div class="grid">
       {#each visible as item (item.id)}
+        {@const imgs = itemImages(item)}
         <div class="card">
           <span class="chip">{$t(`library.type.${item.type}`)}</span>
           <h4>{item.title ?? $t(item.titleKey)}</h4>
+          {#if imgs.length > 0}
+            <img class="lib-img" src={convertFileSrc(imgs[0])} alt={item.title ?? ""} />
+          {/if}
           {#if item.summary}
             <p class="summary">{item.summary}</p>
           {/if}
@@ -202,6 +226,10 @@
     <div class="dialog-backdrop" onclick={() => (viewItem = null)}>
       <div class="dialog" onclick={(e) => e.stopPropagation()}>
         <h3>{viewItem.title}</h3>
+        {@const vimgs = itemImages(viewItem)}
+        {#each vimgs as vp}
+          <img class="lib-img-full" src={convertFileSrc(vp)} alt={viewItem.title ?? ""} />
+        {/each}
         <pre class="content">{viewItem.content}</pre>
         <div class="actions">
           <button class="btn-sm" onclick={() => downloadItem(viewItem!)}>Unduh</button>
@@ -222,6 +250,7 @@
 <style>
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-top: 8px;
   }
@@ -232,6 +261,9 @@
     border: 1px solid var(--border);
     background: transparent;
     color: var(--text);
+    /* Tombol tidak pernah terbelah kata ("Pakai lagi" jadi 2 baris) dan
+       tidak keluar kartu: pindah baris utuh bila ruang habis. */
+    white-space: nowrap;
     cursor: pointer;
   }
   .btn-sm:hover {
@@ -289,5 +321,24 @@
     color: var(--muted);
     margin: 6px 0;
     line-height: 1.45;
+  }
+  /* Thumbnail kartu: potong rapi, tidak mendorong kartu terlalu tinggi */
+  .lib-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 8px;
+    margin: 6px 0;
+    display: block;
+  }
+  /* Dialog: tampil penuh, tidak dipotong */
+  .lib-img-full {
+    width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+    border-radius: 8px;
+    margin: 6px 0;
+    display: block;
   }
 </style>

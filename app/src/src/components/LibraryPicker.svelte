@@ -102,6 +102,7 @@
   }
   .row {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin: 12px 0;
   }

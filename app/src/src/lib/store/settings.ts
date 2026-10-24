@@ -368,6 +368,7 @@ export function addLibraryItem(input: {
   title: string;
   summary?: string;
   content?: string;
+  images?: string[];
   type: LibraryType;
   agentId: string;
   taskKey?: string;
@@ -386,6 +387,7 @@ export function addLibraryItem(input: {
       title: input.title,
       summary: input.summary,
       content: input.content,
+      images: input.images,
       dateLabel: now.toLocaleDateString("id-ID", {
         day: "numeric",
         month: "short",

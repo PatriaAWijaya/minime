@@ -972,6 +972,115 @@ impl GeminiNativeProvider {
         }
     }
 
+    /// Generate gambar via model image Gemini ("Nano Banana").
+    /// Dipakai sebagai fallback utama sebelum SD lokal (24 Okt 2026):
+    /// model modern — jauh lebih akurat untuk prompt kompleks + teks poster
+    /// daripada SD-turbo, dan memakai key Gemini yang SUDAH terhubung
+    /// (tanpa key/engine baru).
+    /// REST: POST /v1beta/models/{model}:generateContent dengan
+    /// generationConfig.responseModalities ["TEXT","IMAGE"]; gambar kembali
+    /// sebagai parts[].inlineData.data (base64 PNG).
+    pub async fn generate_image(&self, prompt: &str, size: &str) -> Result<Vec<u8>, ProviderError> {
+        let key = self.key()?;
+        let aspect = match size {
+            "portrait45" => "4:5",
+            "portrait" => "2:3",
+            "landscape" => "3:2",
+            _ => "1:1",
+        };
+        let models = [
+            "gemini-2.5-flash-image",
+            "gemini-2.0-flash-preview-image-generation",
+        ];
+        let mut last_err: Option<ProviderError> = None;
+        for model_name in models {
+            // Dua percobaan: dengan imageConfig dulu (rasio aspek eksplisit),
+            // tanpa imageConfig bila server menolak — agar satu parameter
+            // opsional tidak menggagalkan seluruh fallback Gemini.
+            for use_aspect in [true, false] {
+                let url = format!(
+                    "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+                    model_name
+                );
+                let mut body = serde_json::json!({
+                    "contents": [{ "parts": [{ "text": prompt }] }],
+                    "generationConfig": {
+                        "responseModalities": ["TEXT", "IMAGE"],
+                    },
+                });
+                if use_aspect {
+                    body["generationConfig"]["imageConfig"] =
+                        serde_json::json!({ "aspectRatio": aspect });
+                }
+                let resp = self
+                    .client
+                    .post(&url)
+                    .header("x-goog-api-key", &key)
+                    .json(&body)
+                    .send()
+                    .await;
+                let resp = match resp {
+                    Ok(r) => r,
+                    Err(e) => {
+                        last_err = Some(ProviderError::Failed(format!("gemini image: {e}")));
+                        continue;
+                    }
+                };
+                if !resp.status().is_success() {
+                    let txt = resp.text().await.unwrap_or_default();
+                    let snippet: String = txt.chars().take(200).collect();
+                    eprintln!("[gemini-image:{}] HTTP {}: {}", model_name, resp.status(), snippet);
+                    last_err = Some(ProviderError::Failed(format!(
+                        "gemini image {} HTTP {}: {}",
+                        model_name,
+                        resp.status(),
+                        snippet
+                    )));
+                    continue;
+                }
+                let v: serde_json::Value = match resp.json().await {
+                    Ok(v) => v,
+                    Err(e) => {
+                        last_err = Some(ProviderError::Failed(format!("gemini image parse: {e}")));
+                        continue;
+                    }
+                };
+                let parts = v
+                    .get("candidates")
+                    .and_then(|c| c.get(0))
+                    .and_then(|c| c.get("content"))
+                    .and_then(|c| c.get("parts"))
+                    .and_then(|p| p.as_array());
+                if let Some(parts) = parts {
+                    for part in parts {
+                        if let Some(b64) = part
+                            .get("inlineData")
+                            .and_then(|d| d.get("data"))
+                            .and_then(|d| d.as_str())
+                        {
+                            use base64::Engine;
+                            match base64::engine::general_purpose::STANDARD.decode(b64) {
+                                Ok(bytes) => return Ok(bytes),
+                                Err(e) => {
+                                    last_err = Some(ProviderError::Failed(format!(
+                                        "gemini image b64: {e}"
+                                    )));
+                                }
+                            }
+                        }
+                    }
+                }
+                last_err = Some(ProviderError::Failed(format!(
+                    "gemini image {}: tidak ada inlineData di respons",
+                    model_name
+                )));
+            }
+        }
+        Err(last_err.unwrap_or_else(|| {
+            ProviderError::Failed("gemini image: gagal tanpa detail".to_string())
+        }))
+    }
+
     pub async fn chat(
         &self,
         model: &str,
@@ -1456,6 +1565,7 @@ pub async fn generate_image_with_fallback(
     prompt: &str,
     size: &str,
 ) -> Result<String, String> {
+    // 1. Meta (primary; billing mati sampai hackathon aktif 26 Okt).
     match router.muse().image(prompt, size).await {
         Ok(bytes) => {
             let path = std::env::temp_dir().join(format!("meta_img_{}.png", chrono::Utc::now().timestamp_millis()));
@@ -1463,13 +1573,29 @@ pub async fn generate_image_with_fallback(
             if let Ok(db) = crate::db::Db::open() {
                 let _ = db.record_usage("studio", "muse", "muse:muse-image-1.0", 0, 0);
             }
-            Ok(path.to_string_lossy().to_string())
+            return Ok(path.to_string_lossy().to_string());
         }
         Err(e) => {
-            eprintln!("Meta image gagal ({}), fallback ke SD.cpp lokal", e);
-            generate_image(prompt.to_string(), size.to_string()).await
+            eprintln!("Meta image gagal ({}), fallback ke Gemini image", e);
         }
     }
+    // 2. Gemini image (24 Okt 2026): fallback utama baru — model modern,
+    //    prompt kompleks + teks poster jauh lebih akurat daripada SD-turbo.
+    match router.gemini.generate_image(prompt, size).await {
+        Ok(bytes) => {
+            let path = std::env::temp_dir().join(format!("gemini_img_{}.png", chrono::Utc::now().timestamp_millis()));
+            std::fs::write(&path, &bytes).map_err(|e| format!("simpan gambar gagal: {e}"))?;
+            if let Ok(db) = crate::db::Db::open() {
+                let _ = db.record_usage("studio", "gemini", "gemini:gemini-2.5-flash-image", 0, 0);
+            }
+            return Ok(path.to_string_lossy().to_string());
+        }
+        Err(e) => {
+            eprintln!("Gemini image gagal ({}), fallback terakhir ke SD.cpp lokal", e);
+        }
+    }
+    // 3. SD lokal (terakhir): hanya bila Meta + Gemini sama-sama gagal.
+    generate_image(prompt.to_string(), size.to_string()).await
 }
 
 /// Generate image via Meta muse-image-1.0 (primary) dengan fallback ke SD.cpp lokal.
@@ -1611,7 +1737,10 @@ async fn ensure_sd_server(server_bin: &str, model_path: &str) -> Result<(), Stri
     }
     // Start server di background
     tokio::process::Command::new(server_bin)
-        .args(["-m", model_path, "--listen-port", "8080", "-l", "127.0.0.1"])
+        .args(["-m", model_path, "--listen-port", "8080", "-l", "127.0.0.1",
+               // SD-turbo: model distilasi 1-4 step, CFG 0 (model card).
+               // Default server (20 step, CFG 7) MERUSAK hasil turbo.
+               "--steps", "2", "--cfg-scale", "0"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()

@@ -702,9 +702,10 @@ async fn ensure_visual_output(
     } else {
         "square"
     };
-    // Prompt: permintaan user + konsep agregat (dipotong, SD lokal tidak butuh panjang).
+    // Prompt: instruksi Inggris (model gambar jauh lebih patuh pada instruksi
+    // Inggris daripada Indonesia) + permintaan user + konsep agregat.
     let concept: String = aggregated.chars().take(600).collect();
-    let prompt = format!("{user_request}. Visual concept: {concept}");
+    let prompt = format!("Create a detailed, high-quality image for this request: {user_request}. Visual concept: {concept}");
     match router.generate_image(&prompt, size).await {
         Ok(path) => {
             eprintln!("[orchestrate:{run_id}] jaring pengaman visual OK: {path}");

@@ -83,6 +83,9 @@ export interface LibraryItem {
   summary?: string;
   /** Full output content for viewing/downloading/reuse. */
   content?: string;
+  /** Path file gambar hasil generate (24 Okt 2026): dirender di Library,
+   *  bukan hanya disebut sebagai teks/markdown di content. */
+  images?: string[];
   /** Plain date label for real items; falls back to dateKey. */
   dateLabel?: string;
 }

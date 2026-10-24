@@ -1128,7 +1128,7 @@
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .card h3 { margin: 0 0 8px; font-size: 16px; }
   .hint { font-size: 13px; color: var(--dim); margin: 0 0 12px; }
-  .row { display: flex; gap: 8px; align-items: center; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .row input { flex: 1; }
   .duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 12px; }
   .studio-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
