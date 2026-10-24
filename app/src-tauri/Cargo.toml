@@ -27,6 +27,8 @@ keyring = "3"
 # Tahap 3.4 — Pireel OAuth (PKCE S256 + random state).
 sha2 = "0.10"
 getrandom = "0.2"
+# Enkripsi file fallback API key (AES-256-GCM, kunci dari machine ID).
+aes-gcm = "0.10"
 tauri-plugin-wdio-webdriver = "1.5.0"
 tauri-plugin-notification = "2"
 # Native file picker dialog (macOS/Windows/Linux).
