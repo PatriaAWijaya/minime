@@ -368,10 +368,6 @@ impl OpenAiCompatProvider {
                     label: "Gemini 3.8 Flash".to_string(),
                 },
                 ModelInfo {
-                    id: "gemini:gemini-2.5-flash".to_string(),
-                    label: "Gemini 2.5 Flash".to_string(),
-                },
-                ModelInfo {
                     id: "gemini:gemini-1.5-flash".to_string(),
                     label: "Gemini 1.5 Flash".to_string(),
                 },
@@ -575,8 +571,9 @@ impl OpenAiCompatProvider {
                 self.id, status, snippet
             ));
             eprintln!("[{}:{}] gagal: {}", self.id, model_name, err);
-            // Hanya lanjut ke model berikutnya untuk 503/429/5xx; error lain langsung gagal
-            if status.as_u16() == 503 || status.as_u16() == 429 || status.is_server_error() {
+            // Lanjut ke model berikutnya untuk 503/429/5xx DAN 404
+            // (model deprecated/dihapus → coba model lain, jangan langsung gagal).
+            if status.as_u16() == 503 || status.as_u16() == 429 || status.as_u16() == 404 || status.is_server_error() {
                 last_err = Some(err);
                 continue;
             }
