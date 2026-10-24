@@ -2394,3 +2394,42 @@ Cakupan: registrasi 5 model Meta + chain Meta-first (lanjutan audit #12).
 
 **Vonis: LOLOS — nol error.**
 Pasangan SHA: lokal 6fed70e ↔ remote e4b2c9a (tree identik).
+
+---
+
+## 24 Okt 2026 — Bugfix Session (10:00–11:00 WIB)
+
+### Bug Kritis: Deadlock Database
+- **Gejala**: App freeze saat startup, icon dock bouncing, jendela tidak muncul
+- **Penyebab**: `db.rs` `migrate()` lock Mutex ganda (diperkenalkan saat tambah kolom `duration_ms`)
+- **Fix**: Pakai `conn` yang sudah di-lock, hapus lock kedua
+- **Status**: ✅ Fixed, deployed (PID 32688)
+
+### Bug: Import Hilang Pasca-Split store.ts
+- **Gejala**: Error JS "Can't find variable: agentInstructions", "isTauri is not a function", "Can't find variable: realProviders"
+- **Penyebab**: 4 variabel tidak di-import setelah pecah store.ts (agentInstructions, isTauri, realProviders, flowNodes/flowEdges)
+- **Fix**: Lengkapi semua import yang hilang
+- **Status**: ✅ Fixed
+
+### Bug: Model Terkunci ke Muse
+- **Gejala**: Ganti model ke DeepSeek/Gemini, saat Enter kembali ke Muse
+- **Penyebab**: ChatPanel.svelte reset model jika tidak ada di katalog — tapi katalog belum dimuat saat kirim
+- **Fix**: Hanya reset jika katalog sudah dimuat (length > 0) DAN model tidak valid
+- **Status**: ✅ Fixed
+
+### Improvement: Error Logging API
+- **Perubahan**: Tampilkan HTTP status + body snippet saat API gagal (sebelumnya hanya status)
+- **Tujuan**: Diagnosis masalah provider lebih mudah
+- **Status**: ✅ Deployed
+
+### Improvement: Scrollbar Chat
+- **Perubahan**: Scrollbar selalu terlihat (thin, warna tema), bukan overlay macOS
+- **Status**: ✅ Deployed
+
+### Issue Terbuka: Meta API Key
+- **Gejala**: "Tes koneksi" OK (9 model), tapi chat gagal untuk semua provider (Muse, Gemini, DeepSeek)
+- **Temuan**: "9 model tersedia" MENIPU — pakai fallback hardcoded, tidak membuktikan key valid
+- **Dugaan**: Key expired, permission Keychain, atau endpoint salah
+- **Status**: ⏳ Menunggu Patria verifikasi key via curl
+
+**Pasangan SHA**: lihat ~/AGENTS.md (7 commit, semua tree identik)
