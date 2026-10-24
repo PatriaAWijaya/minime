@@ -442,10 +442,13 @@ impl OpenAiCompatProvider {
             .await
             .map_err(|e| ProviderError::Failed(format!("{}: {e}", self.id)))?;
         if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            // Potong body agar tidak terlalu panjang di log
+            let snippet: String = body.chars().take(300).collect();
             return Err(ProviderError::Failed(format!(
-                "{} chat HTTP {}",
-                self.id,
-                resp.status()
+                "{} chat HTTP {}: {}",
+                self.id, status, snippet
             )));
         }
         #[derive(Deserialize)]
