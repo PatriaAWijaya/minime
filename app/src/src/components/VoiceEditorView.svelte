@@ -2,6 +2,8 @@
   import { t } from "../lib/i18n";
   import { createUndo } from "../lib/undo";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+  import LibraryPicker from "./LibraryPicker.svelte";
+  import type { LibraryItem } from "../lib/types";
 
   // ---------------------------------------------------------------------------
   // Types
@@ -266,6 +268,19 @@
     if (!t) return;
     t.clips.push(newClip());
     persist();
+  }
+
+  // Klip dari Library (24 Okt 2026): naskah Library jadi klip narasi baru.
+  let libPickerTrack: number | null = $state(null);
+  function onLibraryPickClip(item: LibraryItem) {
+    const tr = tracks.find((x) => x.id === libPickerTrack);
+    if (tr) {
+      const clip = newClip();
+      clip.text = item.content ?? item.summary ?? "";
+      tr.clips.push(clip);
+      persist();
+    }
+    libPickerTrack = null;
   }
 
   function removeClip(trackId: number, clipId: number) {
@@ -817,6 +832,7 @@
         <span class="meta">{track.clips.length} clip</span>
         <span class="spacer"></span>
         <button class="btn-ghost sm" onclick={() => addClip(track.id)}>+ Tambah Clip</button>
+        <button class="btn-ghost sm" onclick={() => (libPickerTrack = track.id)}>{$t("library.fromBtn")}</button>
         {#if tracks.length > 1}
           <button class="btn-ghost sm danger" onclick={() => removeTrack(track.id)}>Hapus Track</button>
         {/if}
@@ -929,6 +945,12 @@
   <button class="btn-ghost" onclick={addTrack}>+ Tambah Track</button>
   <p class="hint micro">Tips: mastering per clip dulu (tombol ✨ Master), lalu Mixdown — hasil unduhan sudah di-master. Semua tersimpan otomatis di perangkat ini.</p>
 </div>
+
+<LibraryPicker
+  open={libPickerTrack !== null}
+  onPick={onLibraryPickClip}
+  onClose={() => (libPickerTrack = null)}
+/>
 
 <style>
   .ve { display: flex; flex-direction: column; gap: 16px; }

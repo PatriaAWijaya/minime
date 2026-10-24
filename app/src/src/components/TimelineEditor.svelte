@@ -2,6 +2,8 @@
   import { t } from "../lib/i18n";
   import { createUndo } from "../lib/undo";
   import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+  import LibraryPicker from "./LibraryPicker.svelte";
+  import type { LibraryItem } from "../lib/types";
 
   // ---------------------------------------------------------------------------
   // Types (clean-room, pola umum timeline editor)
@@ -117,6 +119,15 @@
       addPath = "";
     }
     pushTHist(); save();
+  }
+
+  // Teks overlay dari Library (24 Okt 2026): judul/sinopsis Library jadi
+  // teks klip — user tinggal klik + Klip.
+  let libPicker = $state(false);
+  function onLibraryPickText(item: LibraryItem) {
+    addKind = "text";
+    addText = item.title ?? item.summary?.slice(0, 120) ?? "";
+    libPicker = false;
   }
 
   function deleteSelected() {
@@ -281,6 +292,7 @@
     {:else}
       <input type="text" bind:value={addPath} placeholder="/path/ke/file.mp4" style="flex:1" />
     {/if}
+    <button class="btn-ghost sm" onclick={() => { addKind = "text"; libPicker = true; }}>{$t("library.fromBtn")}</button>
     <button class="btn-primary sm" onclick={addClip}>+ Klip</button>
     <span class="sep"></span>
     <button class="btn-ghost sm" onclick={splitAtPlayhead} disabled={!selected} title="Pisah di playhead">✂ Pisah</button>
@@ -361,6 +373,12 @@
     </div>
   {/if}
 </div>
+
+<LibraryPicker
+  open={libPicker}
+  onPick={onLibraryPickText}
+  onClose={() => (libPicker = false)}
+/>
 
 <style>
   .tl-editor { display: flex; flex-direction: column; gap: 10px; height: 100%; }

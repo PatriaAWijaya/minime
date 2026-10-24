@@ -6,6 +6,8 @@
   import ImageEditor from "./ImageEditor.svelte";
   import TimelineEditor from "./TimelineEditor.svelte";
   import VoiceEditorView from "./VoiceEditorView.svelte";
+  import LibraryPicker from "./LibraryPicker.svelte";
+  import type { LibraryItem } from "../lib/types";
   import MetaStatus from "./MetaStatus.svelte";
 
   let prompt = $state("");
@@ -99,6 +101,42 @@
     } finally {
       picking = false;
     }
+  }
+
+  // Ambil input dari Library (24 Okt 2026): tiap bagian produksi bisa memakai
+  // item Library sebagai bahan — dirakit jadi project yang lebih kompleks.
+  // Nilai picker: bagian mana yang memanggil; null = picker tertutup.
+  let libPicker = $state<null | "brief" | "script" | "shot" | "image" | "footage">(null);
+
+  function onLibraryPick(item: LibraryItem) {
+    const title = item.title ?? "";
+    const body = item.content ?? item.summary ?? "";
+    const excerpt = body.slice(0, 500);
+    if (libPicker === "brief") {
+      // Isi draft form (judul + isi) — user pilih jenis lalu klik + Tambah Input
+      newInputTitle = title;
+      newInputContent = body;
+    } else if (libPicker === "script") {
+      // Jadi skrip draft — bisa langsung diteruskan ke Storyboard
+      prodScripts.update((ps) => [...ps, {
+        id: Date.now(),
+        researchId: null,
+        title: title || "Skrip dari Library",
+        kind: "artikel",
+        content: body,
+        status: "draft",
+        createdAt: new Date().toISOString(),
+      }]);
+    } else if (libPicker === "shot") {
+      // Isi draft shot — user edit lalu klik + Tambah Shot
+      newVisual = title || body.slice(0, 120);
+      newNarration = excerpt;
+    } else if (libPicker === "image") {
+      prompt = title ? `${title}. ${excerpt}` : excerpt;
+    } else if (libPicker === "footage") {
+      aiPrompt = title ? `${title}. ${excerpt}` : excerpt;
+    }
+    libPicker = null;
   }
 
   const SIZES = [
@@ -666,14 +704,24 @@
         <textarea id="inp-content" bind:value={newInputContent} rows="4"
           placeholder="Tulis atau tempel di sini..."></textarea>
       </div>
-      <button class="btn-primary sm" onclick={addInput} disabled={!newInputTitle.trim() || !newInputContent.trim()}>
-        + Tambah Input
-      </button>
+      <div class="row">
+        <button class="btn-primary sm" onclick={addInput} disabled={!newInputTitle.trim() || !newInputContent.trim()}>
+          + Tambah Input
+        </button>
+        <button class="btn-ghost sm" onclick={() => (libPicker = "brief")}>
+          {$t("library.fromBtn")}
+        </button>
+      </div>
       </div>
       {/if}
 {#if activeTab === 'scripts'}
       <div class="tab-pane">
       <p class="hint">Dihasilkan OTOMATIS oleh agen Kreatif dari input di atas. Setiap skrip otomatis menjadi sumber produksi media.</p>
+      <div class="row">
+        <button class="btn-ghost sm" onclick={() => (libPicker = "script")}>
+          {$t("library.fromBtn")} → Skrip
+        </button>
+      </div>
       {#if $prodScripts.length === 0}
         <p class="hint">Belum ada skrip. Minta agen Kreatif di chat: "kembangkan riset menjadi skrip".</p>
       {/if}
@@ -810,6 +858,9 @@
       <button class="btn-primary sm" onclick={addScene} disabled={!newVisual.trim()}>
         + Tambah Shot
       </button>
+      <button class="btn-ghost sm" onclick={() => (libPicker = "shot")}>
+        {$t("library.fromBtn")}
+      </button>
     </div>
       </div>
       {/if}
@@ -849,9 +900,14 @@
         {#each SIZES as s}<option value={s.id}>{s.label}</option>{/each}
       </select>
     </div>
-    <button class="btn-primary" onclick={generate} disabled={!prompt.trim() || generating}>
-      {generating ? "Membuat gambar..." : "Generate"}
-    </button>
+    <div class="row">
+      <button class="btn-primary" onclick={generate} disabled={!prompt.trim() || generating}>
+        {generating ? "Membuat gambar..." : "Generate"}
+      </button>
+      <button class="btn-ghost sm" onclick={() => (libPicker = "image")}>
+        {$t("library.fromBtn")}
+      </button>
+    </div>
     {#if error}<p class="err">{error}</p>{/if}
 
     <hr class="sep" />
@@ -937,6 +993,9 @@
         <div class="row">
           <button class="btn-primary sm" onclick={genAiVideo} disabled={aiBusy || !aiPrompt.trim()}>
             {aiBusy ? "Generating..." : "Generate Footage"}
+          </button>
+          <button class="btn-ghost sm" onclick={() => (libPicker = "footage")}>
+            {$t("library.fromBtn")}
           </button>
         </div>
         {#if aiError}<p class="err">{aiError}</p>{/if}
@@ -1024,6 +1083,11 @@
       </div>
   </section>
       {/if}
+    <LibraryPicker
+      open={libPicker !== null}
+      onPick={onLibraryPick}
+      onClose={() => (libPicker = null)}
+    />
     </main>
   </div>
 </div>
