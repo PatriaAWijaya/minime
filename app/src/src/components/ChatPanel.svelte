@@ -467,8 +467,12 @@
               streamSuccess = true;
               try {
                 const summary = d.aggregated || streamCombined.trim();
+                const safetyAtts = imageAttachments(d.images);
                 if (summary.trim() && summary.trim() !== streamCombined.trim()) {
-                  pushMessage(id, "agent", summary, undefined, undefined, { id: "mimi", name: "Mimi" });
+                  pushMessage(id, "agent", summary, safetyAtts, undefined, { id: "mimi", name: "Mimi" });
+                } else if (safetyAtts) {
+                  // Ringkasan sama dengan gabungan balasan — gambar jaring pengaman tetap harus tampil
+                  pushMessage(id, "agent", "Berikut gambar yang dibuat untuk tugas ini:", safetyAtts, undefined, { id: "mimi", name: "Mimi" });
                 }
                 const taskTitle = text.trim().length > 60 ? text.trim().slice(0, 57) + "..." : text.trim();
                 try {
@@ -638,10 +642,14 @@
             }
             // Ringkasan Mimi (agregasi) setelah balasan agen
             const summary = orch.aggregated || combined.trim();
+            const safetyAtts = imageAttachments(orch.images);
             if (summary.trim()) {
               // Bila agregasi sama dengan gabungan balasan, jangan duplikasi
               if (summary.trim() !== combined.trim()) {
-                pushMessage(id, "agent", summary);
+                pushMessage(id, "agent", summary, safetyAtts);
+              } else if (safetyAtts) {
+                // Gambar jaring pengaman tetap harus tampil walau teks sama
+                pushMessage(id, "agent", "Berikut gambar yang dibuat untuk tugas ini:", safetyAtts);
               }
               // Simpan ke Library + Kanban utama Selesai
               const taskTitle = text.trim().length > 60

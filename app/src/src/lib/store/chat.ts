@@ -152,6 +152,8 @@ export async function sendChatViaRouter(
 
 /** Hasil orkestrasi dari backend (cocok dengan struct Rust). */
 export interface OrchestrateResult {
+  /** Gambar jaring pengaman deterministik (bila tugas visual tanpa hasil gambar agen). */
+  images?: string[];
   aggregated: string;
   subtask_results: Array<{
     agent_id: string;
@@ -189,6 +191,8 @@ export interface OrchestrationDoneEvent {
   aggregated: string;
   qc_score?: number | null;
   qc_passed: boolean;
+  /** Gambar jaring pengaman deterministik (streaming). */
+  images?: string[];
 }
 export interface OrchestrationErrorEvent {
   run_id: string;

@@ -77,6 +77,9 @@ pub struct SubTaskResult {
 /// Hasil akhir orkestrasi.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrchestrateResult {
+    /// Gambar jaring pengaman deterministik (bila tugas visual tanpa hasil gambar agen).
+    #[serde(default)]
+    pub images: Vec<String>,
     pub aggregated: String,
     pub subtask_results: Vec<SubTaskResult>,
     pub qc_score: Option<i32>,
@@ -100,7 +103,7 @@ fn parse_system_prompt() -> String {
 
 Aturan:
 - Output HARUS valid JSON dengan format: {"subtasks": [{"agent_id": "...", "task": "..."}]}
-- agent_id yang valid: kreatis, riset, finance, strategis, code
+- agent_id yang valid: kreatif, riset, finance, strategis, code
   - "kreatif": konten, copywriting, desain, storytelling
   - "riset": riset web, data, analisis kompetitor
   - "finance": analisa finansial, budgeting, akuntansi
@@ -109,6 +112,11 @@ Aturan:
 - Setiap subtugas harus jelas dan bisa dikerjakan independen
 - Maksimal 5 subtugas
 - Jangan tambah teks di luar JSON
+- ATURAN VISUAL (penting): bila user meminta gambar/poster/thumbnail/banner
+  atau kata "lanjutkan buat image visualnya", SATU subtugas WAJIB ke "kreatif"
+  dengan kata kerja GENERATE, bukan "buat prompt" atau "susun konsep".
+  Contoh BENAR: {"agent_id": "kreatif", "task": "GENERATE gambar poster sunat massal gratis, rasio 9:16, pakai tool generate_image — bukan sekadar tulis prompt"}
+  Contoh SALAH: {"agent_id": "kreatif", "task": "Buat rangkaian prompt detail untuk AI image generator"}
 
 Contoh:
 User: "Buatkan rencana launching produk kopi"
@@ -656,6 +664,59 @@ fn extract_json(text: &str) -> String {
     t.to_string()
 }
 
+/// Apakah permintaan user bersifat visual (minta gambar/poster/dsb).
+/// Pencocokan kata kunci deterministik — tanpa LLM.
+fn is_visual_request(req: &str) -> bool {
+    let lower = req.to_lowercase();
+    [
+        "poster", "gambar", "visual", "thumbnail", "banner", "ilustrasi",
+        "flyer", "pamflet", "logo", "cover", "image", "desain grafis",
+        "brosur", "spanduk", "story",
+    ]
+    .iter()
+    .any(|k| lower.contains(k))
+}
+
+/// Jaring pengaman deterministik (24 Okt 2026): bila permintaan user bersifat
+/// visual tapi TIDAK ADA satu pun gambar dari agen (plan salah kata, LLM tidak
+/// memanggil tool, atau tool gagal), generate satu gambar langsung dari
+/// deskripsi tugas — tanpa bergantung pada plan, tool-call LLM, atau teks skill.
+/// Satu titik gagal (mesin gambar) menggantikan tiga titik gagal jalur agen.
+/// Mengembalikan vec kosong bila tidak visual, sudah ada gambar, atau gagal.
+async fn ensure_visual_output(
+    router: &dyn ChatClient,
+    run_id: &str,
+    user_request: &str,
+    aggregated: &str,
+    subtask_results: &[SubTaskResult],
+) -> Vec<String> {
+    if subtask_results.iter().any(|r| !r.images.is_empty()) {
+        return vec![]; // agen sudah menghasilkan gambar — jaring tidak diperlukan
+    }
+    if !is_visual_request(user_request) {
+        return vec![];
+    }
+    let lower = user_request.to_lowercase();
+    let size = if lower.contains("poster") || lower.contains("9:16") || lower.contains("story") {
+        "portrait"
+    } else {
+        "square"
+    };
+    // Prompt: permintaan user + konsep agregat (dipotong, SD lokal tidak butuh panjang).
+    let concept: String = aggregated.chars().take(600).collect();
+    let prompt = format!("{user_request}. Visual concept: {concept}");
+    match router.generate_image(&prompt, size).await {
+        Ok(path) => {
+            eprintln!("[orchestrate:{run_id}] jaring pengaman visual OK: {path}");
+            vec![path]
+        }
+        Err(e) => {
+            eprintln!("[orchestrate:{run_id}] jaring pengaman visual GAGAL: {e}");
+            vec![]
+        }
+    }
+}
+
 /// Orkestrasi tugas: parse → dispatch paralel → agregat → QC (+ revisi maks 3x).
 pub async fn orchestrate(
     db: &crate::db::Db,
@@ -680,6 +741,7 @@ pub async fn orchestrate(
         if let Err(msg) = check_postiz_ready() {
             eprintln!("[orchestrate:{run_id}] pre-flight GAGAL: {msg}");
             return OrchestrateResult {
+                images: vec![],
                 aggregated: String::new(),
                 subtask_results: vec![],
                 qc_score: None,
@@ -731,6 +793,7 @@ pub async fn orchestrate(
         }
         _ => {
             return OrchestrateResult {
+                images: vec![],
                 aggregated: String::new(),
                 subtask_results: vec![],
                 qc_score: None,
@@ -778,6 +841,7 @@ pub async fn orchestrate(
             est_cost, COST_HARD_CAP_USD
         );
         return OrchestrateResult {
+            images: vec![],
             aggregated: String::new(),
             subtask_results: vec![],
             qc_score: None,
@@ -861,6 +925,7 @@ pub async fn orchestrate(
                 ));
             }
             return OrchestrateResult {
+                images: ensure_visual_output(router, &run_id, user_request, &aggregated, &subtask_results).await,
                 aggregated,
                 subtask_results,
                 qc_score,
@@ -903,6 +968,7 @@ pub async fn orchestrate(
             eprintln!("[orchestrate:{run_id}] Tidak ada agen valid untuk revisi, berhenti");
             revision_history.push("Tidak ada agen valid untuk revisi".to_string());
             return OrchestrateResult {
+                images: ensure_visual_output(router, &run_id, user_request, &aggregated, &subtask_results).await,
                 aggregated,
                 subtask_results,
                 qc_score,
@@ -1256,6 +1322,9 @@ pub struct OrchestrationDoneEvent {
     pub aggregated: String,
     pub qc_score: Option<i32>,
     pub qc_passed: bool,
+    /// Gambar jaring pengaman deterministik (streaming).
+    #[serde(default)]
+    pub images: Vec<String>,
 }
 
 /// Payload event error fatal (pre-flight / parse gagal sebelum plan).
@@ -1308,6 +1377,7 @@ pub async fn orchestrate_stream(
             eprintln!("[orchestrate-stream:{run_id}] pre-flight GAGAL: {msg}");
             emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
             return OrchestrateResult {
+                images: vec![],
                 aggregated: String::new(),
                 subtask_results: vec![],
                 qc_score: None,
@@ -1343,6 +1413,7 @@ pub async fn orchestrate_stream(
             let msg = "Gagal mem-parse permintaan".to_string();
             emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
             return OrchestrateResult {
+                images: vec![],
                 aggregated: String::new(),
                 subtask_results: vec![],
                 qc_score: None,
@@ -1383,6 +1454,7 @@ pub async fn orchestrate_stream(
         );
         emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
         return OrchestrateResult {
+            images: vec![],
             aggregated: String::new(),
             subtask_results: vec![],
             qc_score: None,
@@ -1437,13 +1509,16 @@ pub async fn orchestrate_stream(
         ));
 
         if qc_passed || revision_count >= MAX_REVISIONS {
+            let safety_images = ensure_visual_output(router, &run_id, user_request, &aggregated, &subtask_results).await;
             emit_event(app, "orchestration-done", &OrchestrationDoneEvent {
                 run_id: run_id.clone(),
                 aggregated: aggregated.clone(),
                 qc_score,
                 qc_passed,
+                images: safety_images.clone(),
             });
             return OrchestrateResult {
+                images: safety_images,
                 aggregated,
                 subtask_results,
                 qc_score,
@@ -1468,13 +1543,16 @@ pub async fn orchestrate_stream(
         };
         if agents_to_revise.is_empty() {
             revision_history.push("Tidak ada agen valid untuk revisi".to_string());
+            let safety_images = ensure_visual_output(router, &run_id, user_request, &aggregated, &subtask_results).await;
             emit_event(app, "orchestration-done", &OrchestrationDoneEvent {
                 run_id: run_id.clone(),
                 aggregated: aggregated.clone(),
                 qc_score,
                 qc_passed: false,
+                images: safety_images.clone(),
             });
             return OrchestrateResult {
+                images: safety_images,
                 aggregated,
                 subtask_results,
                 qc_score,

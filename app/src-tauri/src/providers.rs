@@ -1531,46 +1531,77 @@ pub async fn generate_image(prompt: String, size: String) -> Result<String, Stri
     // Pastikan server jalan
     ensure_sd_server(&server_bin, &model_path).await?;
 
-    let (w, h) = match size.as_str() {
-        "square" => (1024, 1024),
-        "portrait45" => (1080, 1350),
-        "portrait" => (1024, 1792),
-        "landscape" => (1792, 1024),
-        _ => (1024, 1024),
+    // Ukuran adaptif (24 Okt 2026): server sd-turbo ini TERBUKTI hanya jalan di
+    // 512x512 — ukuran 1024+ selalu HTTP 500 "no results", dan itulah akar
+    // semua kegagalan tool generate_image. Minta aspek yang benar di skala 512
+    // dulu, lalu fallback otomatis ke 512x512 bila server menolak — agar tool
+    // TIDAK PERNAH gagal hanya karena ukuran, apa pun hasil uji aspek nanti.
+    let candidates: Vec<(u32, u32)> = {
+        let preferred = match size.as_str() {
+            "portrait45" => (512, 640),
+            "portrait" => (512, 768),
+            "landscape" => (768, 512),
+            _ => (512, 512),
+        };
+        if preferred == (512, 512) {
+            vec![preferred]
+        } else {
+            vec![preferred, (512, 512)]
+        }
     };
+    // Timeout per percobaan 180 dtk (generasi 512px teramati ~66 dtk; 2x180
+    // masih di bawah timeout loop tool 600 dtk).
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(300))
+        .timeout(std::time::Duration::from_secs(180))
         .build()
         .map_err(|e| e.to_string())?;
-    let resp = client
-        .post("http://127.0.0.1:8080/v1/images/generations")
-        .json(&serde_json::json!({
-            "prompt": prompt,
-            "n": 1,
-            "size": format!("{}x{}", w, h),
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("SD server error: {}", e))?;
-    if !resp.status().is_success() {
-        let txt = resp.text().await.unwrap_or_default();
-        return Err(format!("SD error: {}", txt.chars().take(200).collect::<String>()));
+    let mut last_err = String::new();
+    for (w, h) in candidates {
+        let resp = client
+            .post("http://127.0.0.1:8080/v1/images/generations")
+            .json(&serde_json::json!({
+                "prompt": &prompt,
+                "n": 1,
+                "size": format!("{}x{}", w, h),
+            }))
+            .send()
+            .await;
+        let resp = match resp {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = format!("SD server error: {}", e);
+                continue;
+            }
+        };
+        if !resp.status().is_success() {
+            let txt = resp.text().await.unwrap_or_default();
+            last_err = format!("SD error: {}", txt.chars().take(200).collect::<String>());
+            eprintln!("[sd] ukuran {}x{} ditolak, coba fallback", w, h);
+            continue;
+        }
+        let body: serde_json::Value = match resp.json().await {
+            Ok(b) => b,
+            Err(e) => {
+                last_err = e.to_string();
+                continue;
+            }
+        };
+        // sd-server bisa return b64_json atau url
+        if let Some(b64) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("b64_json")).and_then(|v| v.as_str()) {
+            use base64::Engine;
+            let bytes = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
+            let out_dir = std::env::temp_dir().join("minime-studio");
+            std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+            let out_path = out_dir.join(format!("sd-{}.png", chrono::Utc::now().timestamp()));
+            std::fs::write(&out_path, bytes).map_err(|e| e.to_string())?;
+            return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
+        }
+        if let Some(url) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("url")).and_then(|v| v.as_str()) {
+            return Ok(url.to_string());
+        }
+        last_err = "Respons SD tidak dikenali.".to_string();
     }
-    let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    // sd-server bisa return b64_json atau url
-    if let Some(b64) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("b64_json")).and_then(|v| v.as_str()) {
-        use base64::Engine;
-        let bytes = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
-        let out_dir = std::env::temp_dir().join("minime-studio");
-        std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
-        let out_path = out_dir.join(format!("sd-{}.png", chrono::Utc::now().timestamp()));
-        std::fs::write(&out_path, bytes).map_err(|e| e.to_string())?;
-        return out_path.to_str().map(|s| s.to_string()).ok_or_else(|| "Path tidak valid.".to_string());
-    }
-    if let Some(url) = body.get("data").and_then(|d| d.get(0)).and_then(|m| m.get("url")).and_then(|v| v.as_str()) {
-        return Ok(url.to_string());
-    }
-    Err("Respons SD tidak dikenali.".to_string())
+    Err(last_err)
 }
 
 async fn ensure_sd_server(server_bin: &str, model_path: &str) -> Result<(), String> {
