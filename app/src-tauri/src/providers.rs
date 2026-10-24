@@ -214,7 +214,19 @@ impl OllamaProvider {
         messages: &[ChatMessage],
     ) -> Result<ChatResult, ProviderError> {
         let url = format!("{}/api/chat", self.base_url);
-        let model = model.strip_prefix("ollama:").unwrap_or(model);
+        let mut model = model.strip_prefix("ollama:").unwrap_or(model).to_string();
+        // Bila model hanya nama provider ("ollama") atau kosong, pakai model
+        // pertama yang tersedia di server (jangan kirim "ollama" ke API → 404).
+        if model.is_empty() || model == "ollama" {
+            if let Ok(models) = self.tags().await {
+                if let Some(first) = models.first() {
+                    model = first.id.strip_prefix("ollama:").unwrap_or(&first.id).to_string();
+                }
+            }
+            if model.is_empty() || model == "ollama" {
+                return Err(ProviderError::Failed("ollama: tidak ada model tersedia".to_string()));
+            }
+        }
         let body = serde_json::json!({
             "model": model,
             "messages": messages,
