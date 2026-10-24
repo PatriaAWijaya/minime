@@ -257,10 +257,21 @@ async fn dispatch_one(
         }
     };
 
+    // Peran spesifik per agen (24 Okt 2026): tanpa ini, LLM menebak-nebak
+    // dan tercampur antar peran (kasus nyata: Kreatif menghasilkan konten
+    // "CIO / Scale-Up Blueprint" milik Strategis, bukan poster yang diminta).
+    let role_desc = match agent_id {
+        "kreatif" => "Kreatif: desainer & copywriter. Buat konsep visual, copywriting, dan materi kreatif (poster, konten, naskah). Fokus pada visual dan pesan yang menarik, BUKAN analisis bisnis.",
+        "riset" => "Riset: peneliti. Cari data, fakta, dan analisis berbasis bukti. Sajikan temuan dengan sumber yang jelas.",
+        "finance" => "Finance: analis keuangan. Hitung anggaran, proyeksi, dan analisis finansial dengan angka yang akurat.",
+        "strategis" => "Bisnis Strategis: konsultan strategi. Susun strategi, positioning, dan rencana bisnis berbasis analisis.",
+        "code" => "Code Builder: programmer. Tulis kode, bangun aplikasi, dan selesaikan masalah teknis.",
+        _ => "Agen tim Minime.",
+    };
     let system = system_override.unwrap_or_else(|| {
         format!(
-            "Kamu adalah agen {}. Kerjakan tugas berikut dengan standar profesional:\n\n{}",
-            agent_id, task
+            "Kamu adalah agen {} di tim Minime.\nPeranmu: {}\n\nTUGAS ASLI PENGGUNA (konteks keseluruhan, jangan lupakan ini):\n{}\n\nSUBTUGASMU (kerjakan ini, tetap dalam konteks tugas asli di atas):\n{}\n\nAturan: Kerjakan subtugasmu sesuai peranmu. Jangan keluar dari topik tugas asli. Jangan mengarang fakta atau mencampur dengan topik lain.",
+            agent_id, role_desc, user_request, task
         )
     });
 
@@ -615,6 +626,7 @@ pub async fn orchestrate(
                 None,
                 st.model_id.clone(),
                 mimi_model_id,
+                user_request,
             )
         }))
         .await;
@@ -734,7 +746,7 @@ pub async fn orchestrate(
                             let sys = revision_system_prompt(
                                 &p.agent_id, &p.task, &p.result, &notes_clone,
                             );
-                            dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None, mimi_model_id).await
+                            dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None, mimi_model_id, user_request).await
                         }
                         None => SubTaskResult {
                             agent_id: aid.clone(),
