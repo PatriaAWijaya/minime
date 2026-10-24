@@ -186,12 +186,15 @@ impl Db {
         Ok(())
     }
 
+/// Satu baris riwayat keputusan model: (waktu, agen, panjang_prompt, skor, model, qc).
+pub type ModelDecisionRow = (String, String, i64, i64, String, Option<i64>);
+
     /// Ambil riwayat keputusan model (untuk tab Orkestrasi di Diagnostics).
     /// Return: vec of (created_at, agent_id, prompt_len, complexity_score, model_id, qc_score)
     pub fn get_model_decisions(
         &self,
         limit: i64,
-    ) -> Result<Vec<(String, String, i64, i64, String, Option<i64>)>, String> {
+    ) -> Result<Vec<ModelDecisionRow>, String> {
         let conn = self.conn.lock().map_err(|e| format!("db lock gagal: {e}"))?;
         let mut stmt = conn
             .prepare(

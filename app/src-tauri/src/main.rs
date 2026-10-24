@@ -194,7 +194,7 @@ fn get_parse_health(
 fn get_orchestration_history(
     db: State<'_, db::Db>,
     limit: Option<i64>,
-) -> Result<Vec<(String, String, i64, i64, String, Option<i64>)>, String> {
+) -> Result<Vec<db::ModelDecisionRow>, String> {
     db.get_model_decisions(limit.unwrap_or(50))
 }
 
