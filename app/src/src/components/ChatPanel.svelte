@@ -302,8 +302,17 @@
       // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
       // yang tepat via orchestrate_task (bukan dijawab Mimi sendiri).
       if (shouldOrchestrate(id, text) && (await isTauri())) {
+        // Ikon jam (delayed): bila orkestrasi > 45 detik, tandai Mimi
+        // sebagai "lebih lama dari perkiraan" sampai hasil tiba.
+        let delayedTimer: ReturnType<typeof setTimeout> | undefined;
         try {
+          agentStatus.update((cur) => ({ ...cur, mimi: "working" }));
+          delayedTimer = setTimeout(() => {
+            agentStatus.update((cur) => ({ ...cur, mimi: "delayed" }));
+          }, 45000);
           const orch = await sendOrchestrated(text, mid);
+          clearTimeout(delayedTimer);
+          agentStatus.update((cur) => ({ ...cur, mimi: "idle" }));
           if (orch && !orch.error) {
             // VISIBILITAS DELEGASI PENUH (keputusan Patria 24 Okt):
             // 1. Agen yang didelegasikan muncul di list (aktifkan bila belum)
@@ -313,14 +322,53 @@
             const results = orch.subtask_results || [];
             const delegated = results.map((st) => st.agent_id).filter(Boolean);
             // 1+4. Aktifkan agen di list + tampilkan di Koneksi
+            // Status ikon (Patria 24 Okt): riset = mata (researching),
+            // lainnya = lampu (working/solusi). Selesai = heart (done).
+            const agentLabel = (aid: string): string => {
+              const names = get(agentNames);
+              const custom = (names[aid] ?? "").trim();
+              if (custom) return custom;
+              const map: Record<string, string> = {
+                kreatif: "Kreatif",
+                riset: "Riset",
+                finance: "Finance",
+                strategis: "Bisnis Strategis",
+                code: "Code Builder",
+                mimi: "Mimi",
+              };
+              return map[aid] ?? aid;
+            };
             try {
               for (const aid of delegated) {
                 if (aid !== "mimi") {
                   setAgentEnabled(aid, true);
-                  agentStatus.update((st) => ({ ...st, [aid]: "working" }));
+                  agentStatus.update((st) => ({
+                    ...st,
+                    [aid]: aid === "riset" ? "researching" : "working",
+                  }));
                 }
               }
               if (delegated.length > 0) ensureFlowAgents(delegated);
+            } catch {}
+            // Acknowledgment grup chat: tiap agen membalas arahan Mimi
+            // SEBELUM hasilnya (simulasi urutan grup chat nyata).
+            try {
+              for (const st of results) {
+                if (st.agent_id && st.agent_id !== "mimi") {
+                  const label = agentLabel(st.agent_id);
+                  const taskShort = st.task.length > 80
+                    ? st.task.slice(0, 77) + "..."
+                    : st.task;
+                  pushMessage(
+                    id,
+                    "agent",
+                    `Siap Mimi, saya akan kerjakan ${taskShort} sesuai arahan dan hasilnya akan saya sampaikan disini untuk anda review.`,
+                    undefined,
+                    undefined,
+                    { id: st.agent_id, name: label },
+                  );
+                }
+              }
             } catch {}
             // 3. Kartu Kanban per agen (kolom Dikerjakan dulu)
             const agentKanban = new Map<string, number>();
@@ -343,26 +391,33 @@
             // 2. Tiap agen membalas di chat Mimi + di chatnya sendiri
             let combined = "";
             for (const st of results) {
+              const label = agentLabel(st.agent_id);
               if (st.result && !st.error) {
-                // Balasan agen di chat Mimi (seolah membalas arahan Mimi)
-                pushMessage(id, "agent", `**${st.agent_id}**: ${st.result}`);
+                // Balasan agen di chat Mimi dengan header identitas
+                pushMessage(id, "agent", st.result, undefined, undefined, {
+                  id: st.agent_id,
+                  name: label,
+                });
                 // Hasil yang sama di chat agen sendiri
                 try {
                   pushMessage(st.agent_id, "agent", st.result);
                 } catch {}
-                combined += `**${st.agent_id}**: ${st.result}\n\n`;
-                // Kanban agen → Selesai, status → idle
+                combined += `**${label}**: ${st.result}\n\n`;
+                // Kanban agen → Selesai, status → done (heart)
                 try {
                   const kid = agentKanban.get(st.agent_id);
                   if (kid !== undefined) moveKanbanCard(kid, "done");
-                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "idle" }));
+                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
                 } catch {}
               } else if (st.error) {
-                pushMessage(id, "agent", `**${st.agent_id}**: [GAGAL: ${st.error}]`);
+                pushMessage(id, "agent", `[GAGAL: ${st.error}]`, undefined, undefined, {
+                  id: st.agent_id,
+                  name: label,
+                });
                 try {
                   const kid = agentKanban.get(st.agent_id);
                   if (kid !== undefined) moveKanbanCard(kid, "revision");
-                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "idle" }));
+                  agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
                 } catch {}
               }
             }
@@ -395,6 +450,8 @@
           }
           // Bila orkestrasi gagal/kosong, lanjut ke chat langsung (fallback)
         } catch {
+          if (delayedTimer) clearTimeout(delayedTimer);
+          agentStatus.update((cur) => ({ ...cur, mimi: "idle" }));
           // Fallback ke chat langsung
         }
       }
@@ -535,6 +592,15 @@
                     {$t("chat.msgDelete")}
                   </button>
                 {/if}
+              </div>
+            {/if}
+            {#if m.senderName}
+              <div class="msg-sender">
+                <span class="msg-sender-name">{m.senderName}</span>
+              </div>
+            {:else if m.role === "user"}
+              <div class="msg-sender">
+                <span class="msg-sender-name">Patria</span>
               </div>
             {/if}
             {#if m.replyTo}
@@ -716,6 +782,10 @@
     white-space: pre-wrap;
   }
   .time { display: block; font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: right; }
+  /* Header identitas grup chat (Patria 24 Okt): nama pengirim di atas bubble */
+  .msg-sender { margin-bottom: 4px; }
+  .msg-sender-name { font-size: 12px; font-weight: 700; opacity: 0.85; letter-spacing: 0.01em; }
+  .msg.user .msg-sender { text-align: right; }
   .thinking { font-style: italic; color: var(--dim); animation: pulse 1.2s infinite; }
   .composer {
     display: flex; gap: 8px; align-items: flex-end;

@@ -11,7 +11,7 @@ export const messagesByAgent = writable<Record<string, Message[]>>({});
 
 let msgSeq = 1;
 
-export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"], replyTo?: string) {
+export function pushMessage(agentId: string, role: Message["role"], text: string, attachments?: Message["attachments"], replyTo?: string, sender?: { id: string; name: string }) {
   const msg: Message = {
     id: msgSeq++,
     role,
@@ -19,6 +19,7 @@ export function pushMessage(agentId: string, role: Message["role"], text: string
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     ...(attachments && attachments.length > 0 ? { attachments } : {}),
     ...(replyTo ? { replyTo } : {}),
+    ...(sender ? { senderId: sender.id, senderName: sender.name } : {}),
   };
   messagesByAgent.update((m) => ({
     ...m,

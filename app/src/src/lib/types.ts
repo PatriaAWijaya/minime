@@ -1,6 +1,10 @@
 // Shared domain types for Minime v2 Phase 1 (UI mock).
 
-export type AgentStatus = "idle" | "working" | "attention";
+// Status agen untuk ikon (Patria 24 Okt 2026, ganti dot):
+// idle = tanpa ikon | researching = mata (riset) | working = lampu (solusi)
+// delayed = jam (lebih lama dari perkiraan) | done = heart (selesai)
+// attention = tetap (butuh perhatian)
+export type AgentStatus = "idle" | "researching" | "working" | "delayed" | "done" | "attention";
 
 export interface Agent {
   id: string;
@@ -44,6 +48,10 @@ export interface Message {
   attachments?: AttachmentMeta[];
   reaction?: string;
   replyTo?: string;
+  // Grup chat (Patria 24 Okt 2026): identitas pengirim sebenarnya.
+  // Bila diisi, bubble menampilkan header nama + avatar pengirim.
+  senderId?: string;
+  senderName?: string;
 }
 
 export type ScheduleRange = "day" | "week" | "month";

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AgentStatusIcon from "./AgentStatusIcon.svelte";
   import { Handle, Position } from "@xyflow/svelte";
   import { agents, agentDisplayName, agentDisplayRole } from "../lib/agents";
   import { activeFlowProjectId, agentNames, agentStatus, agentTitles, customAgents, kanbanCards } from "../lib/store";
@@ -91,7 +92,7 @@
     <span class="name">{agentDisplayName(agent, $agentNames, $t)}</span>
     <span class="role">{agentDisplayRole(agent, $agentTitles, $t)}</span>
   </span>
-  <span class="dot {status}" aria-hidden="true"></span>
+  <AgentStatusIcon status={status} size={14} />
   {#if taskCount > 0}
     <span
       class="task-count"
@@ -228,15 +229,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex: none;
-  }
-  .dot.idle { background: var(--ok); }
-  .dot.working { background: var(--warn); }
-  .dot.attention { background: var(--danger); }
   .task-count {
     flex: none;
     min-width: 24px;

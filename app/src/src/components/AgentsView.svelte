@@ -1,6 +1,7 @@
 <script lang="ts">
   import { agents, agentDisplayName, agentDisplayRole, agentAvatar, AVATAR_CHOICES } from "../lib/agents";
   import ChatPanel from "./ChatPanel.svelte";
+  import AgentStatusIcon from "./AgentStatusIcon.svelte";
   import AgentChatPanel from "./AgentChatPanel.svelte";
   import {
     PROVIDERS,
@@ -583,7 +584,7 @@
       <span class="name">{rowName}</span>
       <span class="role">{rowRole}</span>
     </span>
-    <span class="dot {status}" aria-hidden="true"></span>
+    <AgentStatusIcon status={status} size={14} />
   </button>
 {/snippet}
 

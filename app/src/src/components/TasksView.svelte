@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AgentStatusIcon from "./AgentStatusIcon.svelte";
   import { writable, get } from "svelte/store";
   import { onDestroy } from "svelte";
   import {
@@ -470,7 +471,7 @@
                   {#if !agentActive}
                     <span class="inactive-badge">{$t("tasks.agentInactive")}</span>
                   {/if}
-                  <span class="dot {st}" aria-hidden="true"></span>
+                  <AgentStatusIcon status={st} size={14} />
                 </div>
                 <span class="card-date">{card.createdAt}</span>
                 {#if col === "approval"}
@@ -903,15 +904,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex: none;
-  }
-  .dot.idle { background: var(--ok); }
-  .dot.working { background: var(--warn); }
-  .dot.attention { background: var(--danger); }
   .card-actions {
     display: flex;
     gap: 6px;
