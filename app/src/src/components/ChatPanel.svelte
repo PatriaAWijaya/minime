@@ -643,17 +643,28 @@
     display: flex; flex-direction: column; align-items: center; gap: 12px;
     max-width: 320px;
   }
-  .msg { display: flex; }
+  .msg { display: flex; min-width: 0; }
   .msg.user { justify-content: flex-end; }
   .bubble {
     max-width: 70%;
+    min-width: 0;
     padding: 10px 14px;
     border-radius: 14px;
     background: var(--panel-2);
     border: 1px solid var(--border);
+    /* Teks panjang (URL, JSON, error) wajib wrap di dalam bubble,
+       jangan sampai keluar/meluap. */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow: hidden;
   }
   .msg.user .bubble { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .bubble p { font-size: 15px; }
+  .bubble p {
+    font-size: 15px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
   .time { display: block; font-size: 11px; opacity: 0.7; margin-top: 4px; text-align: right; }
   .thinking { font-style: italic; color: var(--dim); animation: pulse 1.2s infinite; }
   .composer {
