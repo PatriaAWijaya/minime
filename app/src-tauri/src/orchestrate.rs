@@ -381,6 +381,36 @@ const COST_HARD_CAP_USD: f64 = 5.0;
 
 /// Estimasi biaya orkestrasi berdasarkan jumlah subtugas dan model.
 /// Asumsi konservatif: 2000 token input + 1000 token output per call.
+/// Pre-flight check: apakah request butuh distribusi (posting/scheduling)?
+/// Jika ya, verifikasi kredensial Postiz sudah dikonfigurasi.
+pub fn needs_distribution(request: &str) -> bool {
+    let lower = request.to_lowercase();
+    // Root keywords tahan imbuhan
+    let keywords = [
+        "posting", "jadwal", "distribusi", "publish", "terbit",
+        "unggah", "share", "bagikan",
+    ];
+    keywords.iter().any(|k| lower.contains(k))
+}
+
+/// Verifikasi kredensial Postiz. Return Err dengan pesan jelas jika belum diset.
+pub fn check_postiz_ready() -> Result<(), String> {
+    let url_ok = crate::secrets::api_key("minime.postiz_url")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+    let key_ok = crate::secrets::api_key("minime.postiz_key")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+
+    if !url_ok || !key_ok {
+        return Err(
+            "Postiz belum dikonfigurasi. Isi Postiz URL dan API Key di Pengaturan > Tools > Apps              sebelum meminta distribusi/posting."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn estimate_cost(num_subtasks: usize, use_wonder: bool) -> f64 {
     // Calls: 1 parse + N dispatch + 1 agregat + 1 QC (+ revisi)
     // Parse/agregat/QC selalu pakai model Mimi (Spark default)
@@ -432,6 +462,26 @@ pub async fn orchestrate(
         h.finish() & 0xFFFFFFFF
     });
     eprintln!("[orchestrate:{}] mulai: {}", run_id, &user_request.chars().take(80).collect::<String>());
+
+    // ===== [0] Pre-flight: cek kredensial distribusi bila dibutuhkan =====
+    if needs_distribution(user_request) {
+        eprintln!("[orchestrate:{run_id}] [0/4] pre-flight distribusi...");
+        if let Err(msg) = check_postiz_ready() {
+            eprintln!("[orchestrate:{run_id}] pre-flight GAGAL: {msg}");
+            return OrchestrateResult {
+                aggregated: String::new(),
+                subtask_results: vec![],
+                qc_score: None,
+                qc_passed: false,
+                qc_notes: None,
+                revisions: 0,
+                revision_history: vec![],
+                estimated_cost_usd: 0.0,
+                error: Some(msg),
+            };
+        }
+        eprintln!("[orchestrate:{run_id}] pre-flight OK");
+    }
 
     // ===== [1] Parse intent → subtugas =====
     eprintln!("[orchestrate:{run_id}] [1/4] parsing intent...");
@@ -830,6 +880,15 @@ mod tests {
         let q: QcOut = serde_json::from_str(json).unwrap();
         assert!(q.passed);
         assert!(q.revise_agents.is_empty());
+    }
+
+    #[test]
+    fn needs_distribution_detects_keywords() {
+        assert!(needs_distribution("Buatkan konten dan jadwalkan posting"));
+        assert!(needs_distribution("distribusikan ke Instagram"));
+        assert!(needs_distribution("publish artikel ini"));
+        assert!(!needs_distribution("Buatkan caption saja"));
+        assert!(!needs_distribution("Analisis kompetitor"));
     }
 
     #[test]
