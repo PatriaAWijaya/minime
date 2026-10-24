@@ -137,7 +137,8 @@ async fn orchestrate_task(
     user_request: String,
     mimi_model_id: Option<String>,
 ) -> Result<orchestrate::OrchestrateResult, String> {
-    let model_id = mimi_model_id.unwrap_or_else(|| "muse:muse-spark-1.3".to_string());
+    // 24 Okt 2026: default orkestrasi = Gemini (Muse billing belum aktif).
+    let model_id = mimi_model_id.unwrap_or_else(|| "gemini:gemini-3.8-flash".to_string());
     let router = Router::new(routerku_base_url());
     Ok(orchestrate::orchestrate(&db, &router, &user_request, &model_id).await)
 }

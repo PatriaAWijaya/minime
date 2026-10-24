@@ -322,7 +322,9 @@ export function getModel(id: string): ModelOption {
 }
 
 export function defaultModelFor(agentId: string): string {
-  if (agentId === "mimi") return "muse";
+  // 24 Okt 2026: default Mimi = Gemini (Muse billing belum aktif sampai
+  // hackathon 26 Okt). Sebelumnya "muse" → selalu 402.
+  if (agentId === "mimi") return "gemini:gemini-3.8-flash";
   // Bila Ollama terhubung, pakai model chat asli pertama (bukan embedding).
   const ollama = get(realProviders)?.find((p) => p.id === "ollama");
   if (ollama && ollama.state === "connected") {

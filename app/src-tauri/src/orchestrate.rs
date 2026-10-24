@@ -214,44 +214,46 @@ async fn dispatch_one(
     model_override: Option<String>,
     mimi_model_id: &str,
 ) -> SubTaskResult {
-    let (model_id, tier) = match model_override {
-        Some(m) => {
-            // User menentukan model berbeda untuk subtugas ini → pakai itu
-            let t = if m.starts_with("muse:")
-                || m.starts_with("openai:")
-                || m.starts_with("gemini:")
-                || m.starts_with("deepseek:")
-            {
-                ModelTier::Berbayar
-            } else {
-                ModelTier::Gratis
-            };
-            (m, t)
-        }
-        None => {
-            // DEFAULT: agen mengikuti model Mimi (keputusan Patria 24 Okt).
-            // Model selector kompleksitas hanya dipakai bila Mimi tidak
-            // menentukan model (fallback, seharusnya tidak terjadi).
-            let mid = if !mimi_model_id.is_empty() {
-                mimi_model_id.to_string()
-            } else {
+    // Keputusan Patria 24 Okt: agen SELALU mengikuti model Mimi secara
+    // default. Saran model dari LLM (plan) diabaikan — itu bukan perintah
+    // user. Hanya bila user eksplisit menentukan model berbeda (via
+    // model_override yang BUKAN dari plan LLM) baru dipakai. Saat ini
+    // plan LLM tidak dibedakan dari perintah user, jadi selalu pakai
+    // model Mimi bila tersedia.
+    let (model_id, tier) = if !mimi_model_id.is_empty() {
+        let mid = mimi_model_id.to_string();
+        eprintln!(
+            "[orchestrate:{run_id}] subtugas {} → {} (model Mimi)",
+            agent_id, mid
+        );
+        let t = if mid.starts_with("muse:")
+            || mid.starts_with("openai:")
+            || mid.starts_with("gemini:")
+            || mid.starts_with("deepseek:")
+        {
+            ModelTier::Berbayar
+        } else {
+            ModelTier::Gratis
+        };
+        (mid, t)
+    } else {
+        match model_override {
+            Some(m) => {
+                let t = if m.starts_with("muse:")
+                    || m.starts_with("openai:")
+                    || m.starts_with("gemini:")
+                    || m.starts_with("deepseek:")
+                {
+                    ModelTier::Berbayar
+                } else {
+                    ModelTier::Gratis
+                };
+                (m, t)
+            }
+            None => {
                 let decision = crate::model_selector::select_model(task, agent_id);
-                decision.model_id
-            };
-            eprintln!(
-                "[orchestrate:{run_id}] subtugas {} → {} (model Mimi)",
-                agent_id, mid
-            );
-            let t = if mid.starts_with("muse:")
-                || mid.starts_with("openai:")
-                || mid.starts_with("gemini:")
-                || mid.starts_with("deepseek:")
-            {
-                ModelTier::Berbayar
-            } else {
-                ModelTier::Gratis
-            };
-            (mid, t)
+                (decision.model_id, ModelTier::Berbayar)
+            }
         }
     };
 
