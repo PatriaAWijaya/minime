@@ -143,6 +143,21 @@ async fn orchestrate_task(
     Ok(orchestrate::orchestrate(&db, &router, &user_request, &model_id).await)
 }
 
+/// Orkestrasi STREAMING (24 Okt 2026): sama seperti orchestrate_task tetapi
+/// memancarkan event Tauri (orchestration-plan/subtask/done/error) sehingga
+/// frontend menampilkan progres per-agen begitu subtugas selesai.
+#[tauri::command]
+async fn orchestrate_task_stream(
+    app: tauri::AppHandle,
+    db: State<'_, db::Db>,
+    user_request: String,
+    mimi_model_id: Option<String>,
+) -> Result<orchestrate::OrchestrateResult, String> {
+    let model_id = mimi_model_id.unwrap_or_else(|| "gemini:gemini-3.8-flash".to_string());
+    let router = Router::new(routerku_base_url());
+    Ok(orchestrate::orchestrate_stream(&app, &db, &router, &user_request, &model_id).await)
+}
+
 /// Transkripsi audio dari base64 (untuk STT tombol mic).
 /// Menyimpan ke temp file lalu memanggil meta_transcribe.
 #[tauri::command]
@@ -569,6 +584,7 @@ fn main() {
             get_app_info,
             provider_probe,
             orchestrate_task,
+            orchestrate_task_stream,
             transcribe_audio_b64,
             select_model_smart,
             get_orchestration_history,

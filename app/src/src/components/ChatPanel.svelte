@@ -25,6 +25,7 @@
     setMessageReaction,
     sendChatViaRouter,
     sendOrchestrated,
+    sendOrchestratedStream,
     shouldOrchestrate,
     addLibraryItem,
     addKanbanCard,
@@ -300,18 +301,166 @@
             ? "berbayar"
             : "gratis";
       // ORKESTRASI: bila pesan ke Mimi adalah tugas, delegasikan ke agen
-      // yang tepat via orchestrate_task (bukan dijawab Mimi sendiri).
+      // yang tepat (bukan dijawab Mimi sendiri).
       if (shouldOrchestrate(id, text) && (await isTauri())) {
-        // Ikon jam (delayed): bila orkestrasi > 45 detik, tandai Mimi
-        // sebagai "lebih lama dari perkiraan" sampai hasil tiba.
+        // MIMI MENJAWAB DULU (perintah Patria 24 Okt): tiap instruksi user
+        // dijawab Mimi di chat, termasuk saat mendelegasikan — user tidak
+        // dibiarkan menunggu diam selama LLM bekerja.
+        pushMessage(id, "agent", "Baik, saya terima tugasnya. Saya sedang menyiapkan pembagian tugas untuk tim.", undefined, undefined, { id: "mimi", name: "Mimi" });
+
+        // Helper bersama streaming & legacy.
+        const agentLabel = (aid: string): string => {
+          const names = get(agentNames);
+          const custom = (names[aid] ?? "").trim();
+          if (custom) return custom;
+          const map: Record<string, string> = {
+            kreatif: "Kreatif",
+            riset: "Riset",
+            finance: "Finance",
+            strategis: "Bisnis Strategis",
+            code: "Code Builder",
+            mimi: "Mimi",
+          };
+          return map[aid] ?? aid;
+        };
+        const agentKanban = new Map<string, number>();
+        let streamCombined = "";
+        let streamSuccess = false;
+        let streamError = false;
+
+        // ===== STREAMING (24 Okt): progres per-agen begitu selesai =====
         let delayedTimer: ReturnType<typeof setTimeout> | undefined;
+        let streamEvents = 0;
         try {
           agentStatus.update((cur) => ({ ...cur, mimi: "working" }));
           delayedTimer = setTimeout(() => {
             agentStatus.update((cur) => ({ ...cur, mimi: "delayed" }));
           }, 45000);
+          const outcome = await sendOrchestratedStream(text, mid, {
+            onPlan: (subtasks) => {
+              try {
+                const delegated = subtasks.map((s) => s.agent_id).filter(Boolean);
+                for (const aid of delegated) {
+                  if (aid !== "mimi") {
+                    try { setAgentEnabled(aid, true); } catch {}
+                    agentStatus.update((st) => ({
+                      ...st,
+                      [aid]: aid === "riset" ? "researching" : "working",
+                    }));
+                  }
+                }
+                if (delegated.length > 0) {
+                  try { ensureFlowAgents(delegated); } catch {}
+                }
+                // Mimi memberitahu user lewat chat: siapa didelegasikan untuk apa
+                const parts = subtasks
+                  .filter((s) => s.agent_id && s.agent_id !== "mimi")
+                  .map((s) => {
+                    const t = s.task ?? "";
+                    return `${agentLabel(s.agent_id)} (${t.length > 60 ? t.slice(0, 57) + "..." : t})`;
+                  });
+                if (parts.length > 0) {
+                  pushMessage(id, "agent", `Saya delegasikan tugas ini ke: ${parts.join("; ")}. Mereka akan membalas di sini begitu selesai.`, undefined, undefined, { id: "mimi", name: "Mimi" });
+                }
+                // Kartu Kanban per agen + acknowledgment tiap agen
+                for (const s of subtasks) {
+                  if (!s.agent_id || s.agent_id === "mimi") continue;
+                  try {
+                    const subTitle = (s.task ?? "").length > 50 ? (s.task ?? "").slice(0, 47) + "..." : (s.task ?? "");
+                    const kid = addKanbanCard(`${s.agent_id}: ${subTitle}`, s.agent_id, "doing", "");
+                    agentKanban.set(s.agent_id, kid);
+                  } catch {}
+                  try {
+                    const taskShort = (s.task ?? "").length > 80 ? (s.task ?? "").slice(0, 77) + "..." : (s.task ?? "");
+                    pushMessage(id, "agent", `Siap Mimi, saya akan kerjakan ${taskShort} sesuai arahan dan hasilnya akan saya sampaikan disini untuk anda review.`, undefined, undefined, { id: s.agent_id, name: agentLabel(s.agent_id) });
+                  } catch {}
+                }
+              } catch {}
+            },
+            onSubtask: (st) => {
+              // BULLETPROOF: satu agen gagal tidak menggagalkan agen lain
+              try {
+                if (!st.agent_id) return;
+                const label = agentLabel(st.agent_id);
+                if (st.result && !st.error) {
+                  try {
+                    pushMessage(id, "agent", st.result, undefined, undefined, { id: st.agent_id, name: label });
+                  } catch {}
+                  try {
+                    pushMessage(st.agent_id, "agent", st.result);
+                  } catch {}
+                  streamCombined += `**${label}**: ${st.result}\n\n`;
+                  try {
+                    const kid = agentKanban.get(st.agent_id);
+                    if (kid !== undefined) moveKanbanCard(kid, "done");
+                  } catch {}
+                  try {
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "done" }));
+                  } catch {}
+                } else {
+                  try {
+                    pushMessage(id, "agent", `[GAGAL: ${st.error ?? "hasil kosong"}]`, undefined, undefined, { id: st.agent_id, name: label });
+                  } catch {}
+                  try {
+                    const kid = agentKanban.get(st.agent_id);
+                    if (kid !== undefined) moveKanbanCard(kid, "revision");
+                    agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                  } catch {}
+                }
+              } catch {
+                try {
+                  if (st.agent_id) agentStatus.update((cur) => ({ ...cur, [st.agent_id]: "attention" }));
+                } catch {}
+              }
+            },
+            onDone: (d) => {
+              streamSuccess = true;
+              try {
+                const summary = d.aggregated || streamCombined.trim();
+                if (summary.trim() && summary.trim() !== streamCombined.trim()) {
+                  pushMessage(id, "agent", summary, undefined, undefined, { id: "mimi", name: "Mimi" });
+                }
+                const taskTitle = text.trim().length > 60 ? text.trim().slice(0, 57) + "..." : text.trim();
+                try {
+                  addLibraryItem({
+                    title: taskTitle,
+                    summary: summary.length > 200 ? summary.slice(0, 197) + "..." : summary,
+                    content: summary,
+                    type: "doc",
+                    agentId: id,
+                    taskKey: "orch-" + Date.now(),
+                  });
+                } catch {}
+                try {
+                  if (kanbanId !== null) moveKanbanCard(kanbanId, "done");
+                } catch {}
+              } catch {}
+            },
+            onError: (e) => {
+              streamError = true;
+              try {
+                pushMessage(id, "agent", `Delegasi gagal (${e.error}). Saya jawab langsung.`, undefined, undefined, { id: "mimi", name: "Mimi" });
+              } catch {}
+            },
+          });
+          streamEvents = outcome.eventsProcessed;
+        } catch {
+          // Streaming gagal total → legacy di bawah
+        } finally {
+          if (delayedTimer) clearTimeout(delayedTimer);
+          agentStatus.update((cur) => ({ ...cur, mimi: "idle" }));
+        }
+        if (streamSuccess) return;
+        if (streamError) {
+          // Error sudah disampaikan Mimi → lanjut ke chat langsung (konsisten legacy)
+        } else if (streamEvents > 0) {
+          pushMessage(id, "agent", "Proses delegasi terhenti di tengah jalan. Hasil yang sudah ada tetap tersimpan di atas.", undefined, undefined, { id: "mimi", name: "Mimi" });
+          return;
+        }
+        // ===== LEGACY (fallback): hanya bila streaming tidak jalan sama sekali =====
+        try {
+          agentStatus.update((cur) => ({ ...cur, mimi: "working" }));
           const orch = await sendOrchestrated(text, mid);
-          clearTimeout(delayedTimer);
           agentStatus.update((cur) => ({ ...cur, mimi: "idle" }));
           if (orch && !orch.error) {
             // VISIBILITAS DELEGASI PENUH (keputusan Patria 24 Okt):
@@ -324,20 +473,7 @@
             // 1+4. Aktifkan agen di list + tampilkan di Koneksi
             // Status ikon (Patria 24 Okt): riset = mata (researching),
             // lainnya = lampu (working/solusi). Selesai = heart (done).
-            const agentLabel = (aid: string): string => {
-              const names = get(agentNames);
-              const custom = (names[aid] ?? "").trim();
-              if (custom) return custom;
-              const map: Record<string, string> = {
-                kreatif: "Kreatif",
-                riset: "Riset",
-                finance: "Finance",
-                strategis: "Bisnis Strategis",
-                code: "Code Builder",
-                mimi: "Mimi",
-              };
-              return map[aid] ?? aid;
-            };
+            // agentLabel sudah didefinisikan di scope blok (dipakai streaming & legacy).
             try {
               for (const aid of delegated) {
                 if (aid !== "mimi") {
@@ -372,7 +508,7 @@
               }
             } catch {}
             // 3. Kartu Kanban per agen (kolom Dikerjakan dulu)
-            const agentKanban = new Map<string, number>();
+            // agentKanban sudah didefinisikan di scope blok (dipakai streaming & legacy).
             try {
               for (const st of results) {
                 if (st.agent_id && st.agent_id !== "mimi") {
@@ -477,7 +613,6 @@
           }
           // Bila orkestrasi gagal/kosong, lanjut ke chat langsung (fallback)
         } catch {
-          if (delayedTimer) clearTimeout(delayedTimer);
           agentStatus.update((cur) => ({ ...cur, mimi: "idle" }));
           // Fallback ke chat langsung
         }

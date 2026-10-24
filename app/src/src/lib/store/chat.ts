@@ -169,6 +169,123 @@ export interface OrchestrateResult {
   estimated_cost_usd?: number;
 }
 
+/** Tipe event streaming orkestrasi (cocok dengan struct Rust). */
+export interface OrchestrationPlanSubtask {
+  agent_id: string;
+  task: string;
+}
+export interface OrchestrationSubtaskEvent {
+  run_id: string;
+  agent_id: string;
+  task: string;
+  result: string;
+  error?: string | null;
+  revision: boolean;
+}
+export interface OrchestrationDoneEvent {
+  run_id: string;
+  aggregated: string;
+  qc_score?: number | null;
+  qc_passed: boolean;
+}
+export interface OrchestrationErrorEvent {
+  run_id: string;
+  error: string;
+}
+
+/** Hasil sendOrchestratedStream: berapa event yang sempat diproses. */
+export interface StreamOutcome {
+  /** true bila event done/error diterima (jangan jalankan fallback legacy). */
+  settled: boolean;
+  /** Jumlah event plan/subtask/done/error yang diproses. */
+  eventsProcessed: number;
+}
+
+/** Orkestrasi STREAMING (24 Okt 2026): dengarkan event Tauri selagi backend
+    bekerja, sehingga UI menampilkan progres per-agen begitu subtugas selesai.
+    Mengembalikan settled=false HANYA bila command gagal sebelum event apa pun
+    diproses — dalam hal itu pemanggil boleh menjalankan fallback legacy. */
+export async function sendOrchestratedStream(
+  userRequest: string,
+  modelId: string | undefined,
+  handlers: {
+    onPlan: (subtasks: OrchestrationPlanSubtask[]) => void;
+    onSubtask: (s: OrchestrationSubtaskEvent) => void;
+    onDone: (d: OrchestrationDoneEvent) => void;
+    onError: (e: OrchestrationErrorEvent) => void;
+  },
+): Promise<StreamOutcome> {
+  const tauri = await withTimeout(isTauri(), 10000, "deteksi backend");
+  if (!tauri) return { settled: false, eventsProcessed: 0 };
+  const { invoke } = await import("@tauri-apps/api/core");
+  const { listen } = await import("@tauri-apps/api/event");
+  let eventsProcessed = 0;
+  let settled = false;
+  const unlisteners: Array<() => void> = [];
+  const doneHandled = { current: false };
+  const handleDone = (d: OrchestrationDoneEvent) => {
+    if (doneHandled.current) return;
+    doneHandled.current = true;
+    settled = true;
+    handlers.onDone(d);
+  };
+  try {
+    unlisteners.push(await listen<OrchestrationPlanSubtask[] | { subtasks: OrchestrationPlanSubtask[] }>("orchestration-plan", (e) => {
+      eventsProcessed++;
+      const payload = e.payload as { subtasks?: OrchestrationPlanSubtask[] };
+      const subtasks = Array.isArray(e.payload)
+        ? (e.payload as OrchestrationPlanSubtask[])
+        : (payload.subtasks ?? []);
+      handlers.onPlan(subtasks);
+    }));
+    unlisteners.push(await listen<OrchestrationSubtaskEvent>("orchestration-subtask", (e) => {
+      eventsProcessed++;
+      handlers.onSubtask(e.payload);
+    }));
+    unlisteners.push(await listen<OrchestrationDoneEvent>("orchestration-done", (e) => {
+      eventsProcessed++;
+      handleDone(e.payload);
+    }));
+    unlisteners.push(await listen<OrchestrationErrorEvent>("orchestration-error", (e) => {
+      eventsProcessed++;
+      settled = true;
+      handlers.onError(e.payload);
+    }));
+    // Invoke: backend memancarkan done SEBELUM return, jadi event done
+    // normalnya tiba dulu; bila balapan (event telat), sintesis dari return.
+    const result = await withTimeout(
+      invoke<OrchestrateResult>("orchestrate_task_stream", {
+        userRequest,
+        mimiModelId: modelId ?? null,
+      }),
+      300000,
+      "orkestrator",
+    );
+    if (!doneHandled.current && !result.error) {
+      eventsProcessed++;
+      handleDone({
+        run_id: "",
+        aggregated: result.aggregated,
+        qc_score: result.qc_score,
+        qc_passed: result.qc_passed,
+      });
+    } else if (!doneHandled.current && result.error) {
+      eventsProcessed++;
+      settled = true;
+      handlers.onError({ run_id: "", error: result.error });
+    }
+    return { settled, eventsProcessed };
+  } finally {
+    for (const un of unlisteners) {
+      try {
+        un();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
 /** Panggil orkestrator Mimi: delegasikan tugas ke agen-agen yang tepat. */
 export async function sendOrchestrated(
   userRequest: string,

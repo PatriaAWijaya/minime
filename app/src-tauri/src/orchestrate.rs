@@ -1027,3 +1027,306 @@ mod tests {
         assert!(result.revision_history.len() >= 4);
     }
 }
+
+/// ===== STREAMING (24 Okt 2026) =====
+/// Varian orkestrasi yang memancarkan event Tauri tiap tahap, sehingga
+/// frontend bisa menampilkan progres per-agen BEGITU subtugas selesai —
+/// bukan menunggu seluruh pipeline (parse + semua subtugas + agregat + QC).
+/// Ini obat struktural untuk hambatan delegasi berulang: all-or-nothing
+/// sinkron yang membuat user tidak melihat tanda apa-apa selama menit-menit
+/// LLM bekerja.
+///
+/// Event:
+/// - `orchestration-plan`: { run_id, subtasks: [{agent_id, task}] }
+/// - `orchestration-subtask`: { run_id, agent_id, task, result, error, revision }
+/// - `orchestration-done`: { run_id, aggregated, qc_score, qc_passed }
+/// - `orchestration-error`: { run_id, error }
+
+/// Payload event plan.
+#[derive(Debug, Clone, Serialize)]
+pub struct OrchestrationPlanEvent {
+    pub run_id: String,
+    pub subtasks: Vec<SubTask>,
+}
+
+/// Payload event subtugas (awal maupun revisi).
+#[derive(Debug, Clone, Serialize)]
+pub struct OrchestrationSubtaskEvent {
+    pub run_id: String,
+    pub agent_id: String,
+    pub task: String,
+    pub result: String,
+    pub error: Option<String>,
+    pub revision: bool,
+}
+
+/// Payload event selesai.
+#[derive(Debug, Clone, Serialize)]
+pub struct OrchestrationDoneEvent {
+    pub run_id: String,
+    pub aggregated: String,
+    pub qc_score: Option<i32>,
+    pub qc_passed: bool,
+}
+
+/// Payload event error fatal (pre-flight / parse gagal sebelum plan).
+#[derive(Debug, Clone, Serialize)]
+pub struct OrchestrationErrorEvent {
+    pub run_id: String,
+    pub error: String,
+}
+
+fn emit_event<T: Serialize>(app: &tauri::AppHandle, event: &str, payload: &T) {
+    use tauri::Emitter;
+    if let Err(e) = app.emit(event, payload) {
+        eprintln!("[orchestrate-stream] emit {event} gagal: {e}");
+    }
+}
+
+/// Orkestrasi streaming: logika sama dengan `orchestrate`, tetapi dispatch
+/// memakai FuturesUnordered sehingga tiap subtugas dipancarkan begitu selesai.
+pub async fn orchestrate_stream(
+    app: &tauri::AppHandle,
+    db: &crate::db::Db,
+    router: &dyn ChatClient,
+    user_request: &str,
+    mimi_model_id: &str,
+) -> OrchestrateResult {
+    use futures::stream::{FuturesUnordered, StreamExt};
+
+    let run_id = format!("{:08x}", {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        std::time::SystemTime::now().hash(&mut h);
+        user_request.hash(&mut h);
+        h.finish() & 0xFFFFFFFF
+    });
+    eprintln!("[orchestrate-stream:{run_id}] mulai: {}", user_request.chars().take(80).collect::<String>());
+
+    // ===== [0] Pre-flight =====
+    if needs_distribution(user_request) {
+        if let Err(msg) = check_postiz_ready() {
+            eprintln!("[orchestrate-stream:{run_id}] pre-flight GAGAL: {msg}");
+            emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
+            return OrchestrateResult {
+                aggregated: String::new(),
+                subtask_results: vec![],
+                qc_score: None,
+                qc_passed: false,
+                qc_notes: None,
+                error: Some(msg),
+                revisions: 0,
+                revision_history: vec![],
+                estimated_cost_usd: 0.0,
+            };
+        }
+    }
+
+    // ===== [1] Parse intent =====
+    let parse_res = chat_internal(router, db, "mimi", mimi_model_id, ModelTier::Berbayar, &parse_system_prompt(), user_request).await;
+    let plan: TaskPlan = match parse_res {
+        Ok(r) if r.error.is_none() => {
+            let json_str = extract_json(&r.text);
+            match serde_json::from_str::<TaskPlan>(&json_str) {
+                Ok(p) if !p.subtasks.is_empty() => {
+                    let _ = db.log_parse_attempt(true);
+                    p
+                }
+                _ => {
+                    let _ = db.log_parse_attempt(false);
+                    TaskPlan {
+                        subtasks: vec![SubTask { agent_id: "mimi".to_string(), task: user_request.to_string(), model_id: None }],
+                    }
+                }
+            }
+        }
+        _ => {
+            let msg = "Gagal mem-parse permintaan".to_string();
+            emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
+            return OrchestrateResult {
+                aggregated: String::new(),
+                subtask_results: vec![],
+                qc_score: None,
+                qc_passed: false,
+                qc_notes: None,
+                error: Some(msg),
+                revisions: 0,
+                revision_history: vec![],
+                estimated_cost_usd: 0.0,
+            };
+        }
+    };
+
+    // Validasi agent_id terhadap allowlist
+    const VALID_AGENTS: &[&str] = &["mimi", "kreatif", "riset", "finance", "strategis", "code"];
+    let plan = TaskPlan {
+        subtasks: plan
+            .subtasks
+            .into_iter()
+            .map(|mut st| {
+                if !VALID_AGENTS.contains(&st.agent_id.as_str()) {
+                    st.agent_id = "mimi".to_string();
+                }
+                st
+            })
+            .collect(),
+    };
+
+    // ===== Cost guard =====
+    let likely_wonder = plan.subtasks.iter().any(|st| {
+        crate::model_selector::complexity_score(&st.task, &st.agent_id).0 >= 60
+    });
+    let est_cost = estimate_cost(plan.subtasks.len(), likely_wonder);
+    if est_cost > COST_HARD_CAP_USD {
+        let msg = format!(
+            "Estimasi biaya ${:.2} melebihi batas ${:.2}. Sederhanakan permintaan.",
+            est_cost, COST_HARD_CAP_USD
+        );
+        emit_event(app, "orchestration-error", &OrchestrationErrorEvent { run_id: run_id.clone(), error: msg.clone() });
+        return OrchestrateResult {
+            aggregated: String::new(),
+            subtask_results: vec![],
+            qc_score: None,
+            qc_passed: false,
+            qc_notes: None,
+            error: Some(msg),
+            revisions: 0,
+            revision_history: vec![],
+            estimated_cost_usd: est_cost,
+        };
+    }
+
+    // ===== PLAN EVENT: frontend langsung tampilkan delegasi + kartu + ack =====
+    emit_event(app, "orchestration-plan", &OrchestrationPlanEvent { run_id: run_id.clone(), subtasks: plan.subtasks.clone() });
+    eprintln!("[orchestrate-stream:{run_id}] [1/4] OK: {} subtugas, plan dipancarkan", plan.subtasks.len());
+
+    // ===== [2] Dispatch streaming (FuturesUnordered: hasil keluar begitu selesai) =====
+    let mut unordered = FuturesUnordered::new();
+    for st in plan.subtasks.iter() {
+        unordered.push(dispatch_one(
+            router, db, &run_id, &st.agent_id, &st.task, None,
+            st.model_id.clone(), mimi_model_id, user_request,
+        ));
+    }
+    let mut subtask_results: Vec<SubTaskResult> = Vec::new();
+    while let Some(res) = unordered.next().await {
+        emit_event(app, "orchestration-subtask", &OrchestrationSubtaskEvent {
+            run_id: run_id.clone(),
+            agent_id: res.agent_id.clone(),
+            task: res.task.clone(),
+            result: res.result.clone(),
+            error: res.error.clone(),
+            revision: false,
+        });
+        eprintln!("[orchestrate-stream:{run_id}] subtugas selesai: {}", res.agent_id);
+        subtask_results.push(res);
+    }
+
+    // ===== [3+4] Agregat → QC → Revisi (loop maks 3x) =====
+    let mut revision_count: u32 = 0;
+    let mut revision_history: Vec<String> = Vec::new();
+    loop {
+        let round = revision_count + 1;
+        let aggregated = aggregate_results(router, db, &run_id.clone(), mimi_model_id, user_request, &subtask_results).await;
+        let (qc_score, qc_passed, qc_notes, revise_agents) =
+            run_qc(router, db, &run_id.clone(), mimi_model_id, user_request, &aggregated).await;
+        revision_history.push(format!(
+            "Putaran {}: skor {:?}, lolos={}, catatan: {}",
+            round, qc_score, qc_passed,
+            qc_notes.as_deref().unwrap_or("-").chars().take(120).collect::<String>()
+        ));
+
+        if qc_passed || revision_count >= MAX_REVISIONS {
+            emit_event(app, "orchestration-done", &OrchestrationDoneEvent {
+                run_id: run_id.clone(),
+                aggregated: aggregated.clone(),
+                qc_score,
+                qc_passed,
+            });
+            return OrchestrateResult {
+                aggregated,
+                subtask_results,
+                qc_score,
+                qc_passed,
+                qc_notes,
+                error: None,
+                revisions: revision_count,
+                revision_history,
+                estimated_cost_usd: est_cost,
+            };
+        }
+
+        // --- Revisi dibutuhkan ---
+        revision_count += 1;
+        let notes = qc_notes.clone().unwrap_or_default();
+        let agents_to_revise: Vec<String> = if revise_agents.is_empty() {
+            subtask_results.iter().filter(|r| r.error.is_none()).map(|r| r.agent_id.clone()).collect()
+        } else {
+            revise_agents.into_iter().filter(|a| {
+                VALID_AGENTS.contains(&a.as_str()) && subtask_results.iter().any(|r| &r.agent_id == a)
+            }).collect()
+        };
+        if agents_to_revise.is_empty() {
+            revision_history.push("Tidak ada agen valid untuk revisi".to_string());
+            emit_event(app, "orchestration-done", &OrchestrationDoneEvent {
+                run_id: run_id.clone(),
+                aggregated: aggregated.clone(),
+                qc_score,
+                qc_passed: false,
+            });
+            return OrchestrateResult {
+                aggregated,
+                subtask_results,
+                qc_score,
+                qc_passed: false,
+                qc_notes,
+                error: None,
+                revisions: revision_count,
+                revision_history,
+                estimated_cost_usd: est_cost,
+            };
+        }
+
+        // Dispatch revisi streaming
+        let mut unordered_rev = FuturesUnordered::new();
+        for aid in agents_to_revise.iter() {
+            let prev = subtask_results.iter().find(|r| &r.agent_id == aid).cloned();
+            let notes_clone = notes.clone();
+            let run_id_clone = run_id.clone();
+            let fut = async move {
+                match prev {
+                    Some(p) => {
+                        let sys = revision_system_prompt(&p.agent_id, &p.task, &p.result, &notes_clone);
+                        dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None, mimi_model_id, user_request).await
+                    }
+                    None => SubTaskResult {
+                        agent_id: aid.clone(),
+                        task: String::new(),
+                        result: String::new(),
+                        served_by: String::new(),
+                        error: Some("Subtugas tidak ditemukan".to_string()),
+                    },
+                }
+            };
+            unordered_rev.push(fut);
+        }
+        let mut revised: Vec<SubTaskResult> = Vec::new();
+        while let Some(res) = unordered_rev.next().await {
+            emit_event(app, "orchestration-subtask", &OrchestrationSubtaskEvent {
+                run_id: run_id.clone(),
+                agent_id: res.agent_id.clone(),
+                task: res.task.clone(),
+                result: res.result.clone(),
+                error: res.error.clone(),
+                revision: true,
+            });
+            revised.push(res);
+        }
+        for r in revised {
+            if let Some(existing) = subtask_results.iter_mut().find(|e| e.agent_id == r.agent_id) {
+                *existing = r;
+            }
+        }
+    }
+}
