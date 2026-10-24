@@ -44,6 +44,9 @@
       key = "";
       baseUrl = "";
       testResult = { ok: true, msg: "Tersimpan." };
+      // Optimistic: langsung anggap terkonfigurasi agar tombol Tes aktif
+      // (onChanged akan refresh status resmi dari backend)
+      entry = { ...entry, key_set: true };
       onChanged();
     } catch (e) {
       testResult = { ok: false, msg: String(e) };
