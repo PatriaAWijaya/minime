@@ -4,7 +4,7 @@ import type {
   KanbanCard, KanbanCol, LibraryItem, Message, ProviderInfo, ScheduledItem,
   ToolInfo, LibraryType,
 } from "../types";
-import { agentNames, agentTitles, agentGender, agentAge, agentPosition, agentHobbies } from "./agents";
+import { agentNames, agentTitles, agentInstructions, agentGender, agentAge, agentPosition, agentHobbies } from "./agents";
 
 export const messagesByAgent = writable<Record<string, Message[]>>({});
 
