@@ -100,20 +100,6 @@
     // Pindai provider nyata sekali saat aplikasi dibuka (untuk daftar
     // model Ollama dinamis + status Penyedia Model).
     refreshProviders();
-    // TEMPORARY E2E TRIGGER (24 Okt 2026) — HAPUS setelah test
-    (async () => {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        const trigger = await invoke<boolean>("check_e2e_trigger");
-        if (trigger) {
-          console.log("[E2E] Trigger file ditemukan, jalankan E2E...");
-          const res = await invoke("e2e_ramadan");
-          console.log("[E2E] Selesai:", JSON.stringify(res).slice(0, 200));
-        }
-      } catch (e) {
-        console.error("[E2E] Gagal:", e);
-      }
-    })();
     // Automatic update check at launch (Settings > Updates toggle).
     if (!isIsland && $settingsPrefs.autoUpdate) {
       void checkForUpdate().then(() => {

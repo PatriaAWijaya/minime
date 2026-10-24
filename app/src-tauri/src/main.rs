@@ -5,7 +5,6 @@ mod db;
 mod drive;
 mod island;
 mod logger;
-mod e2e_test;
 mod model_selector;
 mod orchestrate;
 mod oauth_local;
@@ -189,21 +188,6 @@ fn select_model_smart(
     agent_id: String,
 ) -> Result<model_selector::ModelDecision, String> {
     Ok(model_selector::select_model(&prompt, &agent_id))
-}
-
-/// E2E test sementara — workflow Ramadan (HAPUS setelah test).
-#[tauri::command]
-async fn e2e_ramadan(
-    db: State<'_, db::Db>,
-) -> Result<e2e_test::E2EResult, String> {
-    let router = Router::new(routerku_base_url());
-    Ok(e2e_test::run_ramadan_e2e(&db, &router).await)
-}
-
-/// Cek file trigger untuk auto-run E2E (sementara).
-#[tauri::command]
-fn check_e2e_trigger() -> bool {
-    std::path::Path::new("/tmp/minime_e2e_trigger").exists()
 }
 
 /// Ambil riwayat chat agen (terbaru `limit`, urutan kronologis).
@@ -569,8 +553,6 @@ fn main() {
             orchestrate_task,
             transcribe_audio_b64,
             select_model_smart,
-            e2e_ramadan,
-            check_e2e_trigger,
             providers::discover_models,
             providers::generate_image,
             providers::meta_generate_image,
@@ -653,41 +635,6 @@ fn main() {
             runtime::tool_run,
             runtime::runtime_allowed_tools,
         ])
-        .setup(|_app| {
-            // TEMPORARY E2E TRIGGER via Rust (24 Okt 2026) — bypass WebView.
-            // HAPUS setelah test selesai.
-            tauri::async_runtime::spawn(async move {
-                let trigger_path = std::path::Path::new("/tmp/minime_e2e_trigger");
-                // Tunggu 10 detik agar app fully ready
-                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                // Poll setiap 5 detik, maksimal 10 menit
-                for _ in 0..120 {
-                    if trigger_path.exists() {
-                        eprintln!("[e2e-trigger] File trigger ditemukan, jalankan E2E...");
-                        // Hapus trigger agar tidak re-run
-                        let _ = std::fs::remove_file(trigger_path);
-                        // Buka koneksi DB baru (Db tidak Clone; SQLite aman multi-koneksi)
-                        match db::Db::open() {
-                            Ok(db) => {
-                                let router = Router::new(routerku_base_url());
-                                let result = e2e_test::run_ramadan_e2e(&db, &router).await;
-                                eprintln!(
-                                    "[e2e-trigger] Selesai: success={}",
-                                    result.success
-                                );
-                            }
-                            Err(e) => {
-                                eprintln!("[e2e-trigger] Gagal buka DB: {}", e);
-                            }
-                        }
-                        break;
-                    }
-                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                }
-                eprintln!("[e2e-trigger] Watcher selesai");
-            });
-            Ok(())
-        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
