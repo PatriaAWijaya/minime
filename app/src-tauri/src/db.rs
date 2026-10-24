@@ -182,10 +182,8 @@ impl Db {
         .map_err(|e| format!("migrasi parse_attempts gagal: {e}"))?;
 
         // Migrasi #5: tambah duration_ms ke tabel lama (ignore jika sudah ada)
-        {
-            let conn2 = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
-            let _ = conn2.execute("ALTER TABLE model_decisions ADD COLUMN duration_ms INTEGER", []);
-        }
+        // Note: pakai `conn` yang sudah di-lock di atas — jangan lock lagi (deadlock!)
+        let _ = conn.execute("ALTER TABLE model_decisions ADD COLUMN duration_ms INTEGER", []);
         Ok(())
     }
 
