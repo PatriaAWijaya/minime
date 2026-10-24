@@ -166,6 +166,12 @@ impl Db {
             [],
         )
         .map_err(|e| format!("migrasi db gagal: {e}"))?;
+
+        // Migrasi #5: tambah duration_ms ke tabel lama (ignore jika sudah ada)
+        {
+            let conn2 = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
+            let _ = conn2.execute("ALTER TABLE model_decisions ADD COLUMN duration_ms INTEGER", []);
+        }
         Ok(())
     }
 
@@ -218,6 +224,7 @@ impl Db {
         prompt: &str,
         complexity_score: i32,
         model_id: &str,
+        duration_ms: Option<i64>,
     ) -> Result<(), String> {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -227,14 +234,15 @@ impl Db {
 
         let conn = self.conn.lock().map_err(|e| format!("db lock: {e}"))?;
         conn.execute(
-            "INSERT INTO model_decisions (agent_id, prompt_hash, prompt_len, complexity_score, model_id)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO model_decisions (agent_id, prompt_hash, prompt_len, complexity_score, model_id, duration_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 agent_id,
                 prompt_hash,
                 prompt.chars().count() as i64,
                 complexity_score as i64,
                 model_id,
+                duration_ms,
             ],
         )
         .map_err(|e| format!("log model decision gagal: {e}"))?;

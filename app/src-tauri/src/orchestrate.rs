@@ -235,11 +235,13 @@ async fn dispatch_one(
                 agent_id, decision.model_id, decision.complexity_score
             );
             // Catat untuk audit & future learning (heuristik ke-4)
+            // TODO(#5): ukur durasi aktual di sekitar chat_internal
             let _ = db.log_model_decision(
                 agent_id,
                 task,
                 decision.complexity_score,
                 &decision.model_id,
+                None,
             );
             (decision.model_id, ModelTier::Berbayar)
         }
