@@ -2433,3 +2433,33 @@ Pasangan SHA: lokal 6fed70e ↔ remote e4b2c9a (tree identik).
 - **Status**: ⏳ Menunggu Patria verifikasi key via curl
 
 **Pasangan SHA**: lihat ~/AGENTS.md (7 commit, semua tree identik)
+
+---
+
+## 24 Okt 2026 — Hardening Provider (13:00–14:00 WIB)
+
+### Masalah Awal
+- Chat gagal untuk semua provider (Muse billing, Gemini 503, DeepSeek key tidak terbaca)
+- Error menutupi penyebab asli (hanya tampil error terakhir)
+- Router selalu coba muse dulu meski model Gemini dipilih
+- Keychain ad-hoc tidak stabil (write OK, read gagal)
+
+### Perbaikan Diterapkan
+1. **Model Fallback**: Gemini 3 model (3.8-flash → 2.5-flash → 1.5-flash); bila satu overload, coba berikutnya otomatis
+2. **Circuit Breaker**: Provider 3x gagal berturut-turut di-skip 5 menit (hemat waktu timeout)
+3. **Retry 503**: Otomatis retry 2x (jeda 2s, 4s) sebelum fallback
+4. **Fallback File**: API key disimpan juga ke `~/.minime/keys/*.key` (mode 600) sebagai backup Keychain
+5. **Error Provider Pertama**: Pesan error tampilkan penyebab dari provider yang dipilih user, bukan yang terakhir
+6. **Router Kenali Provider**: Model "Gemini" (tanpa colon) dikenali sebagai provider gemini; fallback model default otomatis
+7. **Ollama Lokal**: Server jalan di :11434, model qwen2.5:3b teruji (jawab "Jakarta" benar) — jaring pengaman terakhir yang tidak kena billing/overload
+
+### Hasil Verifikasi
+- Minime PID 44505: CPU 0.3%, MEM 0.3%, uptime 2h48m — sehat
+- Ollama: 4 model tersedia, chat berfungsi
+- Gemini: key valid (53 char), models endpoint OK (60 model)
+- Fallback chain: Gemini (3 model) → DeepSeek → RouterKu → Ollama → OpenCode
+
+### Sisa
+- Race paralel penuh & antrean background: ditunda — circuit breaker + retry sudah capai efek serupa tanpa risiko refactor async besar
+- DeepSeek: perlu simpan ulang key agar masuk file fallback
+- Meta: billing belum aktif (tunggu kredit hackathon 26 Okt)
