@@ -939,6 +939,10 @@ impl GeminiNativeProvider {
         Self {
             key_account: "gemini",
             models: vec![
+                // 24 Okt 2026: urutan dicoba — 3-flash-preview (nama di docs
+                // resmi OpenAI-compatible) dulu, baru 3.8-flash (saran error
+                // Google), lalu 2.5/2.0 sebagai fallback lama.
+                ModelInfo { id: "gemini:gemini-3-flash-preview".to_string(), label: "Gemini 3 Flash Preview".to_string() },
                 ModelInfo { id: "gemini:gemini-3.8-flash".to_string(), label: "Gemini 3.8 Flash".to_string() },
                 ModelInfo { id: "gemini:gemini-2.5-flash".to_string(), label: "Gemini 2.5 Flash".to_string() },
                 ModelInfo { id: "gemini:gemini-2.0-flash".to_string(), label: "Gemini 2.0 Flash".to_string() },
@@ -1066,8 +1070,8 @@ impl GeminiNativeProvider {
             }
             let status = resp.status();
             let body_text = resp.text().await.unwrap_or_default();
-            let snippet: String = body_text.chars().take(200).collect();
-            eprintln!("[gemini-native:{}] gagal HTTP {}: {}", model_name, status, snippet);
+            let snippet: String = body_text.chars().take(300).collect();
+            eprintln!("[gemini-native:{}] HTTP {} → lanjut model berikutnya: {}", model_name, status, snippet);
             // 404 → coba model berikutnya; error lain juga coba (fallback).
             last_err = Some(ProviderError::Failed(format!(
                 "gemini native {} HTTP {}: {}",
