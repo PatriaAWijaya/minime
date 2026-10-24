@@ -35,6 +35,8 @@
     autopostPending,
     skillCatalog,
     agentModel,
+    setMimiModel,
+    setAgentModelExplicit,
     agentProvider,
     agentNames,
     agentNotify,
@@ -459,7 +461,13 @@
   }
 
   function setModel(id: string) {
-    agentModel.update((m) => ({ ...m, [agent.id]: id }));
+    // Default: agen mengikuti model Mimi; bila yang diubah adalah Mimi,
+    // propagasi ke semua agen non-override. Bila agen lain, tandai override.
+    if (agent.id === "mimi") {
+      setMimiModel(id);
+    } else {
+      setAgentModelExplicit(agent.id, id);
+    }
   }
   // Pola OpenBot (clean-room): pilih provider dulu, model mengikuti.
   // Ganti provider → otomatis pilih model pertama provider itu.
@@ -468,7 +476,11 @@
     const catalog = get(modelCatalog);
     const first = catalog.find((m) => m.providerId === pid);
     if (first) {
-      agentModel.update((m) => ({ ...m, [agent.id]: first.id }));
+      if (agent.id === "mimi") {
+        setMimiModel(first.id);
+      } else {
+        setAgentModelExplicit(agent.id, first.id);
+      }
     }
     // Local-first: jika belum konek → tandai agar SettingsView
     // otomatis trigger setup (download/API key dialog)

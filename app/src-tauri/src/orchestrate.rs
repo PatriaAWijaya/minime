@@ -212,9 +212,11 @@ async fn dispatch_one(
     task: &str,
     system_override: Option<String>,
     model_override: Option<String>,
+    mimi_model_id: &str,
 ) -> SubTaskResult {
     let (model_id, tier) = match model_override {
         Some(m) => {
+            // User menentukan model berbeda untuk subtugas ini → pakai itu
             let t = if m.starts_with("muse:")
                 || m.starts_with("openai:")
                 || m.starts_with("gemini:")
@@ -227,23 +229,29 @@ async fn dispatch_one(
             (m, t)
         }
         None => {
-            // Model selection cerdas per subtugas:
-            // skor >= 60 → Wonder, < 60 → Spark
-            let decision = crate::model_selector::select_model(task, agent_id);
+            // DEFAULT: agen mengikuti model Mimi (keputusan Patria 24 Okt).
+            // Model selector kompleksitas hanya dipakai bila Mimi tidak
+            // menentukan model (fallback, seharusnya tidak terjadi).
+            let mid = if !mimi_model_id.is_empty() {
+                mimi_model_id.to_string()
+            } else {
+                let decision = crate::model_selector::select_model(task, agent_id);
+                decision.model_id
+            };
             eprintln!(
-                "[orchestrate:{run_id}] subtugas {} → {} (skor {})",
-                agent_id, decision.model_id, decision.complexity_score
+                "[orchestrate:{run_id}] subtugas {} → {} (model Mimi)",
+                agent_id, mid
             );
-            // Catat untuk audit & future learning (heuristik ke-4)
-            // TODO(#5): ukur durasi aktual di sekitar chat_internal
-            let _ = db.log_model_decision(
-                agent_id,
-                task,
-                decision.complexity_score,
-                &decision.model_id,
-                None,
-            );
-            (decision.model_id, ModelTier::Berbayar)
+            let t = if mid.starts_with("muse:")
+                || mid.starts_with("openai:")
+                || mid.starts_with("gemini:")
+                || mid.starts_with("deepseek:")
+            {
+                ModelTier::Berbayar
+            } else {
+                ModelTier::Gratis
+            };
+            (mid, t)
         }
     };
 
@@ -604,6 +612,7 @@ pub async fn orchestrate(
                 &st.task,
                 None,
                 st.model_id.clone(),
+                mimi_model_id,
             )
         }))
         .await;
@@ -723,7 +732,7 @@ pub async fn orchestrate(
                             let sys = revision_system_prompt(
                                 &p.agent_id, &p.task, &p.result, &notes_clone,
                             );
-                            dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None).await
+                            dispatch_one(router, db, &run_id_clone, &p.agent_id, &p.task, Some(sys), None, mimi_model_id).await
                         }
                         None => SubTaskResult {
                             agent_id: aid.clone(),

@@ -87,6 +87,53 @@ export const agentModel = writable<Record<string, string>>(
 );
 persistRecord("minime.agent-model", agentModel);
 
+/** Agen yang modelnya di-override eksplisit oleh user (tidak ikut Mimi).
+ *  Disimpan persisten agar override tidak hilang saat restart. */
+export const agentModelOverride = writable<Record<string, boolean>>(
+  loadRecord<boolean>("minime.agent-model-override"),
+);
+persistRecord("minime.agent-model-override", agentModelOverride);
+
+/** Set model Mimi + propagasi ke semua agen yang TIDAK di-override.
+ *  Keputusan Patria 24 Okt: default agen mengikuti model Mimi. */
+export function setMimiModel(modelId: string) {
+  agentModel.update((m) => {
+    const next = { ...m, mimi: modelId };
+    const overrides = get(agentModelOverride);
+    for (const aid of Object.keys(next)) {
+      if (aid !== "mimi" && !overrides[aid]) {
+        next[aid] = modelId;
+      }
+    }
+    // Juga set untuk agen yang belum ada di record (default ikut Mimi)
+    for (const aid of ["kreatif", "riset", "finance", "strategis", "code"]) {
+      if (!overrides[aid] && !(aid in next)) {
+        next[aid] = modelId;
+      }
+    }
+    return next;
+  });
+}
+
+/** Set model satu agen secara eksplisit (override, tidak ikut Mimi lagi). */
+export function setAgentModelExplicit(agentId: string, modelId: string) {
+  agentModelOverride.update((o) => ({ ...o, [agentId]: true }));
+  agentModel.update((m) => ({ ...m, [agentId]: modelId }));
+}
+
+/** Hapus override satu agen → kembali mengikuti model Mimi. */
+export function clearAgentModelOverride(agentId: string) {
+  agentModelOverride.update((o) => {
+    const next = { ...o };
+    delete next[agentId];
+    return next;
+  });
+  const mimiModel = get(agentModel)["mimi"];
+  if (mimiModel) {
+    agentModel.update((m) => ({ ...m, [agentId]: mimiModel }));
+  }
+}
+
 /** Per-agent provider choice (Patria 21 Okt: pola OpenBot — provider dulu, model mengikuti). */
 export const agentProvider = writable<Record<string, string>>(
   loadRecord<string>("minime.agent-provider"),
