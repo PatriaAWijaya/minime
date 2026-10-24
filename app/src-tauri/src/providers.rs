@@ -1005,6 +1005,55 @@ impl GeminiNativeProvider {
             })
             .collect::<Vec<_>>()
             .join("\n\n");
+        // Helper: ambil daftar model ASLI dari API native (GET /v1beta/models).
+        // Dipakai bila semua nama hardcoded 404 — jangan tebak nama lagi.
+        let fetch_live_models = |key: &str| {
+            let client = self.client.clone();
+            let key = key.to_string();
+            async move {
+                let resp = client
+                    .get("https://generativelanguage.googleapis.com/v1beta/models")
+                    .header("x-goog-api-key", &key)
+                    .send()
+                    .await;
+                let resp = match resp {
+                    Ok(r) if r.status().is_success() => r,
+                    _ => return Vec::new(),
+                };
+                #[derive(serde::Deserialize)]
+                struct ListResp {
+                    models: Option<Vec<ListModel>>,
+                }
+                #[derive(serde::Deserialize)]
+                struct ListModel {
+                    name: Option<String>,
+                    #[serde(rename = "supportedGenerationMethods")]
+                    methods: Option<Vec<String>>,
+                }
+                let parsed: Result<ListResp, _> = resp.json().await;
+                match parsed {
+                    Ok(lr) => lr
+                        .models
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter_map(|m| {
+                            let name = m.name?;
+                            // Hanya model yang mendukung generateContent
+                            let ok = m.methods
+                                .as_ref()
+                                .map(|ms| ms.iter().any(|x| x == "generateContent"))
+                                .unwrap_or(true);
+                            if !ok {
+                                return None;
+                            }
+                            // name = "models/gemini-xxx" → ambil "gemini-xxx"
+                            Some(name.strip_prefix("models/").unwrap_or(&name).to_string())
+                        })
+                        .collect::<Vec<_>>(),
+                    Err(_) => Vec::new(),
+                }
+            }
+        };
         let mut last_err: Option<ProviderError> = None;
         for model_name in &candidates {
             let url = format!(
@@ -1077,6 +1126,71 @@ impl GeminiNativeProvider {
                 "gemini native {} HTTP {}: {}",
                 model_name, status, snippet
             )));
+        }
+        // Semua hardcoded 404 → ambil daftar live dari API dan coba satu per satu.
+        // Ini jawaban definitif: pakai nama model yang BENAR-BENAR ada untuk key ini.
+        eprintln!("[gemini-native] semua hardcoded gagal, ambil daftar live dari API...");
+        let live = fetch_live_models(&key).await;
+        eprintln!("[gemini-native] daftar live: {} model: {:?}", live.len(), live.iter().take(10).collect::<Vec<_>>());
+        for model_name in &live {
+            // Lewati model yang sudah dicoba
+            if candidates.iter().any(|c| c == model_name) {
+                continue;
+            }
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+                model_name
+            );
+            let body = serde_json::json!({
+                "contents": [{ "parts": [{ "text": combined }] }],
+            });
+            let resp = self
+                .client
+                .post(&url)
+                .header("x-goog-api-key", &key)
+                .json(&body)
+                .send()
+                .await;
+            let resp = match resp {
+                Ok(r) => r,
+                Err(e) => continue,
+            };
+            if resp.status().is_success() {
+                #[derive(serde::Deserialize)]
+                struct GenResp2 {
+                    candidates: Option<Vec<GenCandidate2>>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenCandidate2 {
+                    content: Option<GenContent2>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenContent2 {
+                    parts: Option<Vec<GenPart2>>,
+                }
+                #[derive(serde::Deserialize)]
+                struct GenPart2 {
+                    text: Option<String>,
+                }
+                if let Ok(gr) = resp.json::<GenResp2>().await {
+                    let text = gr
+                        .candidates
+                        .and_then(|c| c.into_iter().next())
+                        .and_then(|c| c.content)
+                        .and_then(|c| c.parts)
+                        .and_then(|mut p| p.pop())
+                        .and_then(|p| p.text)
+                        .unwrap_or_default();
+                    if !text.is_empty() {
+                        eprintln!("[gemini-native] LIVE MODEL BERHASIL: {}", model_name);
+                        return Ok(ChatResult::text_only(text, "gemini".to_string()));
+                    }
+                }
+                continue;
+            }
+            let st = resp.status();
+            let bt = resp.text().await.unwrap_or_default();
+            eprintln!("[gemini-native:live:{}] HTTP {}: {}", model_name, st, bt.chars().take(150).collect::<String>());
         }
         Err(last_err.unwrap_or(ProviderError::Failed("gemini native: tidak ada model tersedia".to_string())))
     }
